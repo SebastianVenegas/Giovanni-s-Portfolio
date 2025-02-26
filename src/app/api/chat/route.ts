@@ -254,6 +254,7 @@ Financial Sector: UBS, New York Life, Aetna, Prudential, AXIS Capital
 Government Agencies: TSA, IRS, USDA, DeCA, JAIC, NIC, DOS, USAID, USCIS
 Automotive Industry: Ford, Jeep, Alfa Romeo, Chrysler, Fiat, Dodge Ram, Mopar, K&N Filters
 Other Major Brands: Nestlé, Starbucks, Intel, Mint Ultra Mobile
+
 The website also features an AI-powered chat functionality that allows visitors to ask questions about Giovanni's skills, experience, and projects.`
     }
 
@@ -271,32 +272,45 @@ The website also features an AI-powered chat functionality that allows visitors 
       max_tokens: 800,
     })
 
-    // Return a streaming response
-    return new Response(
-      new ReadableStream({
-        async start(controller) {
-          const encoder = new TextEncoder();
-          
+    // Create a simple text stream for the Vercel AI SDK with streamProtocol: 'text'
+    const encoder = new TextEncoder();
+    
+    const responseStream = new ReadableStream({
+      async start(controller) {
+        try {
+          // Process each chunk from OpenAI
           for await (const chunk of stream) {
+            // Get the content delta if it exists
             const content = chunk.choices[0]?.delta?.content || '';
+            
             if (content) {
+              // Send the raw content as a text stream
               controller.enqueue(encoder.encode(content));
             }
           }
           
+          // Close the stream when done
           controller.close();
-        },
-      }),
-      {
-        headers: {
-          'Content-Type': 'text/plain; charset=utf-8',
-        },
+          console.log('Streaming completed successfully');
+        } catch (error) {
+          console.error('Error during streaming:', error);
+          controller.error(error);
+        }
       }
-    );
+    });
+
+    // Return the stream with the correct content type for text streaming
+    return new Response(responseStream, {
+      headers: {
+        'Content-Type': 'text/plain; charset=utf-8',
+        'Cache-Control': 'no-cache',
+        'Connection': 'keep-alive',
+      },
+    });
   } catch (error) {
     console.error('Error in chat API:', error);
     return new Response(
-      JSON.stringify({ error: 'An error occurred during the request' }),
+      JSON.stringify({ error: 'An error occurred during the chat request' }),
       { status: 500, headers: { 'Content-Type': 'application/json' } }
     )
   }
