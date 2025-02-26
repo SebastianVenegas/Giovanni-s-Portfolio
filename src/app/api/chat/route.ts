@@ -1,10 +1,18 @@
 import { NextResponse } from 'next/server'
 import OpenAI from 'openai'
 
-// Initialize OpenAI client
+// Define message type
+interface ChatMessage {
+  role: 'system' | 'user' | 'assistant'
+  content: string
+}
+
+// Create an OpenAI API client
 const openai = new OpenAI({
   apiKey: process.env.OPENAI_API_KEY,
 })
+
+export const runtime = 'edge'
 
 export async function POST(request: Request) {
   try {
@@ -19,19 +27,29 @@ export async function POST(request: Request) {
     }
 
     // Add system message to provide context about Giovanni
-    const systemMessage = {
+    const systemMessage: ChatMessage = {
       role: 'system',
       content: `You are an AI assistant for Giovanni, a senior software engineer with expertise in Next.js, React, TypeScript, Python, and enterprise solutions. 
       You help visitors to Giovanni's portfolio website by answering questions about his skills, experience, and projects.
       Be professional, helpful, and concise in your responses. If asked about contacting Giovanni, suggest using the contact form on the website.
       If asked about technical topics, provide knowledgeable responses that reflect Giovanni's expertise.
-      Do not make up specific details about Giovanni's personal life or information not mentioned in the portfolio.
       
-      Do not make up specific details about Giovanni's personal life or information not mentioned in the portfolio.
+      IMPORTANT: The website has automatic scrolling functionality for different sections. When users ask about specific topics, the page will automatically scroll to the relevant section:
       
-      Do not make up specific details about Giovanni's personal life or information not mentioned in the portfolio.
+      1. When users ask about Giovanni, his background, or who he is, the page will scroll to the "about" section.
+         Acknowledge this by saying something like "I've scrolled to the About section for you. Here's information about Giovanni:"
       
-      Do not make up specific details about Giovanni's personal life or information not mentioned in the portfolio.
+      2. When users ask about Giovanni's experience, work history, or career, the page will scroll to the "experience" section.
+         Acknowledge this by saying something like "I've scrolled to the Experience section for you. Here's information about Giovanni's professional background:"
+      
+      3. When users ask about projects or Giovanni's work, the page will scroll to the "projects" section.
+         Acknowledge this by saying something like "I've scrolled to the Projects section for you. Here's information about Giovanni's projects:"
+      
+      4. When users ask about certifications, qualifications, or education, the page will scroll to the "certifications" section.
+         Acknowledge this by saying something like "I've scrolled to the Certifications section for you. Here's information about Giovanni's credentials:"
+      
+      5. When users ask about contacting Giovanni or how to reach him, the page will scroll to the "contact" section.
+         Acknowledge this by saying something like "I've scrolled to the Contact section for you. Here's how you can get in touch with Giovanni:"
       
       Do not make up specific details about Giovanni's personal life or information not mentioned in the portfolio.
       
@@ -224,24 +242,24 @@ The website also features an AI-powered chat functionality that allows visitors 
     // Format messages for OpenAI API
     const formattedMessages = [
       systemMessage,
-      ...messages.map((msg: any) => ({
+      ...messages.map((msg: ChatMessage) => ({
         role: msg.role,
         content: msg.content
       }))
     ]
 
-    // Call OpenAI API
-    const response = await openai.chat.completions.create({
+    // Call OpenAI API with streaming
+    const stream = await openai.chat.completions.create({
       model: 'gpt-3.5-turbo',
       messages: formattedMessages,
       temperature: 0.7,
       max_tokens: 500,
+      stream: true,
     })
 
-    // Extract and return the assistant's message
-    const assistantMessage = response.choices[0]?.message?.content || 'I apologize, but I couldn\'t generate a response.'
-
-    return NextResponse.json({ message: assistantMessage })
+    // Return the response
+    return new Response(stream.toReadableStream())
+    
   } catch (error) {
     console.error('Error in chat API:', error)
     return NextResponse.json(

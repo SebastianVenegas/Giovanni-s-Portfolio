@@ -7,24 +7,52 @@ import { Button } from "@/components/ui/button"
 import { cn } from "@/lib/utils"
 import { useTheme } from "next-themes"
 import { useMounted } from "./theme-provider"
+import { useChat } from "ai/react"
 
-type Message = {
-  role: "user" | "assistant"
-  content: string
+// Define section keywords for scrolling
+const sectionKeywords = {
+  about: [
+    "about", "who is giovanni", "tell me about giovanni", "background", 
+    "bio", "biography", "tell me about yourself", "who is he", "who are you", 
+    "about me"
+  ],
+  experience: [
+    "experience", "work history", "job", "career", "employment", 
+    "professional experience", "work experience", "previous jobs",
+    "where has giovanni worked", "companies", "positions"
+  ],
+  projects: [
+    "projects", "project", "portfolio", "work", "showcase", 
+    "show me projects", "show projects", "view projects",
+    "what projects", "what have you worked on", "what has giovanni worked on"
+  ],
+  certifications: [
+    "certifications", "certificates", "credentials", "qualifications", 
+    "certified", "certification", "diploma", "education", "degrees",
+    "what certifications", "what qualifications"
+  ],
+  contact: [
+    "contact", "email", "phone", "message", "get in touch", 
+    "reach out", "connect", "hire", "contact information",
+    "how to contact", "how to reach"
+  ]
 }
 
 export function ChatBox() {
   const [isOpen, setIsOpen] = useState(false)
-  const [messages, setMessages] = useState<Message[]>([
-    { role: "assistant", content: "Hi there! I'm Giovanni's AI assistant. How can I help you today?" }
-  ])
-  const [input, setInput] = useState("")
-  const [isLoading, setIsLoading] = useState(false)
   const messagesEndRef = useRef<HTMLDivElement>(null)
   const inputRef = useRef<HTMLTextAreaElement>(null)
   const { resolvedTheme } = useTheme()
   const isDark = resolvedTheme === "dark"
   const mounted = useMounted()
+
+  // Use the Vercel AI SDK useChat hook
+  const { messages, input, handleInputChange, handleSubmit, isLoading } = useChat({
+    api: '/api/chat',
+    initialMessages: [
+      { id: 'welcome-message', role: "assistant", content: "Hi there! I'm Giovanni's AI assistant. How can I help you today?" }
+    ]
+  })
 
   // Scroll to bottom of messages
   useEffect(() => {
@@ -40,50 +68,58 @@ export function ChatBox() {
     }
   }, [isOpen])
 
-  const handleSendMessage = async () => {
-    if (!input.trim()) return
+  // Function to scroll to a section
+  const scrollToSection = (id: string) => {
+    const element = document.getElementById(id)
+    if (element) {
+      // Log for debugging
+      console.log(`Scrolling to section: ${id}`)
+      element.scrollIntoView({ behavior: "smooth" })
+    } else {
+      console.log(`Section not found: ${id}`)
+    }
+  }
 
-    // Add user message
-    const userMessage = { role: "user" as const, content: input.trim() }
-    setMessages(prev => [...prev, userMessage])
-    setInput("")
-    setIsLoading(true)
-
-    try {
-      // Call OpenAI API
-      const response = await fetch('/api/chat', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          messages: [...messages, userMessage]
-        }),
-      })
-
-      if (!response.ok) {
-        throw new Error('Failed to get response')
+  // Function to check which section the message is about
+  const checkForSectionQuery = (message: string) => {
+    const lowercaseMessage = message.toLowerCase()
+    
+    // Check each section's keywords
+    for (const [section, keywords] of Object.entries(sectionKeywords)) {
+      if (keywords.some(keyword => lowercaseMessage.includes(keyword))) {
+        console.log(`Detected section: ${section} for message: ${message}`)
+        return section
       }
+    }
+    
+    console.log(`No section detected for message: ${message}`)
+    return null // No matching section found
+  }
 
-      const data = await response.json()
-      
-      // Add assistant response
-      setMessages(prev => [...prev, { role: "assistant", content: data.message }])
-    } catch (error) {
-      console.error('Error:', error)
-      setMessages(prev => [...prev, { 
-        role: "assistant", 
-        content: "I'm sorry, I encountered an error. Please try again later." 
-      }])
-    } finally {
-      setIsLoading(false)
+  // Handle form submission with the Vercel AI SDK
+  const handleChatSubmit = (e: React.FormEvent<HTMLFormElement>) => {
+    e.preventDefault()
+    
+    // Check which section the user is asking about
+    const sectionToScrollTo = checkForSectionQuery(input)
+    
+    // Submit the form using the Vercel AI SDK
+    handleSubmit(e)
+    
+    // If user asked about a specific section, scroll to that section
+    if (sectionToScrollTo) {
+      // Small delay to ensure the UI updates first
+      setTimeout(() => {
+        scrollToSection(sectionToScrollTo)
+      }, 500)
     }
   }
 
   const handleKeyDown = (e: React.KeyboardEvent) => {
     if (e.key === 'Enter' && !e.shiftKey) {
       e.preventDefault()
-      handleSendMessage()
+      const formEvent = new Event('submit', { bubbles: true, cancelable: true }) as unknown as React.FormEvent<HTMLFormElement>
+      handleChatSubmit(formEvent)
     }
   }
 
@@ -210,7 +246,7 @@ export function ChatBox() {
               </div>
 
               {/* Input */}
-              <div className={cn(
+              <form onSubmit={handleChatSubmit} className={cn(
                 "p-3",
                 isDark ? "border-t border-white/10" : "border-t border-black/10"
               )}>
@@ -222,7 +258,7 @@ export function ChatBox() {
                   <textarea
                     ref={inputRef}
                     value={input}
-                    onChange={(e) => setInput(e.target.value)}
+                    onChange={handleInputChange}
                     onKeyDown={handleKeyDown}
                     placeholder="Type a message..."
                     className={cn(
@@ -233,7 +269,7 @@ export function ChatBox() {
                     rows={1}
                   />
                   <Button
-                    onClick={handleSendMessage}
+                    type="submit"
                     disabled={!input.trim() || isLoading}
                     className={cn(
                       "h-8 w-8 rounded-full flex items-center justify-center",
@@ -246,7 +282,7 @@ export function ChatBox() {
                     <Send className="h-4 w-4" />
                   </Button>
                 </div>
-              </div>
+              </form>
             </motion.div>
           </>
         )}
