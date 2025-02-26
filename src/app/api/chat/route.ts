@@ -1,5 +1,4 @@
-import { NextResponse } from 'next/server'
-import OpenAI from 'openai'
+import { OpenAI } from 'openai'
 
 // Define message type
 interface ChatMessage {
@@ -7,22 +6,41 @@ interface ChatMessage {
   content: string
 }
 
-// Create an OpenAI API client
-const openai = new OpenAI({
-  apiKey: process.env.OPENAI_API_KEY,
-})
+// Create an OpenAI API client with better error handling
+let openai: OpenAI;
+try {
+  // Get API key and remove any newlines or whitespace
+  const apiKey = process.env.OPENAI_API_KEY?.replace(/\s+/g, '');
+  
+  if (!apiKey) {
+    console.error('OpenAI API key is missing or invalid');
+  }
+  
+  openai = new OpenAI({
+    apiKey: apiKey,
+  });
+  
+  console.log('OpenAI client initialized successfully');
+} catch (error) {
+  console.error('Error initializing OpenAI client:', error);
+  openai = new OpenAI({
+    apiKey: 'invalid-key', // This will cause API calls to fail with a clear error
+  });
+}
 
 export const runtime = 'edge'
 
 export async function POST(request: Request) {
   try {
+    console.log('Received chat request');
     const { messages } = await request.json()
 
     // Validate request
     if (!messages || !Array.isArray(messages)) {
-      return NextResponse.json(
-        { error: 'Invalid request format' },
-        { status: 400 }
+      console.error('Invalid request format:', { messages });
+      return new Response(
+        JSON.stringify({ error: 'Invalid request format' }),
+        { status: 400, headers: { 'Content-Type': 'application/json' } }
       )
     }
 
@@ -239,32 +257,47 @@ Other Major Brands: Nestlé, Starbucks, Intel, Mint Ultra Mobile
 The website also features an AI-powered chat functionality that allows visitors to ask questions about Giovanni's skills, experience, and projects.`
     }
 
-    // Format messages for OpenAI API
-    const formattedMessages = [
-      systemMessage,
-      ...messages.map((msg: ChatMessage) => ({
-        role: msg.role,
-        content: msg.content
-      }))
-    ]
+    // Combine messages with system message
+    const allMessages = [systemMessage, ...messages]
 
-    // Call OpenAI API with streaming
+    console.log('Sending request to OpenAI with messages:', allMessages.length);
+
+    // Create a stream with the OpenAI API
     const stream = await openai.chat.completions.create({
       model: 'gpt-3.5-turbo',
-      messages: formattedMessages,
-      temperature: 0.7,
-      max_tokens: 500,
+      messages: allMessages,
       stream: true,
+      temperature: 0.7,
+      max_tokens: 800,
     })
 
-    // Return the response
-    return new Response(stream.toReadableStream())
-    
+    // Return a streaming response
+    return new Response(
+      new ReadableStream({
+        async start(controller) {
+          const encoder = new TextEncoder();
+          
+          for await (const chunk of stream) {
+            const content = chunk.choices[0]?.delta?.content || '';
+            if (content) {
+              controller.enqueue(encoder.encode(content));
+            }
+          }
+          
+          controller.close();
+        },
+      }),
+      {
+        headers: {
+          'Content-Type': 'text/plain; charset=utf-8',
+        },
+      }
+    );
   } catch (error) {
-    console.error('Error in chat API:', error)
-    return NextResponse.json(
-      { error: 'An error occurred while processing your request' },
-      { status: 500 }
+    console.error('Error in chat API:', error);
+    return new Response(
+      JSON.stringify({ error: 'An error occurred during the request' }),
+      { status: 500, headers: { 'Content-Type': 'application/json' } }
     )
   }
 }
