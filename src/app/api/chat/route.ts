@@ -272,7 +272,7 @@ The website also features an AI-powered chat functionality that allows visitors 
       max_tokens: 800,
     })
 
-    // Create a simple text stream for the Vercel AI SDK with streamProtocol: 'text'
+    // Create a properly formatted stream for the Vercel AI SDK
     const encoder = new TextEncoder();
     
     const responseStream = new ReadableStream({
@@ -284,10 +284,31 @@ The website also features an AI-powered chat functionality that allows visitors 
             const content = chunk.choices[0]?.delta?.content || '';
             
             if (content) {
-              // Send the raw content as a text stream
-              controller.enqueue(encoder.encode(content));
+              // Format the content according to the Vercel AI SDK expectations
+              // The format is: data: {"id":"chatcmpl-123","object":"chat.completion.chunk","created":1694268190,"model":"gpt-3.5-turbo-0613","choices":[{"index":0,"delta":{"content":"Hello"},"finish_reason":null}]}
+              
+              const formattedChunk = {
+                id: chunk.id || 'chatcmpl',
+                object: 'chat.completion.chunk',
+                created: Math.floor(Date.now() / 1000),
+                model: 'gpt-3.5-turbo',
+                choices: [
+                  {
+                    index: 0,
+                    delta: { content },
+                    finish_reason: null
+                  }
+                ]
+              };
+              
+              // Send the formatted chunk as a JSON string with the "data: " prefix
+              const formattedData = `data: ${JSON.stringify(formattedChunk)}\n\n`;
+              controller.enqueue(encoder.encode(formattedData));
             }
           }
+          
+          // Send the final [DONE] message to indicate the stream is complete
+          controller.enqueue(encoder.encode('data: [DONE]\n\n'));
           
           // Close the stream when done
           controller.close();
@@ -299,10 +320,10 @@ The website also features an AI-powered chat functionality that allows visitors 
       }
     });
 
-    // Return the stream with the correct content type for text streaming
+    // Return the stream with the correct content type for the Vercel AI SDK
     return new Response(responseStream, {
       headers: {
-        'Content-Type': 'text/plain; charset=utf-8',
+        'Content-Type': 'text/event-stream',
         'Cache-Control': 'no-cache',
         'Connection': 'keep-alive',
       },

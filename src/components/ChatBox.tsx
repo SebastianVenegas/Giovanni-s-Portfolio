@@ -340,9 +340,7 @@ export function ChatBox() {
               className={cn(
                 "fixed z-50 flex flex-col",
                 isExpanded 
-                  ? windowWidth < 768
-                    ? "top-0 right-0 left-0 bottom-0 rounded-none" 
-                    : "top-[5vh] right-[5vw] bottom-[5vh] md:left-auto md:w-[700px] rounded-2xl" 
+                  ? "top-0 right-0 left-0 bottom-0 rounded-none" // Full screen on all devices
                   : "bottom-6 right-6 w-[90vw] sm:w-[400px] h-[70vh] sm:h-[500px] rounded-2xl",
                 "shadow-xl overflow-hidden",
                 "glass-effect backdrop-blur-md",
