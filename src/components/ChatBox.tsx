@@ -2,7 +2,7 @@
 
 import { useState, useRef, useEffect } from "react"
 import { motion, AnimatePresence } from "framer-motion"
-import { Send, X, MessageSquare, ChevronDown, Sparkles, Maximize2, Minimize2 } from "lucide-react"
+import { Send, X, MessageSquare, ChevronDown, Sparkles } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { cn } from "@/lib/utils"
 import { useTheme } from "next-themes"
@@ -40,7 +40,6 @@ const sectionKeywords = {
 
 export function ChatBox() {
   const [isOpen, setIsOpen] = useState(false)
-  const [isFullScreen, setIsFullScreen] = useState(false)
   const [hasNewMessages, setHasNewMessages] = useState(false)
   const [showScrollButton, setShowScrollButton] = useState(false)
   const [textareaHeight, setTextareaHeight] = useState(36) // Default height
@@ -118,59 +117,6 @@ export function ChatBox() {
   useEffect(() => {
     handleTextareaResize();
   }, [input]);
-
-  // Toggle fullscreen mode
-  const toggleFullScreen = () => {
-    // If we're currently in fullscreen, we need to exit it properly
-    if (isFullScreen) {
-      setIsFullScreen(false);
-      
-      // Restore navbar visibility
-      const navbar = document.querySelector('nav');
-      if (navbar) {
-        navbar.style.display = '';
-      }
-      
-      // Restore body scroll
-      document.body.style.overflow = '';
-    } else {
-      // Enter fullscreen mode
-      setIsFullScreen(true);
-      
-      // Hide navbar
-      const navbar = document.querySelector('nav');
-      if (navbar) {
-        navbar.style.display = 'none';
-      }
-      
-      // Prevent body scroll
-      document.body.style.overflow = 'hidden';
-    }
-    
-    // Ensure we scroll to bottom after resize
-    setTimeout(() => {
-      if (messagesEndRef.current) {
-        messagesEndRef.current.scrollIntoView({ behavior: "smooth" });
-      }
-    }, 300);
-  };
-
-  // Prevent body scroll when in fullscreen mode
-  useEffect(() => {
-    // This effect is now handled directly in the toggleFullScreen function
-    // to ensure immediate application of changes
-    
-    return () => {
-      // Cleanup function to ensure everything is reset when component unmounts
-      document.body.style.overflow = '';
-      
-      // Ensure navbar is visible when component unmounts
-      const navbar = document.querySelector('nav');
-      if (navbar) {
-        navbar.style.display = '';
-      }
-    };
-  }, []);
 
   // Function to scroll to a section
   const scrollToSection = (id: string) => {
@@ -268,18 +214,6 @@ export function ChatBox() {
     console.log("Loading state:", isLoading);
   }, [isLoading]);
 
-  // Handle escape key to exit fullscreen
-  useEffect(() => {
-    const handleEscKey = (e: KeyboardEvent) => {
-      if (e.key === 'Escape' && isFullScreen) {
-        setIsFullScreen(false);
-      }
-    };
-    
-    window.addEventListener('keydown', handleEscKey);
-    return () => window.removeEventListener('keydown', handleEscKey);
-  }, [isFullScreen]);
-
   return (
     <>
       {/* Chat Button */}
@@ -320,28 +254,24 @@ export function ChatBox() {
         {isOpen && (
           <>
             {/* Backdrop */}
-            {!isFullScreen && (
-              <motion.div
-                initial={{ opacity: 0 }}
-                animate={{ opacity: 1 }}
-                exit={{ opacity: 0 }}
-                transition={{ duration: 0.2 }}
-                className="fixed inset-0 bg-black/20 backdrop-blur-sm z-50 md:hidden"
-                onClick={() => setIsOpen(false)}
-              />
-            )}
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              transition={{ duration: 0.2 }}
+              className="fixed inset-0 bg-black/20 backdrop-blur-sm z-50 md:hidden"
+              onClick={() => setIsOpen(false)}
+            />
 
             {/* Chat Window */}
             <motion.div
-              initial={isFullScreen ? { opacity: 0 } : { opacity: 0, y: 20, scale: 0.95 }}
-              animate={isFullScreen ? { opacity: 1 } : { opacity: 1, y: 0, scale: 1 }}
-              exit={isFullScreen ? { opacity: 0 } : { opacity: 0, y: 20, scale: 0.95 }}
+              initial={{ opacity: 0, y: 20, scale: 0.95 }}
+              animate={{ opacity: 1, y: 0, scale: 1 }}
+              exit={{ opacity: 0, y: 20, scale: 0.95 }}
               transition={{ duration: 0.3, type: "spring", stiffness: 300, damping: 25 }}
               className={cn(
                 "fixed z-50 flex flex-col",
-                isFullScreen 
-                  ? "inset-0 rounded-none" 
-                  : "bottom-6 right-6 w-[90vw] sm:w-[400px] h-[70vh] sm:h-[500px] rounded-2xl",
+                "bottom-6 right-6 w-[90vw] sm:w-[400px] h-[70vh] sm:h-[500px] rounded-2xl",
                 "shadow-xl overflow-hidden",
                 "glass-effect backdrop-blur-md",
                 isDark 
@@ -396,34 +326,11 @@ export function ChatBox() {
                   </h3>
                 </div>
                 <div className="flex items-center gap-2">
-                  {/* Fullscreen toggle button */}
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    onClick={toggleFullScreen}
-                    className={cn(
-                      "h-8 w-8 rounded-full",
-                      isDark 
-                        ? "text-white/70 hover:text-white hover:bg-white/10" 
-                        : "text-gray-700 hover:text-gray-900 hover:bg-black/5"
-                    )}
-                    aria-label={isFullScreen ? "Exit full screen" : "Enter full screen"}
-                  >
-                    {isFullScreen ? (
-                      <Minimize2 className="h-4 w-4" />
-                    ) : (
-                      <Maximize2 className="h-4 w-4" />
-                    )}
-                  </Button>
-                  
                   {/* Close button */}
                   <Button
                     variant="ghost"
                     size="sm"
-                    onClick={() => {
-                      setIsOpen(false);
-                      if (isFullScreen) setIsFullScreen(false);
-                    }}
+                    onClick={() => setIsOpen(false)}
                     className={cn(
                       "h-8 w-8 rounded-full",
                       isDark 
@@ -569,29 +476,6 @@ export function ChatBox() {
                 )}
               </AnimatePresence>
 
-              {/* Always visible close button when in fullscreen */}
-              {isFullScreen && (
-                <motion.button
-                  initial={{ opacity: 0, scale: 0.8 }}
-                  animate={{ opacity: 1, scale: 1 }}
-                  exit={{ opacity: 0, scale: 0.8 }}
-                  transition={{ duration: 0.2 }}
-                  onClick={() => {
-                    setIsOpen(false);
-                    setIsFullScreen(false);
-                  }}
-                  className={cn(
-                    "absolute top-20 right-4 z-10 p-2 rounded-full shadow-md",
-                    "backdrop-blur-sm",
-                    isDark 
-                      ? "bg-black/60 text-white/90 hover:bg-black/80 border border-white/10" 
-                      : "bg-white/80 text-gray-900 hover:bg-white/90 border border-black/5"
-                  )}
-                >
-                  <X className="h-4 w-4" />
-                </motion.button>
-              )}
-
               {/* Input */}
               <form onSubmit={handleChatSubmit} className={cn(
                 "p-4",
@@ -601,8 +485,7 @@ export function ChatBox() {
                 <div className={cn(
                   "flex items-end gap-2",
                   "rounded-xl p-2",
-                  isDark ? "bg-white/5" : "bg-black/5",
-                  isFullScreen ? "max-w-3xl mx-auto w-full" : ""
+                  isDark ? "bg-white/5" : "bg-black/5"
                 )}>
                   <textarea
                     ref={inputRef}
