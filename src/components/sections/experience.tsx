@@ -281,7 +281,7 @@ export function Experience() {
             />
           </div>
           
-          <div className="space-y-16 sm:space-y-20">
+          <div className="space-y-16">
             {currentExperiences.map((exp, index) => {
               const actualIndex = currentPage * experiencesPerPage + index;
               return (
@@ -290,931 +290,448 @@ export function Experience() {
                   initial={{ opacity: 0, y: 20 }}
                   animate={hasBeenViewed ? { opacity: 1, y: 0 } : {}}
                   transition={{ duration: 0.5, delay: index * 0.1 }}
-                  className="relative pl-8 sm:pl-10"
+                  className="relative pl-6 sm:pl-8"
                 >
                   {/* Timeline Line */}
-                  <div className="absolute left-0 top-0 bottom-0 w-[2px] bg-gradient-to-b from-gray-300 via-gray-200 to-gray-100 dark:from-gray-600/50 dark:via-gray-600/20 dark:to-gray-600/10" />
+                  <div className="absolute left-0 top-0 bottom-0 w-[1px] sm:w-[2px] bg-gradient-to-b from-gray-300 via-gray-200 to-gray-100 dark:from-gray-600/50 dark:via-gray-600/20 dark:to-gray-600/10" />
                   
                   {/* Timeline Dot */}
                   <motion.div 
                     initial={{ scale: 0 }}
                     animate={hasBeenViewed ? { scale: 1 } : {}}
-                    transition={{ duration: 0.5, delay: index * 0.1 + 0.2 }}
-                    className="absolute left-0 top-0 w-6 h-6 -ml-[12px] rounded-full border-2 border-black/30 dark:border-black/40 bg-white dark:bg-gray-900 shadow-md flex items-center justify-center"
-                  >
-                    <Briefcase className="w-3 h-3 text-gray-600 dark:text-gray-400" />
-                  </motion.div>
+                    transition={{ type: "spring", stiffness: 300, damping: 20, delay: 0.2 + (index * 0.1) }}
+                    className="absolute -left-[7px] sm:-left-[9px] top-0 h-4 w-4 sm:h-5 sm:w-5 rounded-full bg-white dark:bg-black border-2 border-black/30 dark:border-black/40"
+                  />
                   
-                  {/* Job Card */}
-                  <div className="space-y-6">
-                    {/* Job Header */}
-                    <div className="flex flex-col sm:flex-row sm:items-center gap-4 sm:gap-6">
-                      {/* Company Logo */}
-                      <motion.div
-                        initial={{ opacity: 0, scale: 0.8 }}
-                        animate={hasBeenViewed ? { opacity: 1, scale: 1 } : {}}
-                        transition={{ duration: 0.5, delay: index * 0.1 + 0.3 }}
-                        className="w-16 h-16 sm:w-20 sm:h-20 rounded-xl overflow-hidden bg-white dark:bg-black/40 border border-black/5 dark:border-white/5 shadow-sm flex items-center justify-center p-3 sm:p-4 mx-auto sm:mx-0"
-                      >
-                        <Image
-                          src={exp.logo}
-                          alt={exp.company}
-                          width={80}
-                          height={80}
-                          className="object-contain w-full h-full"
-                          style={getLogoFilter(exp.company)}
-                        />
-                      </motion.div>
-                      
-                      {/* Job Title and Company */}
-                      <div className="flex-1 text-center sm:text-left">
-                        <h3 className="text-xl sm:text-2xl font-bold text-gray-900 dark:text-white">
-                          {exp.title}
-                        </h3>
-                        <div className="flex flex-col sm:flex-row sm:items-center gap-1 sm:gap-2 mt-1 sm:mt-2">
-                          <a
-                            href={exp.website}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            className="text-lg font-medium text-gray-700 dark:text-gray-300 hover:text-primary dark:hover:text-primary transition-colors flex items-center justify-center sm:justify-start"
-                          >
-                            {exp.company}
-                            <ExternalLink className="ml-1 h-4 w-4 inline" />
-                          </a>
-                          <span className="hidden sm:inline text-gray-400">•</span>
-                          <div className="flex items-center justify-center sm:justify-start text-gray-500 dark:text-gray-400">
-                            <Calendar className="h-4 w-4 mr-1" />
-                            {exp.period}
+                  <div className={cn(
+                    "rounded-xl p-4 sm:p-6 md:p-8",
+                    "bg-white/70 dark:bg-black/30",
+                    "border border-black/5 dark:border-white/5",
+                    "backdrop-blur-sm shadow-xl",
+                    "hover:border-black/15 dark:hover:border-black/30",
+                    "transition-all duration-300"
+                  )}>
+                    <div className="space-y-4 sm:space-y-6">
+                      {/* Top section with logo and title - Changed to row layout */}
+                      <div className="flex flex-col md:flex-row items-center md:items-start text-center md:text-left gap-4 sm:gap-8">
+                        {/* Company Logo - Left aligned on desktop */}
+                        <motion.div 
+                          initial={{ opacity: 0, scale: 0.8 }}
+                          animate={hasBeenViewed ? { opacity: 1, scale: 1 } : {}}
+                          transition={{ duration: 0.3, delay: 0.2 + (index * 0.1) }}
+                          whileHover={{ scale: 1.05 }}
+                          className={cn(
+                            "relative w-28 h-28 sm:w-32 sm:h-32 md:w-40 md:h-40 rounded-2xl overflow-hidden flex-shrink-0 flex items-center justify-center",
+                            "border border-black/5 dark:border-white/5",
+                            "shadow-lg hover:shadow-xl",
+                            "transition-all duration-300",
+                            "bg-white dark:bg-black p-4 sm:p-6",
+                            "mx-auto md:mx-0"
+                          )}
+                        >
+                          <Image
+                            src={exp.logo}
+                            alt={`${exp.company} logo`}
+                            width={160}
+                            height={160}
+                            className="w-[85%] h-[85%] object-contain"
+                            style={getLogoFilter(exp.company)}
+                          />
+                        </motion.div>
+                        
+                        {/* Title and Company - Content section */}
+                        <div className="flex-1 space-y-3 sm:space-y-6">
+                          <div className="space-y-1 sm:space-y-2">
+                            <h3 className="text-xl sm:text-2xl font-bold text-gray-900 dark:text-white">
+                              {exp.title}
+                            </h3>
+                            <div className="flex items-center justify-center md:justify-start gap-2 text-lg sm:text-xl text-gray-700 dark:text-gray-300">
+                              <span className="font-medium">{exp.company}</span>
+                              <a 
+                                href={exp.website} 
+                                target="_blank" 
+                                rel="noopener noreferrer"
+                                className="text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200 transition-colors"
+                              >
+                                <ExternalLink className="h-4 w-4" />
+                              </a>
+                            </div>
+                          </div>
+                          
+                          {/* Details section */}
+                          <div className="flex flex-wrap justify-center md:justify-start gap-3 sm:gap-6 text-gray-600 dark:text-gray-300">
+                            <div className="flex items-center gap-2">
+                              <div className="p-1.5 sm:p-2 rounded-lg bg-black/5 dark:bg-white/5">
+                                <Calendar className="h-4 w-4 sm:h-5 sm:w-5" />
+                              </div>
+                              <span className="font-medium text-sm sm:text-base">{exp.period}</span>
+                            </div>
+                            <div className="flex items-center gap-2">
+                              <div className="p-1.5 sm:p-2 rounded-lg bg-black/5 dark:bg-white/5">
+                                <Briefcase className="h-4 w-4 sm:h-5 sm:w-5" />
+                              </div>
+                              <span className="font-medium text-sm sm:text-base">{exp.location}</span>
+                            </div>
+                          </div>
+                          
+                          {/* Description */}
+                          <p className="text-center md:text-left text-base sm:text-lg text-gray-600 dark:text-gray-300">
+                            {exp.description}
+                          </p>
+                          
+                          {/* Technology Tags */}
+                          <div className="flex flex-wrap justify-center md:justify-start gap-1.5 sm:gap-2 mt-2">
+                            {exp.technologies.map((tech, i) => (
+                              <motion.div
+                                key={i}
+                                initial={{ opacity: 0, scale: 0.8 }}
+                                animate={hasBeenViewed ? { opacity: 1, scale: 1 } : {}}
+                                transition={{ duration: 0.3, delay: 0.3 + (i * 0.05) }}
+                              >
+                                <Badge 
+                                  className="bg-black/5 dark:bg-white/5 text-gray-700 dark:text-gray-300 hover:bg-black/10 dark:hover:bg-white/10 px-2 sm:px-3 py-0.5 sm:py-1 text-xs sm:text-sm"
+                                >
+                                  <Code className="h-2.5 w-2.5 sm:h-3 sm:w-3 mr-1 sm:mr-2" />
+                                  {tech}
+                                </Badge>
+                              </motion.div>
+                            ))}
                           </div>
                         </div>
                       </div>
-                    </div>
-                    
-                    {/* Job Description */}
-                    <p className="text-gray-600 dark:text-gray-300 text-base sm:text-lg">
-                      {exp.description}
-                    </p>
-                    
-                    {/* Achievements */}
-                    <div className="space-y-4">
-                      <h4 className="text-lg sm:text-xl font-semibold text-gray-900 dark:text-white flex items-center justify-center sm:justify-start">
-                        <Trophy className="h-5 w-5 mr-2 text-gray-500 dark:text-gray-400" />
-                        Key Achievements
-                      </h4>
-                      <ul className="space-y-3">
-                        {exp.achievements.slice(0, expandedJob === actualIndex ? undefined : 3).map((achievement, i) => (
-                          <motion.li
-                            key={i}
-                            initial={{ opacity: 0, x: -10 }}
-                            animate={hasBeenViewed ? { opacity: 1, x: 0 } : {}}
-                            transition={{ duration: 0.3, delay: index * 0.1 + i * 0.1 }}
-                            className="flex items-start"
-                          >
-                            <ArrowRight className="h-5 w-5 mr-2 text-gray-500 dark:text-gray-400 mt-0.5 flex-shrink-0" />
-                            <span className="text-gray-600 dark:text-gray-300">{achievement}</span>
-                          </motion.li>
-                        ))}
-                      </ul>
                       
-                      {/* Show More/Less Button */}
-                      {exp.achievements.length > 3 && (
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          onClick={() => toggleExpand(actualIndex)}
-                          className="mt-2 text-gray-600 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white mx-auto flex items-center"
-                        >
-                          {expandedJob === actualIndex ? (
-                            <>
-                              Show Less <ChevronUp className="ml-1 h-4 w-4" />
-                            </>
-                          ) : (
-                            <>
-                              Show More <ChevronDown className="ml-1 h-4 w-4" />
-                            </>
-                          )}
-                        </Button>
-                      )}
-                    </div>
-                    
-                    {/* Technologies */}
-                    <div className="space-y-4">
-                      <h4 className="text-lg sm:text-xl font-semibold text-gray-900 dark:text-white flex items-center justify-center sm:justify-start">
-                        <Code className="h-5 w-5 mr-2 text-gray-500 dark:text-gray-400" />
-                        Technologies
-                      </h4>
-                      <div className="flex flex-wrap gap-2 justify-center sm:justify-start">
-                        {exp.technologies.map((tech, i) => (
-                          <motion.div
-                            key={i}
-                            initial={{ opacity: 0, scale: 0.8 }}
-                            animate={hasBeenViewed ? { opacity: 1, scale: 1 } : {}}
-                            transition={{ duration: 0.3, delay: index * 0.05 + i * 0.03 }}
-                          >
-                            <Badge variant="outline" className="px-3 py-1 rounded-full text-sm bg-black/5 dark:bg-white/5 border-black/10 dark:border-white/10 text-gray-700 dark:text-gray-300">
-                              {tech}
-                            </Badge>
-                          </motion.div>
-                        ))}
-                      </div>
-                    </div>
-                    
-                    {/* Client Showcase - Always visible for Auxo Solutions */}
-                    {exp.company === "Auxo Solutions" && (
-                      <div className="space-y-4 mt-6">
-                        <h4 className="text-lg sm:text-xl font-semibold text-gray-900 dark:text-white flex items-center justify-center sm:justify-start">
-                          <Building2 className="h-5 w-5 mr-2 text-gray-500 dark:text-gray-400" />
-                          Client Solutions
-                        </h4>
-                        
-                        <p className="text-gray-600 dark:text-gray-300 text-base sm:text-lg text-center sm:text-left">
-                          Architected Next.js and Unqork-based solutions for major financial & insurance clients:
-                        </p>
-                        
-                        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6 mt-4">
-                          {/* UBS */}
-                          <motion.div
-                            initial={{ opacity: 0, y: 10 }}
-                            animate={hasBeenViewed ? { opacity: 1, y: 0 } : {}}
-                            transition={{ duration: 0.3, delay: 0.1 }}
-                            className="p-4 sm:p-6 rounded-xl bg-white dark:bg-black/40 border border-black/5 dark:border-black/5 hover:border-black/15 dark:hover:border-black/30 transition-colors"
-                          >
-                            <a 
-                              href="https://www.ubs.com" 
-                              target="_blank" 
-                              rel="noopener noreferrer"
-                              className="block h-full hover:opacity-90 transition-opacity"
-                            >
-                              <div className="h-12 sm:h-16 flex items-center justify-center mb-3 sm:mb-4">
-                                <Image
-                                  src="/images/clients/ubs.png"
-                                  alt="UBS"
-                                  width={120}
-                                  height={60}
-                                  className="object-contain h-10 sm:h-12"
-                                  style={resolvedTheme === "dark" ? { filter: "brightness(0) invert(1)" } : {}}
-                                />
-                              </div>
-                              <h5 className="font-semibold text-base sm:text-lg text-gray-900 dark:text-white text-center">UBS</h5>
-                              <p className="text-gray-600 dark:text-gray-300 mt-2 text-center text-sm sm:text-base">
-                                Enterprise wealth management platform with AI-driven portfolio optimization
-                              </p>
-                            </a>
-                          </motion.div>
+                      {/* Client Showcase - Always visible for Auxo Solutions */}
+                      {exp.company === "Auxo Solutions" && (
+                        <div className="space-y-3 sm:space-y-4 mt-4 sm:mt-6">
+                          <h4 className="text-lg sm:text-xl font-semibold text-gray-900 dark:text-white flex items-center md:justify-start justify-center">
+                            <Building2 className="h-5 w-5 sm:h-6 sm:w-6 mr-2 text-gray-500 dark:text-gray-400" />
+                            Client Solutions
+                          </h4>
                           
-                          {/* New York Life */}
-                          <motion.div
-                            initial={{ opacity: 0, y: 10 }}
-                            animate={hasBeenViewed ? { opacity: 1, y: 0 } : {}}
-                            transition={{ duration: 0.3, delay: 0.2 }}
-                            className="p-4 sm:p-6 rounded-xl bg-white dark:bg-black/40 border border-black/5 dark:border-black/5 hover:border-black/15 dark:hover:border-black/30 transition-colors"
-                          >
-                            <a 
-                              href="https://www.newyorklife.com" 
-                              target="_blank" 
-                              rel="noopener noreferrer"
-                              className="block h-full hover:opacity-90 transition-opacity"
-                            >
-                              <div className="h-12 sm:h-16 flex items-center justify-center mb-3 sm:mb-4">
-                                <Image
-                                  src="/images/clients/nyl.png"
-                                  alt="New York Life"
-                                  width={120}
-                                  height={60}
-                                  className="object-contain h-10 sm:h-12"
-                                />
-                              </div>
-                              <h5 className="font-semibold text-base sm:text-lg text-gray-900 dark:text-white text-center">New York Life</h5>
-                              <p className="text-gray-600 dark:text-gray-300 mt-2 text-center text-sm sm:text-base">
-                                Policy management system with real-time underwriting capabilities
-                              </p>
-                            </a>
-                          </motion.div>
+                          <p className="text-gray-600 dark:text-gray-300 text-base sm:text-lg">
+                            Architected Next.js and Unqork-based solutions for major financial & insurance clients:
+                          </p>
                           
-                          {/* Aetna */}
-                          <motion.div
-                            initial={{ opacity: 0, y: 10 }}
-                            animate={hasBeenViewed ? { opacity: 1, y: 0 } : {}}
-                            transition={{ duration: 0.3, delay: 0.3 }}
-                            className="p-4 sm:p-6 rounded-xl bg-white dark:bg-black/40 border border-black/5 dark:border-black/5 hover:border-black/15 dark:hover:border-black/30 transition-colors"
-                          >
-                            <a 
-                              href="https://www.aetna.com" 
-                              target="_blank" 
-                              rel="noopener noreferrer"
-                              className="block h-full hover:opacity-90 transition-opacity"
+                          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-6 mt-3 sm:mt-4">
+                            {/* UBS */}
+                            <motion.div
+                              initial={{ opacity: 0, y: 10 }}
+                              animate={hasBeenViewed ? { opacity: 1, y: 0 } : {}}
+                              transition={{ duration: 0.3, delay: 0.1 }}
+                              className="p-4 sm:p-6 rounded-xl bg-white dark:bg-black/40 border border-black/10 dark:border-black/20 transition-colors"
                             >
-                              <div className="h-12 sm:h-16 flex items-center justify-center mb-3 sm:mb-4">
-                                <Image
-                                  src="/images/clients/aetna.png"
-                                  alt="Aetna"
-                                  width={120}
-                                  height={60}
-                                  className="object-contain h-10 sm:h-12"
-                                />
-                              </div>
-                              <h5 className="font-semibold text-base sm:text-lg text-gray-900 dark:text-white text-center">Aetna</h5>
-                              <p className="text-gray-600 dark:text-gray-300 mt-2 text-center text-sm sm:text-base">
-                                Claims processing automation with ML-powered fraud detection
-                              </p>
-                            </a>
-                          </motion.div>
-                          
-                          {/* Prudential */}
-                          <motion.div
-                            initial={{ opacity: 0, y: 10 }}
-                            animate={hasBeenViewed ? { opacity: 1, y: 0 } : {}}
-                            transition={{ duration: 0.3, delay: 0.4 }}
-                            className="p-4 sm:p-6 rounded-xl bg-white dark:bg-black/40 border border-black/5 dark:border-black/5 hover:border-black/15 dark:hover:border-black/30 transition-colors"
-                          >
-                            <a 
-                              href="https://www.prudential.com" 
-                              target="_blank" 
-                              rel="noopener noreferrer"
-                              className="block h-full hover:opacity-90 transition-opacity"
-                            >
-                              <div className="h-12 sm:h-16 flex items-center justify-center mb-3 sm:mb-4">
-                                <Image
-                                  src="/images/clients/prudential.png"
-                                  alt="Prudential"
-                                  width={120}
-                                  height={60}
-                                  className="object-contain h-10 sm:h-12"
-                                />
-                              </div>
-                              <h5 className="font-semibold text-base sm:text-lg text-gray-900 dark:text-white text-center">Prudential</h5>
-                              <p className="text-gray-600 dark:text-gray-300 mt-2 text-center text-sm sm:text-base">
-                                Financial services platform with integrated advisory tools
-                              </p>
-                            </a>
-                          </motion.div>
-                          
-                          {/* AXIS Capital */}
-                          <motion.div
-                            initial={{ opacity: 0, y: 10 }}
-                            animate={hasBeenViewed ? { opacity: 1, y: 0 } : {}}
-                            transition={{ duration: 0.3, delay: 0.5 }}
-                            className="p-4 sm:p-6 rounded-xl bg-white dark:bg-black/40 border border-black/5 dark:border-black/5 hover:border-black/15 dark:hover:border-black/30 transition-colors"
-                          >
-                            <a 
-                              href="https://www.axiscapital.com" 
-                              target="_blank" 
-                              rel="noopener noreferrer"
-                              className="block h-full hover:opacity-90 transition-opacity"
-                            >
-                              <div className="h-12 sm:h-16 flex items-center justify-center mb-3 sm:mb-4">
-                                <Image
-                                  src="/images/clients/axis.png"
-                                  alt="AXIS Capital"
-                                  width={120}
-                                  height={60}
-                                  className="object-contain h-10 sm:h-12"
-                                  style={resolvedTheme === "dark" ? { filter: "brightness(0) invert(1)" } : {}}
-                                />
-                              </div>
-                              <h5 className="font-semibold text-base sm:text-lg text-gray-900 dark:text-white text-center">AXIS Capital</h5>
-                              <p className="text-gray-600 dark:text-gray-300 mt-2 text-center text-sm sm:text-base">
-                                Insurance underwriting platform with automated risk assessment
-                              </p>
-                            </a>
-                          </motion.div>
-                        </div>
-                      </div>
-                    )}
-                    
-                    {/* Client Showcase - Always visible for Accenture Federal */}
-                    {exp.company === "Accenture Federal" && (
-                      <div className="space-y-4 mt-6">
-                        <h4 className="text-lg sm:text-xl font-semibold text-gray-900 dark:text-white flex items-center justify-center sm:justify-start">
-                          <Building2 className="h-5 w-5 mr-2 text-gray-500 dark:text-gray-400" />
-                          Client Solutions
-                        </h4>
-                        
-                        <p className="text-gray-600 dark:text-gray-300 text-base sm:text-lg text-center sm:text-left">
-                          Built secure Next.js/React applications for federal agencies:
-                        </p>
-                        
-                        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6 mt-4">
-                          {/* TSA */}
-                          <motion.div
-                            initial={{ opacity: 0, y: 10 }}
-                            animate={hasBeenViewed ? { opacity: 1, y: 0 } : {}}
-                            transition={{ duration: 0.3, delay: 0.1 }}
-                            className="p-4 sm:p-6 rounded-xl bg-white dark:bg-black/40 border border-black/5 dark:border-black/5 hover:border-black/15 dark:hover:border-black/30 transition-colors"
-                          >
-                            <a 
-                              href="https://www.tsa.gov" 
-                              target="_blank" 
-                              rel="noopener noreferrer"
-                              className="block h-full hover:opacity-90 transition-opacity"
-                            >
-                              <div className="h-12 sm:h-16 flex items-center justify-center mb-3 sm:mb-4">
-                                <Image
-                                  src="/images/clients/tsa.png"
-                                  alt="TSA"
-                                  width={120}
-                                  height={60}
-                                  className="object-contain h-10 sm:h-12"
-                                />
-                              </div>
-                              <h5 className="font-semibold text-base sm:text-lg text-gray-900 dark:text-white text-center">Transportation Security Administration</h5>
-                              <p className="text-gray-600 dark:text-gray-300 mt-2 text-center text-sm sm:text-base">
-                                Personnel management system with security clearance tracking
-                              </p>
-                            </a>
-                          </motion.div>
-                          
-                          {/* IRS */}
-                          <motion.div
-                            initial={{ opacity: 0, y: 10 }}
-                            animate={hasBeenViewed ? { opacity: 1, y: 0 } : {}}
-                            transition={{ duration: 0.3, delay: 0.2 }}
-                            className="p-4 sm:p-6 rounded-xl bg-white dark:bg-black/40 border border-black/5 dark:border-black/5 hover:border-black/15 dark:hover:border-black/30 transition-colors"
-                          >
-                            <a 
-                              href="https://www.irs.gov" 
-                              target="_blank" 
-                              rel="noopener noreferrer"
-                              className="block h-full hover:opacity-90 transition-opacity"
-                            >
-                              <div className="h-12 sm:h-16 flex items-center justify-center mb-3 sm:mb-4">
-                                <Image
-                                  src="/images/clients/irs.png"
-                                  alt="IRS"
-                                  width={120}
-                                  height={60}
-                                  className="object-contain h-10 sm:h-12"
-                                />
-                              </div>
-                              <h5 className="font-semibold text-base sm:text-lg text-gray-900 dark:text-white text-center">Internal Revenue Service</h5>
-                              <p className="text-gray-600 dark:text-gray-300 mt-2 text-center text-sm sm:text-base">
-                                Tax processing platform with automated compliance checks
-                              </p>
-                            </a>
-                          </motion.div>
-                          
-                          {/* USDA */}
-                          <motion.div
-                            initial={{ opacity: 0, y: 10 }}
-                            animate={hasBeenViewed ? { opacity: 1, y: 0 } : {}}
-                            transition={{ duration: 0.3, delay: 0.3 }}
-                            className="p-4 sm:p-6 rounded-xl bg-white dark:bg-black/40 border border-black/5 dark:border-black/5 hover:border-black/15 dark:hover:border-black/30 transition-colors"
-                          >
-                            <a 
-                              href="https://www.usda.gov" 
-                              target="_blank" 
-                              rel="noopener noreferrer"
-                              className="block h-full hover:opacity-90 transition-opacity"
-                            >
-                              <div className="h-12 sm:h-16 flex items-center justify-center mb-3 sm:mb-4">
-                                <Image
-                                  src="/images/clients/usda.png"
-                                  alt="USDA"
-                                  width={120}
-                                  height={60}
-                                  className="object-contain h-10 sm:h-12"
-                                />
-                              </div>
-                              <h5 className="font-semibold text-base sm:text-lg text-gray-900 dark:text-white text-center">U.S. Department of Agriculture</h5>
-                              <p className="text-gray-600 dark:text-gray-300 mt-2 text-center text-sm sm:text-base">
-                                Agricultural data analysis platform with ML predictions
-                              </p>
-                            </a>
-                          </motion.div>
-                          
-                          {/* DeCA */}
-                          <motion.div
-                            initial={{ opacity: 0, y: 10 }}
-                            animate={hasBeenViewed ? { opacity: 1, y: 0 } : {}}
-                            transition={{ duration: 0.3, delay: 0.4 }}
-                            className="p-4 sm:p-6 rounded-xl bg-white dark:bg-black/40 border border-black/5 dark:border-black/5 hover:border-black/15 dark:hover:border-black/30 transition-colors"
-                          >
-                            <a 
-                              href="https://www.commissaries.com" 
-                              target="_blank" 
-                              rel="noopener noreferrer"
-                              className="block h-full hover:opacity-90 transition-opacity"
-                            >
-                              <div className="h-12 sm:h-16 flex items-center justify-center mb-3 sm:mb-4">
-                                <Image
-                                  src="/images/clients/deca.png"
-                                  alt="Defense Commissary Agency"
-                                  width={120}
-                                  height={60}
-                                  className="object-contain h-10 sm:h-12"
-                                />
-                              </div>
-                              <h5 className="font-semibold text-base sm:text-lg text-gray-900 dark:text-white text-center">Defense Commissary Agency</h5>
-                              <p className="text-gray-600 dark:text-gray-300 mt-2 text-center text-sm sm:text-base">
-                                Inventory management system with AI-driven demand forecasting
-                              </p>
-                            </a>
-                          </motion.div>
-                          
-                          {/* JAIC */}
-                          <motion.div
-                            initial={{ opacity: 0, y: 10 }}
-                            animate={hasBeenViewed ? { opacity: 1, y: 0 } : {}}
-                            transition={{ duration: 0.3, delay: 0.5 }}
-                            className="p-4 sm:p-6 rounded-xl bg-white dark:bg-black/40 border border-black/5 dark:border-black/5 hover:border-black/15 dark:hover:border-black/30 transition-colors"
-                          >
-                            <a 
-                              href="https://www.ai.mil" 
-                              target="_blank" 
-                              rel="noopener noreferrer"
-                              className="block h-full hover:opacity-90 transition-opacity"
-                            >
-                              <div className="h-12 sm:h-16 flex items-center justify-center mb-3 sm:mb-4">
-                                <Image
-                                  src="/images/clients/jaic.png"
-                                  alt="Joint Artificial Intelligence Center"
-                                  width={120}
-                                  height={60}
-                                  className="object-contain h-10 sm:h-12"
-                                  style={resolvedTheme === "dark" ? { filter: "brightness(0) invert(1)" } : {}}
-                                />
-                              </div>
-                              <h5 className="font-semibold text-base sm:text-lg text-gray-900 dark:text-white text-center">Joint Artificial Intelligence Center</h5>
-                              <p className="text-gray-600 dark:text-gray-300 mt-2 text-center text-sm sm:text-base">
-                                AI/ML model deployment platform for defense applications
-                              </p>
-                            </a>
-                          </motion.div>
-                          
-                          {/* NIC */}
-                          <motion.div
-                            initial={{ opacity: 0, y: 10 }}
-                            animate={hasBeenViewed ? { opacity: 1, y: 0 } : {}}
-                            transition={{ duration: 0.3, delay: 0.6 }}
-                            className="p-4 sm:p-6 rounded-xl bg-white dark:bg-black/40 border border-black/5 dark:border-black/5 hover:border-black/15 dark:hover:border-black/30 transition-colors"
-                          >
-                            <a 
-                              href="https://nicic.gov" 
-                              target="_blank" 
-                              rel="noopener noreferrer"
-                              className="block h-full hover:opacity-90 transition-opacity"
-                            >
-                              <div className="h-12 sm:h-16 flex items-center justify-center mb-3 sm:mb-4">
-                                <Image
-                                  src="/images/clients/nic.png"
-                                  alt="National Institute of Corrections"
-                                  width={120}
-                                  height={60}
-                                  className="object-contain h-10 sm:h-12"
-                                />
-                              </div>
-                              <h5 className="font-semibold text-base sm:text-lg text-gray-900 dark:text-white text-center">National Institute of Corrections</h5>
-                              <p className="text-gray-600 dark:text-gray-300 mt-2 text-center text-sm sm:text-base">
-                                Secure training and resource management platform
-                              </p>
-                            </a>
-                          </motion.div>
-                          
-                          {/* DOS */}
-                          <motion.div
-                            initial={{ opacity: 0, y: 10 }}
-                            animate={hasBeenViewed ? { opacity: 1, y: 0 } : {}}
-                            transition={{ duration: 0.3, delay: 0.7 }}
-                            className="p-4 sm:p-6 rounded-xl bg-white dark:bg-black/40 border border-black/5 dark:border-black/5 hover:border-black/15 dark:hover:border-black/30 transition-colors"
-                          >
-                            <a 
-                              href="https://www.state.gov" 
-                              target="_blank" 
-                              rel="noopener noreferrer"
-                              className="block h-full hover:opacity-90 transition-opacity"
-                            >
-                              <div className="h-12 sm:h-16 flex items-center justify-center mb-3 sm:mb-4">
-                                <Image
-                                  src="/images/clients/dos.png"
-                                  alt="Department of State"
-                                  width={120}
-                                  height={60}
-                                  className="object-contain h-10 sm:h-12"
-                                />
-                              </div>
-                              <h5 className="font-semibold text-base sm:text-lg text-gray-900 dark:text-white text-center">Department of State</h5>
-                              <p className="text-gray-600 dark:text-gray-300 mt-2 text-center text-sm sm:text-base">
-                                Diplomatic document processing system with ML-based translation
-                              </p>
-                            </a>
-                          </motion.div>
-                          
-                          {/* USAID */}
-                          <motion.div
-                            initial={{ opacity: 0, y: 10 }}
-                            animate={hasBeenViewed ? { opacity: 1, y: 0 } : {}}
-                            transition={{ duration: 0.3, delay: 0.8 }}
-                            className="p-4 sm:p-6 rounded-xl bg-white dark:bg-black/40 border border-black/5 dark:border-black/5 hover:border-black/15 dark:hover:border-black/30 transition-colors"
-                          >
-                            <a 
-                              href="https://www.usaid.gov" 
-                              target="_blank" 
-                              rel="noopener noreferrer"
-                              className="block h-full hover:opacity-90 transition-opacity"
-                            >
-                              <div className="h-12 sm:h-16 flex items-center justify-center mb-3 sm:mb-4">
-                                <Image
-                                  src="/images/clients/usaid.png"
-                                  alt="U.S. Agency for International Development"
-                                  width={120}
-                                  height={60}
-                                  className="object-contain h-10 sm:h-12"
-                                />
-                              </div>
-                              <h5 className="font-semibold text-base sm:text-lg text-gray-900 dark:text-white text-center">U.S. Agency for International Development</h5>
-                              <p className="text-gray-600 dark:text-gray-300 mt-2 text-center text-sm sm:text-base">
-                                Global aid management platform with real-time project tracking
-                              </p>
-                            </a>
-                          </motion.div>
-                          
-                          {/* USCIS */}
-                          <motion.div
-                            initial={{ opacity: 0, y: 10 }}
-                            animate={hasBeenViewed ? { opacity: 1, y: 0 } : {}}
-                            transition={{ duration: 0.3, delay: 0.9 }}
-                            className="p-4 sm:p-6 rounded-xl bg-white dark:bg-black/40 border border-black/5 dark:border-black/5 hover:border-black/15 dark:hover:border-black/30 transition-colors"
-                          >
-                            <a 
-                              href="https://www.uscis.gov" 
-                              target="_blank" 
-                              rel="noopener noreferrer"
-                              className="block h-full hover:opacity-90 transition-opacity"
-                            >
-                              <div className="h-12 sm:h-16 flex items-center justify-center mb-3 sm:mb-4">
-                                <Image
-                                  src="/images/clients/uscis.png"
-                                  alt="U.S. Citizenship and Immigration Services"
-                                  width={120}
-                                  height={60}
-                                  className="object-contain h-10 sm:h-12"
-                                />
-                              </div>
-                              <h5 className="font-semibold text-base sm:text-lg text-gray-900 dark:text-white text-center">U.S. Citizenship and Immigration Services</h5>
-                              <p className="text-gray-600 dark:text-gray-300 mt-2 text-center text-sm sm:text-base">
-                                Immigration case management system with automated processing
-                              </p>
-                            </a>
-                          </motion.div>
-                        </div>
-                      </div>
-                    )}
-                    
-                    {/* Client Showcase - Always visible for HELM */}
-                    {exp.company === "HELM" && (
-                      <div className="space-y-4 mt-6">
-                        <h4 className="text-lg sm:text-xl font-semibold text-gray-900 dark:text-white flex items-center justify-center sm:justify-start">
-                          <Building2 className="h-5 w-5 mr-2 text-gray-500 dark:text-gray-400" />
-                          Client Solutions
-                        </h4>
-                        
-                        <p className="text-gray-600 dark:text-gray-300 text-base sm:text-lg text-center sm:text-left">
-                          Led development for enterprise clients in the automotive industry:
-                        </p>
-                        
-                        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6 mt-4">
-                          {/* Jeep */}
-                          <motion.div
-                            initial={{ opacity: 0, y: 10 }}
-                            animate={hasBeenViewed ? { opacity: 1, y: 0 } : {}}
-                            transition={{ duration: 0.3, delay: 0.1 }}
-                            className="p-4 sm:p-6 rounded-xl bg-white dark:bg-black/40 border border-black/5 dark:border-black/5 hover:border-black/15 dark:hover:border-black/30 transition-colors"
-                          >
-                            <a 
-                              href="https://www.jeep.com" 
-                              target="_blank" 
-                              rel="noopener noreferrer"
-                              className="block h-full hover:opacity-90 transition-opacity"
-                            >
-                              <div className="h-12 sm:h-16 flex items-center justify-center mb-3 sm:mb-4">
-                                <Image
-                                  src="/images/clients/jeep.png"
-                                  alt="Jeep"
-                                  width={120}
-                                  height={60}
-                                  className="object-contain h-10 sm:h-12"
-                                />
-                              </div>
-                              <h5 className="font-semibold text-base sm:text-lg text-gray-900 dark:text-white text-center">Jeep</h5>
-                              <p className="text-gray-600 dark:text-gray-300 mt-2 text-center text-sm sm:text-base">
-                                E-commerce platform & dealership integration
-                              </p>
-                            </a>
-                          </motion.div>
-                          
-                          {/* Ford */}
-                          <motion.div
-                            initial={{ opacity: 0, y: 10 }}
-                            animate={hasBeenViewed ? { opacity: 1, y: 0 } : {}}
-                            transition={{ duration: 0.3, delay: 0.2 }}
-                            className="p-4 sm:p-6 rounded-xl bg-white dark:bg-black/40 border border-black/5 dark:border-black/5 hover:border-black/15 dark:hover:border-black/30 transition-colors"
-                          >
-                            <a 
-                              href="https://www.ford.com" 
-                              target="_blank" 
-                              rel="noopener noreferrer"
-                              className="block h-full hover:opacity-90 transition-opacity"
-                            >
-                              <div className="h-12 sm:h-16 flex items-center justify-center mb-3 sm:mb-4">
-                                <Image
-                                  src="/images/clients/ford.png"
-                                  alt="Ford"
-                                  width={120}
-                                  height={60}
-                                  className="object-contain h-10 sm:h-12"
-                                />
-                              </div>
-                              <h5 className="font-semibold text-base sm:text-lg text-gray-900 dark:text-white text-center">Ford</h5>
-                              <p className="text-gray-600 dark:text-gray-300 mt-2 text-center text-sm sm:text-base">
-                                Vehicle customization platform
-                              </p>
-                            </a>
-                          </motion.div>
-                          
-                          {/* Alfa Romeo */}
-                          <motion.div
-                            initial={{ opacity: 0, y: 10 }}
-                            animate={hasBeenViewed ? { opacity: 1, y: 0 } : {}}
-                            transition={{ duration: 0.3, delay: 0.3 }}
-                            className="p-4 sm:p-6 rounded-xl bg-white dark:bg-black/40 border border-black/5 dark:border-black/5 hover:border-black/15 dark:hover:border-black/30 transition-colors"
-                          >
-                            <a 
-                              href="https://www.alfaromeousa.com" 
-                              target="_blank" 
-                              rel="noopener noreferrer"
-                              className="block h-full hover:opacity-90 transition-opacity"
-                            >
-                              <div className="h-12 sm:h-16 flex items-center justify-center mb-3 sm:mb-4">
-                                <Image
-                                  src="/images/clients/alfa-romeo.png"
-                                  alt="Alfa Romeo"
-                                  width={120}
-                                  height={60}
-                                  className="object-contain h-10 sm:h-12"
-                                />
-                              </div>
-                              <h5 className="font-semibold text-base sm:text-lg text-gray-900 dark:text-white text-center">Alfa Romeo</h5>
-                              <p className="text-gray-600 dark:text-gray-300 mt-2 text-center text-sm sm:text-base">
-                                Luxury vehicle e-commerce
-                              </p>
-                            </a>
-                          </motion.div>
-                          
-                          {/* Chrysler */}
-                          <motion.div
-                            initial={{ opacity: 0, y: 10 }}
-                            animate={hasBeenViewed ? { opacity: 1, y: 0 } : {}}
-                            transition={{ duration: 0.3, delay: 0.4 }}
-                            className="p-4 sm:p-6 rounded-xl bg-white dark:bg-black/40 border border-black/5 dark:border-black/5 hover:border-black/15 dark:hover:border-black/30 transition-colors"
-                          >
-                            <a 
-                              href="https://www.chrysler.com" 
-                              target="_blank" 
-                              rel="noopener noreferrer"
-                              className="block h-full hover:opacity-90 transition-opacity"
-                            >
-                              <div className="h-12 sm:h-16 flex items-center justify-center mb-3 sm:mb-4">
-                                <Image
-                                  src="/images/clients/chrysler.png"
-                                  alt="Chrysler"
-                                  width={120}
-                                  height={60}
-                                  className="object-contain h-10 sm:h-12"
-                                  style={resolvedTheme === "dark" ? { filter: "brightness(0) invert(1)" } : {}}
-                                />
-                              </div>
-                              <h5 className="font-semibold text-base sm:text-lg text-gray-900 dark:text-white text-center">Chrysler</h5>
-                              <p className="text-gray-600 dark:text-gray-300 mt-2 text-center text-sm sm:text-base">
-                                Digital showroom experience
-                              </p>
-                            </a>
-                          </motion.div>
-                          
-                          {/* Fiat */}
-                          <motion.div
-                            initial={{ opacity: 0, y: 10 }}
-                            animate={hasBeenViewed ? { opacity: 1, y: 0 } : {}}
-                            transition={{ duration: 0.3, delay: 0.5 }}
-                            className="p-4 sm:p-6 rounded-xl bg-white dark:bg-black/40 border border-black/5 dark:border-black/5 hover:border-black/15 dark:hover:border-black/30 transition-colors"
-                          >
-                            <a 
-                              href="https://www.fiatusa.com" 
-                              target="_blank" 
-                              rel="noopener noreferrer"
-                              className="block h-full hover:opacity-90 transition-opacity"
-                            >
-                              <div className="h-12 sm:h-16 flex items-center justify-center mb-3 sm:mb-4">
-                                <Image
-                                  src="/images/clients/fiat.png"
-                                  alt="Fiat"
-                                  width={120}
-                                  height={60}
-                                  className="object-contain h-10 sm:h-12"
-                                />
-                              </div>
-                              <h5 className="font-semibold text-base sm:text-lg text-gray-900 dark:text-white text-center">Fiat</h5>
-                              <p className="text-gray-600 dark:text-gray-300 mt-2 text-center text-sm sm:text-base">
-                                Interactive vehicle catalog
-                              </p>
-                            </a>
-                          </motion.div>
-                          
-                          {/* Dodge Ram */}
-                          <motion.div
-                            initial={{ opacity: 0, y: 10 }}
-                            animate={hasBeenViewed ? { opacity: 1, y: 0 } : {}}
-                            transition={{ duration: 0.3, delay: 0.6 }}
-                            className="p-4 sm:p-6 rounded-xl bg-white dark:bg-black/40 border border-black/5 dark:border-black/5 hover:border-black/15 dark:hover:border-black/30 transition-colors"
-                          >
-                            <a 
-                              href="https://www.ramtrucks.com" 
-                              target="_blank" 
-                              rel="noopener noreferrer"
-                              className="block h-full hover:opacity-90 transition-opacity"
-                            >
-                              <div className="h-12 sm:h-16 flex items-center justify-center mb-3 sm:mb-4">
-                                <Image
-                                  src="/images/clients/ram.png"
-                                  alt="Dodge Ram"
-                                  width={120}
-                                  height={60}
-                                  className="object-contain h-10 sm:h-12"
-                                  style={resolvedTheme === "dark" ? { filter: "brightness(0) invert(1)" } : {}}
-                                />
-                              </div>
-                              <h5 className="font-semibold text-base sm:text-lg text-gray-900 dark:text-white text-center">Dodge Ram</h5>
-                              <p className="text-gray-600 dark:text-gray-300 mt-2 text-center text-sm sm:text-base">
-                                Truck configuration platform
-                              </p>
-                            </a>
-                          </motion.div>
-                          
-                          {/* Mopar */}
-                          <motion.div
-                            initial={{ opacity: 0, y: 10 }}
-                            animate={hasBeenViewed ? { opacity: 1, y: 0 } : {}}
-                            transition={{ duration: 0.3, delay: 0.7 }}
-                            className="p-4 sm:p-6 rounded-xl bg-white dark:bg-black/40 border border-black/5 dark:border-black/5 hover:border-black/15 dark:hover:border-black/30 transition-colors"
-                          >
-                            <a 
-                              href="https://www.mopar.com" 
-                              target="_blank" 
-                              rel="noopener noreferrer"
-                              className="block h-full hover:opacity-90 transition-opacity"
-                            >
-                              <div className="h-12 sm:h-16 flex items-center justify-center mb-3 sm:mb-4">
-                                <Image
-                                  src="/images/clients/mopar.png"
-                                  alt="Mopar"
-                                  width={120}
-                                  height={60}
-                                  className="object-contain h-10 sm:h-12"
-                                  style={resolvedTheme === "dark" ? { filter: "brightness(0) invert(1)" } : {}}
-                                />
-                              </div>
-                              <h5 className="font-semibold text-base sm:text-lg text-gray-900 dark:text-white text-center">Mopar</h5>
-                              <p className="text-gray-600 dark:text-gray-300 mt-2 text-center text-sm sm:text-base">
-                                Parts & accessories e-commerce
-                              </p>
-                            </a>
-                          </motion.div>
-                          
-                          {/* K&N Filters */}
-                          <motion.div
-                            initial={{ opacity: 0, y: 10 }}
-                            animate={hasBeenViewed ? { opacity: 1, y: 0 } : {}}
-                            transition={{ duration: 0.3, delay: 0.8 }}
-                            className="p-4 sm:p-6 rounded-xl bg-white dark:bg-black/40 border border-black/5 dark:border-black/5 hover:border-black/15 dark:hover:border-black/30 transition-colors"
-                          >
-                            <a 
-                              href="https://www.knfilters.com" 
-                              target="_blank" 
-                              rel="noopener noreferrer"
-                              className="block h-full hover:opacity-90 transition-opacity"
-                            >
-                              <div className="h-12 sm:h-16 flex items-center justify-center mb-3 sm:mb-4">
-                                <Image
-                                  src="/images/clients/k&n.png"
-                                  alt="K&N Filters"
-                                  width={120}
-                                  height={60}
-                                  className="object-contain h-10 sm:h-12"
-                                  style={resolvedTheme === "dark" ? { filter: "brightness(0) invert(1)" } : {}}
-                                />
-                              </div>
-                              <h5 className="font-semibold text-base sm:text-lg text-gray-900 dark:text-white text-center">K&N Filters</h5>
-                              <p className="text-gray-600 dark:text-gray-300 mt-2 text-center text-sm sm:text-base">
-                                E-commerce platform
-                              </p>
-                            </a>
-                          </motion.div>
-                        </div>
-                      </div>
-                    )}
-                    
-                    {/* Client Showcase - Always visible for The Born Group */}
-                    {exp.company === "The Born Group" && (
-                      <div className="space-y-4 mt-6">
-                        <h4 className="text-lg sm:text-xl font-semibold text-gray-900 dark:text-white flex items-center justify-center sm:justify-start">
-                          <Building2 className="h-5 w-5 mr-2 text-gray-500 dark:text-gray-400" />
-                          Client Solutions
-                        </h4>
-                        
-                        <p className="text-gray-600 dark:text-gray-300 text-base sm:text-lg text-center sm:text-left">
-                          Developed enterprise websites for major brands:
-                        </p>
-                        
-                        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 sm:gap-6 mt-4">
-                          {/* Nestlé */}
-                          <motion.div
-                            initial={{ opacity: 0, y: 10 }}
-                            animate={hasBeenViewed ? { opacity: 1, y: 0 } : {}}
-                            transition={{ duration: 0.3, delay: 0.1 }}
-                            className="p-4 sm:p-6 rounded-xl bg-white dark:bg-black/40 border border-black/5 dark:border-black/5 hover:border-black/15 dark:hover:border-black/30 transition-colors"
-                          >
-                            <a 
-                              href="https://www.nestle.com" 
-                              target="_blank" 
-                              rel="noopener noreferrer"
-                              className="block h-full hover:opacity-90 transition-opacity"
-                            >
-                              <div className="h-12 sm:h-16 flex items-center justify-center mb-3 sm:mb-4">
-                                <Image
-                                  src="/images/clients/nestle.png"
-                                  alt="Nestlé"
-                                  width={120}
-                                  height={60}
-                                  className="object-contain h-10 sm:h-12"
-                                  style={resolvedTheme === "dark" ? { filter: "brightness(0) invert(1)" } : {}}
-                                />
-                              </div>
-                              <h5 className="font-semibold text-base sm:text-lg text-gray-900 dark:text-white text-center">Nestlé</h5>
-                              <p className="text-gray-600 dark:text-gray-300 mt-2 text-center text-sm sm:text-base">
-                                Corporate website
-                              </p>
-                            </a>
+                              <a 
+                                href="https://www.ubs.com" 
+                                target="_blank" 
+                                rel="noopener noreferrer"
+                                className="block h-full hover:opacity-90 transition-opacity"
+                              >
+                                <div className="h-12 sm:h-16 flex items-center justify-center mb-3 sm:mb-4">
+                                  <Image
+                                    src="/images/clients/ubs.png"
+                                    alt="UBS"
+                                    width={120}
+                                    height={60}
+                                    className="object-contain h-10 sm:h-12"
+                                    style={resolvedTheme === "dark" ? { filter: "brightness(0) invert(1)" } : {}}
+                                  />
+                                </div>
+                                <h5 className="font-semibold text-base sm:text-lg text-gray-900 dark:text-white text-center">
+                                  UBS
+                                </h5>
+                                <p className="text-gray-600 dark:text-gray-300 mt-1 sm:mt-2 text-center text-sm sm:text-base">
+                                  Enterprise wealth management platform with AI-driven portfolio optimization
+                                </p>
+                              </a>
+                            </motion.div>
                             
-                            {/* Starbucks */}
+                            {/* New York Life */}
                             <motion.div
                               initial={{ opacity: 0, y: 10 }}
                               animate={hasBeenViewed ? { opacity: 1, y: 0 } : {}}
                               transition={{ duration: 0.3, delay: 0.2 }}
-                              className="p-4 sm:p-6 rounded-xl bg-white dark:bg-black/40 border border-black/5 dark:border-black/5 hover:border-black/15 dark:hover:border-black/30 transition-colors"
+                              className="p-4 sm:p-6 rounded-xl bg-white dark:bg-black/40 border border-black/10 dark:border-black/20 transition-colors"
                             >
                               <a 
-                                href="https://www.starbucks.com" 
+                                href="https://www.newyorklife.com" 
                                 target="_blank" 
                                 rel="noopener noreferrer"
                                 className="block h-full hover:opacity-90 transition-opacity"
                               >
                                 <div className="h-12 sm:h-16 flex items-center justify-center mb-3 sm:mb-4">
                                   <Image
-                                    src="/images/clients/starbucks.png"
-                                    alt="Starbucks"
+                                    src="/images/clients/nyl.png"
+                                    alt="New York Life"
                                     width={120}
                                     height={60}
                                     className="object-contain h-10 sm:h-12"
                                   />
                                 </div>
-                                <h5 className="font-semibold text-base sm:text-lg text-gray-900 dark:text-white text-center">Starbucks</h5>
-                                <p className="text-gray-600 dark:text-gray-300 mt-2 text-center text-sm sm:text-base">
-                                  E-commerce platform
+                                <h5 className="font-semibold text-base sm:text-lg text-gray-900 dark:text-white text-center">
+                                  New York Life
+                                </h5>
+                                <p className="text-gray-600 dark:text-gray-300 mt-1 sm:mt-2 text-center text-sm sm:text-base">
+                                  Policy management system with real-time underwriting capabilities
                                 </p>
                               </a>
                             </motion.div>
                             
-                            {/* Intel */}
+                            {/* Aetna */}
                             <motion.div
                               initial={{ opacity: 0, y: 10 }}
                               animate={hasBeenViewed ? { opacity: 1, y: 0 } : {}}
                               transition={{ duration: 0.3, delay: 0.3 }}
-                              className="p-4 sm:p-6 rounded-xl bg-white dark:bg-black/40 border border-black/5 dark:border-black/5 hover:border-black/15 dark:hover:border-black/30 transition-colors"
+                              className="p-4 sm:p-6 rounded-xl bg-white dark:bg-black/40 border border-black/10 dark:border-black/20 transition-colors"
                             >
                               <a 
-                                href="https://www.intel.com" 
+                                href="https://www.aetna.com" 
                                 target="_blank" 
                                 rel="noopener noreferrer"
                                 className="block h-full hover:opacity-90 transition-opacity"
                               >
                                 <div className="h-12 sm:h-16 flex items-center justify-center mb-3 sm:mb-4">
                                   <Image
-                                    src="/images/clients/intel.png"
-                                    alt="Intel"
+                                    src="/images/clients/aetna.png"
+                                    alt="Aetna"
                                     width={120}
                                     height={60}
                                     className="object-contain h-10 sm:h-12"
                                   />
                                 </div>
-                                <h5 className="font-semibold text-base sm:text-lg text-gray-900 dark:text-white text-center">Intel</h5>
-                                <p className="text-gray-600 dark:text-gray-300 mt-2 text-center text-sm sm:text-base">
-                                  Developer portal
+                                <h5 className="font-semibold text-base sm:text-lg text-gray-900 dark:text-white text-center">
+                                  Aetna
+                                </h5>
+                                <p className="text-gray-600 dark:text-gray-300 mt-1 sm:mt-2 text-center text-sm sm:text-base">
+                                  Claims processing automation with ML-powered fraud detection
+                                </p>
+                              </a>
+                            </motion.div>
+                            
+                            {/* Prudential */}
+                            <motion.div
+                              initial={{ opacity: 0, y: 10 }}
+                              animate={hasBeenViewed ? { opacity: 1, y: 0 } : {}}
+                              transition={{ duration: 0.3, delay: 0.4 }}
+                              className="p-4 sm:p-6 rounded-xl bg-white dark:bg-black/40 border border-black/10 dark:border-black/20 transition-colors"
+                            >
+                              <a 
+                                href="https://www.prudential.com" 
+                                target="_blank" 
+                                rel="noopener noreferrer"
+                                className="block h-full hover:opacity-90 transition-opacity"
+                              >
+                                <div className="h-12 sm:h-16 flex items-center justify-center mb-3 sm:mb-4">
+                                  <Image
+                                    src="/images/clients/prudential.png"
+                                    alt="Prudential"
+                                    width={120}
+                                    height={60}
+                                    className="object-contain h-10 sm:h-12"
+                                  />
+                                </div>
+                                <h5 className="font-semibold text-base sm:text-lg text-gray-900 dark:text-white text-center">
+                                  Prudential
+                                </h5>
+                                <p className="text-gray-600 dark:text-gray-300 mt-1 sm:mt-2 text-center text-sm sm:text-base">
+                                  Financial services platform with integrated advisory tools
+                                </p>
+                              </a>
+                            </motion.div>
+                            
+                            {/* AXIS Capital */}
+                            <motion.div
+                              initial={{ opacity: 0, y: 10 }}
+                              animate={hasBeenViewed ? { opacity: 1, y: 0 } : {}}
+                              transition={{ duration: 0.3, delay: 0.5 }}
+                              className="p-4 sm:p-6 rounded-xl bg-white dark:bg-black/40 border border-black/10 dark:border-black/20 transition-colors"
+                            >
+                              <a 
+                                href="https://www.axiscapital.com" 
+                                target="_blank" 
+                                rel="noopener noreferrer"
+                                className="block h-full hover:opacity-90 transition-opacity"
+                              >
+                                <div className="h-12 sm:h-16 flex items-center justify-center mb-3 sm:mb-4">
+                                  <Image
+                                    src="/images/clients/axis.png"
+                                    alt="AXIS Capital"
+                                    width={120}
+                                    height={60}
+                                    className="object-contain h-10 sm:h-12"
+                                    style={resolvedTheme === "dark" ? { filter: "brightness(0) invert(1)" } : {}}
+                                  />
+                                </div>
+                                <h5 className="font-semibold text-base sm:text-lg text-gray-900 dark:text-white text-center">
+                                  AXIS Capital
+                                </h5>
+                                <p className="text-gray-600 dark:text-gray-300 mt-1 sm:mt-2 text-center text-sm sm:text-base">
+                                  Insurance underwriting platform with automated risk assessment
                                 </p>
                               </a>
                             </motion.div>
                           </div>
                         </div>
+                      )}
+
+                      {/* Client Showcase - Always visible for Accenture Federal */}
+                      {exp.company === "Accenture Federal" && (
+                        <div className="space-y-3 sm:space-y-4 mt-4 sm:mt-6">
+                          <h4 className="text-lg sm:text-xl font-semibold text-gray-900 dark:text-white flex items-center md:justify-start justify-center">
+                            <Building2 className="h-5 w-5 sm:h-6 sm:w-6 mr-2 text-gray-500 dark:text-gray-400" />
+                            Government Clients
+                          </h4>
+                          
+                          <p className="text-gray-600 dark:text-gray-300 text-base sm:text-lg">
+                            Developed secure, compliant applications for federal agencies:
+                          </p>
+                          
+                          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-6 mt-3 sm:mt-4">
+                            {/* TSA */}
+                            <motion.div
+                              initial={{ opacity: 0, y: 10 }}
+                              animate={hasBeenViewed ? { opacity: 1, y: 0 } : {}}
+                              transition={{ duration: 0.3, delay: 0.1 }}
+                              className="p-4 sm:p-6 rounded-xl bg-white dark:bg-black/40 border border-black/10 dark:border-black/20 transition-colors"
+                            >
+                              <a 
+                                href="https://www.tsa.gov" 
+                                target="_blank" 
+                                rel="noopener noreferrer"
+                                className="block h-full hover:opacity-90 transition-opacity"
+                              >
+                                <div className="h-12 sm:h-16 flex items-center justify-center mb-3 sm:mb-4">
+                                  <Image
+                                    src="/images/clients/tsa.png"
+                                    alt="TSA"
+                                    width={120}
+                                    height={60}
+                                    className="object-contain h-10 sm:h-12"
+                                    style={resolvedTheme === "dark" ? { filter: "brightness(0) invert(1)" } : {}}
+                                  />
+                                </div>
+                                <h5 className="font-semibold text-base sm:text-lg text-gray-900 dark:text-white text-center">
+                                  TSA
+                                </h5>
+                                <p className="text-gray-600 dark:text-gray-300 mt-1 sm:mt-2 text-center text-sm sm:text-base">
+                                  Passenger screening system with real-time threat assessment
+                                </p>
+                              </a>
+                            </motion.div>
+                            
+                            {/* IRS */}
+                            <motion.div
+                              initial={{ opacity: 0, y: 10 }}
+                              animate={hasBeenViewed ? { opacity: 1, y: 0 } : {}}
+                              transition={{ duration: 0.3, delay: 0.2 }}
+                              className="p-4 sm:p-6 rounded-xl bg-white dark:bg-black/40 border border-black/10 dark:border-black/20 transition-colors"
+                            >
+                              <a 
+                                href="https://www.irs.gov" 
+                                target="_blank" 
+                                rel="noopener noreferrer"
+                                className="block h-full hover:opacity-90 transition-opacity"
+                              >
+                                <div className="h-12 sm:h-16 flex items-center justify-center mb-3 sm:mb-4">
+                                  <Image
+                                    src="/images/clients/irs.png"
+                                    alt="IRS"
+                                    width={120}
+                                    height={60}
+                                    className="object-contain h-10 sm:h-12"
+                                    style={resolvedTheme === "dark" ? { filter: "brightness(0) invert(1)" } : {}}
+                                  />
+                                </div>
+                                <h5 className="font-semibold text-base sm:text-lg text-gray-900 dark:text-white text-center">
+                                  IRS
+                                </h5>
+                                <p className="text-gray-600 dark:text-gray-300 mt-1 sm:mt-2 text-center text-sm sm:text-base">
+                                  Modernized tax processing system with AI-assisted form validation
+                                </p>
+                              </a>
+                            </motion.div>
+                            
+                            {/* USDA */}
+                            <motion.div
+                              initial={{ opacity: 0, y: 10 }}
+                              animate={hasBeenViewed ? { opacity: 1, y: 0 } : {}}
+                              transition={{ duration: 0.3, delay: 0.3 }}
+                              className="p-4 sm:p-6 rounded-xl bg-white dark:bg-black/40 border border-black/10 dark:border-black/20 transition-colors"
+                            >
+                              <a 
+                                href="https://www.usda.gov" 
+                                target="_blank" 
+                                rel="noopener noreferrer"
+                                className="block h-full hover:opacity-90 transition-opacity"
+                              >
+                                <div className="h-12 sm:h-16 flex items-center justify-center mb-3 sm:mb-4">
+                                  <Image
+                                    src="/images/clients/usda.png"
+                                    alt="USDA"
+                                    width={120}
+                                    height={60}
+                                    className="object-contain h-10 sm:h-12"
+                                    style={resolvedTheme === "dark" ? { filter: "brightness(0) invert(1)" } : {}}
+                                  />
+                                </div>
+                                <h5 className="font-semibold text-base sm:text-lg text-gray-900 dark:text-white text-center">
+                                  USDA
+                                </h5>
+                                <p className="text-gray-600 dark:text-gray-300 mt-1 sm:mt-2 text-center text-sm sm:text-base">
+                                  Agricultural data management system with real-time analytics
+                                </p>
+                              </a>
+                            </motion.div>
+                          </div>
+                        </div>
+                      )}
+                      
+                      {/* Achievements Section */}
+                      <div className="space-y-3 sm:space-y-4">
+                        <h4 className="text-lg sm:text-xl font-semibold text-gray-900 dark:text-white flex items-center md:justify-start justify-center">
+                          <Trophy className="h-5 w-5 sm:h-6 sm:w-6 mr-2 text-gray-500 dark:text-gray-400" />
+                          Key Achievements
+                        </h4>
+                        
+                        <ul className="space-y-2 sm:space-y-3 text-gray-600 dark:text-gray-300">
+                          {exp.achievements.map((achievement, i) => (
+                            <motion.li 
+                              key={i}
+                              initial={{ opacity: 0, x: -10 }}
+                              animate={hasBeenViewed ? { opacity: 1, x: 0 } : {}}
+                              transition={{ duration: 0.3, delay: 0.2 + (i * 0.1) }}
+                              className="flex items-start"
+                            >
+                              <div className="flex-shrink-0 w-5 h-5 rounded-full bg-black/5 dark:bg-white/5 flex items-center justify-center mt-0.5">
+                                <div className="w-1.5 h-1.5 rounded-full bg-black/40 dark:bg-white/40" />
+                              </div>
+                              <span className="ml-3 text-sm sm:text-base">{achievement}</span>
+                            </motion.li>
+                          ))}
+                        </ul>
                       </div>
-                    )}
+
+                      {/* View More Button */}
+                      <div className="flex justify-center md:justify-start mt-2 sm:mt-4">
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          className="rounded-lg text-xs sm:text-sm h-8 sm:h-9 px-3 sm:px-4 bg-black/5 dark:bg-white/5 hover:bg-black/10 dark:hover:bg-white/10 text-gray-700 dark:text-gray-300"
+                          onClick={() => toggleExpand(actualIndex)}
+                        >
+                          {expandedJob === actualIndex ? (
+                            <>
+                              <ChevronUp className="h-3.5 w-3.5 sm:h-4 sm:w-4 mr-1 sm:mr-2" />
+                              <span>Show Less</span>
+                            </>
+                          ) : (
+                            <>
+                              <ChevronDown className="h-3.5 w-3.5 sm:h-4 sm:w-4 mr-1 sm:mr-2" />
+                              <span>Show More</span>
+                            </>
+                          )}
+                        </Button>
+                      </div>
+                    </div>
                   </div>
                 </motion.div>
               );
@@ -1222,50 +739,48 @@ export function Experience() {
           </div>
           
           {/* Pagination Controls */}
-          {totalPages > 1 && (
-            <div className="flex justify-center gap-4 mt-12">
-              <Button
-                variant="outline"
-                size="icon"
-                onClick={prevPage}
-                className="h-10 w-10 rounded-full bg-white dark:bg-black/40 border border-black/5 dark:border-white/5"
-                aria-label="Previous page"
-              >
-                <ChevronLeft className="h-5 w-5" />
-              </Button>
-              <div className="flex items-center gap-2">
-                {Array.from({ length: totalPages }).map((_, i) => (
-                  <Button
-                    key={i}
-                    variant={currentPage === i ? "default" : "outline"}
-                    size="icon"
-                    onClick={() => {
-                      setExpandedJob(null)
-                      setCurrentPage(i)
-                    }}
-                    className={cn(
-                      "h-10 w-10 rounded-full",
-                      currentPage === i
-                        ? "bg-gray-900 text-white hover:bg-gray-800 dark:bg-white dark:text-gray-900 dark:hover:bg-gray-200"
-                        : "bg-white dark:bg-black/40 border border-black/5 dark:border-white/5"
-                    )}
-                    aria-label={`Page ${i + 1}`}
-                  >
-                    {i + 1}
-                  </Button>
-                ))}
-              </div>
-              <Button
-                variant="outline"
-                size="icon"
-                onClick={nextPage}
-                className="h-10 w-10 rounded-full bg-white dark:bg-black/40 border border-black/5 dark:border-white/5"
-                aria-label="Next page"
-              >
-                <ChevronRight className="h-5 w-5" />
-              </Button>
+          <div className="flex justify-center mt-12 space-x-2 sm:space-x-4">
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={prevPage}
+              disabled={currentPage === 0}
+              className="h-8 sm:h-10 px-2 sm:px-4 rounded-lg text-xs sm:text-sm bg-black/5 dark:bg-white/5 hover:bg-black/10 dark:hover:bg-white/10 text-gray-700 dark:text-gray-300 disabled:opacity-50"
+            >
+              <ChevronLeft className="h-3.5 w-3.5 sm:h-4 sm:w-4 mr-1 sm:mr-2" />
+              <span>Previous</span>
+            </Button>
+            
+            <div className="flex items-center space-x-1 sm:space-x-2">
+              {Array.from({ length: totalPages }).map((_, i) => (
+                <Button
+                  key={i}
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setCurrentPage(i)}
+                  className={cn(
+                    "h-8 w-8 sm:h-10 sm:w-10 rounded-lg p-0 flex items-center justify-center text-xs sm:text-sm",
+                    currentPage === i
+                      ? "bg-black/10 dark:bg-white/10 text-gray-900 dark:text-white border-black/20 dark:border-white/20"
+                      : "bg-black/5 dark:bg-white/5 text-gray-700 dark:text-gray-300 hover:bg-black/10 dark:hover:bg-white/10"
+                  )}
+                >
+                  {i + 1}
+                </Button>
+              ))}
             </div>
-          )}
+            
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={nextPage}
+              disabled={currentPage === totalPages - 1}
+              className="h-8 sm:h-10 px-2 sm:px-4 rounded-lg text-xs sm:text-sm bg-black/5 dark:bg-white/5 hover:bg-black/10 dark:hover:bg-white/10 text-gray-700 dark:text-gray-300 disabled:opacity-50"
+            >
+              <span>Next</span>
+              <ChevronRight className="h-3.5 w-3.5 sm:h-4 sm:w-4 ml-1 sm:ml-2" />
+            </Button>
+          </div>
           
           {/* Resume Download Button */}
           <motion.div
