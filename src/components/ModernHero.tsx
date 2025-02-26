@@ -422,7 +422,7 @@ export default function ModernHero() {
       <div className="container mx-auto px-4 relative z-10">
         <div className="flex flex-col lg:flex-row items-center justify-center gap-16 w-full">
           {/* Profile Content */}
-          <div className="w-full lg:w-1/2 flex flex-col items-center lg:items-start text-center lg:text-left space-y-8 z-10">
+          <div className="w-full lg:w-1/2 flex flex-col items-center lg:items-start text-center lg:text-left space-y-8 z-10 mt-16 sm:mt-20 lg:mt-0">
             {/* Profile Image */}
             <motion.div
               initial={{ scale: 0.5, opacity: 0 }}

@@ -125,7 +125,7 @@ export function FloatingNav() {
   return (
     <>
       {/* Navigation Bar */}
-      <div className="fixed top-0 left-0 right-0 z-50 px-4 sm:px-6 py-3 sm:py-4">
+      <div className="fixed top-0 left-0 right-0 z-[100] px-4 sm:px-6 py-3 sm:py-4">
         <motion.div
           initial={{ y: -100, opacity: 0 }}
           animate={{ y: 0, opacity: 1 }}
@@ -230,7 +230,7 @@ export function FloatingNav() {
               animate={{ opacity: 1 }}
               exit={{ opacity: 0 }}
               transition={{ duration: 0.2 }}
-              className="fixed inset-0 bg-black/50 backdrop-blur-sm z-40 md:hidden"
+              className="fixed inset-0 bg-black/50 backdrop-blur-sm z-[90] md:hidden"
               onClick={() => setIsMenuOpen(false)}
               aria-hidden="true"
             />
@@ -242,7 +242,7 @@ export function FloatingNav() {
               exit={{ opacity: 0, y: -20 }}
               transition={{ duration: 0.2, ease: "easeInOut" }}
               className={cn(
-                "fixed top-[72px] left-4 right-4 z-50 rounded-xl overflow-hidden md:hidden",
+                "fixed top-[72px] left-4 right-4 z-[95] rounded-xl overflow-hidden md:hidden",
                 isDark
                   ? "bg-black/90 backdrop-blur-md border border-white/10"
                   : "bg-white/90 backdrop-blur-md border border-black/10",
