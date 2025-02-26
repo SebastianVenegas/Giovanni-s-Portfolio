@@ -276,11 +276,11 @@ body {
 
 /* Safe area insets for notched devices */
 .safe-top {
-  @apply pt-safe;
+  @apply pt-4 sm:pt-6;
 }
 
 .safe-bottom {
-  @apply pb-safe;
+  @apply pb-4 sm:pb-6;
 }
 
 /* Touch-friendly tap targets */
