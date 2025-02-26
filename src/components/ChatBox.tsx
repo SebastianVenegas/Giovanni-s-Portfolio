@@ -3,8 +3,9 @@
 import { useEffect, useRef, useState } from "react"
 import { useTheme } from "next-themes"
 import { Button } from "@/components/ui/button"
-import { X, Send, ArrowDown, Trash2 } from "lucide-react"
+import { X, Send, ChevronDown, MessageSquare, Sparkles, Trash2 } from "lucide-react"
 import { cn } from "@/lib/utils"
+import { motion, AnimatePresence } from "framer-motion"
 import React from "react"
 
 // Define the ChatMessage interface
@@ -123,6 +124,132 @@ export function ChatBox() {
     setInput(e.target.value);
   };
 
+  // Function to check which section the message is about
+  const checkForSectionQuery = (message: string) => {
+    const lowercaseMessage = message.toLowerCase()
+    
+    // Check each section's keywords
+    for (const [section, keywords] of Object.entries(sectionKeywords)) {
+      if (keywords.some(keyword => lowercaseMessage.includes(keyword))) {
+        console.log(`Detected section: ${section} for message: ${message}`)
+        return section
+      }
+    }
+    
+    // Additional checks for common variations
+    if (lowercaseMessage.includes("about you") || 
+        lowercaseMessage.includes("who are you") || 
+        lowercaseMessage.includes("tell me about") || 
+        lowercaseMessage.includes("your background")) {
+      console.log("Detected about section via additional check")
+      return "about"
+    }
+    
+    if (lowercaseMessage.includes("your projects") || 
+        lowercaseMessage.includes("what have you built") || 
+        lowercaseMessage.includes("portfolio") || 
+        lowercaseMessage.includes("show me your work")) {
+      console.log("Detected projects section via additional check")
+      return "projects"
+    }
+    
+    if (lowercaseMessage.includes("your skills") || 
+        lowercaseMessage.includes("what can you do") || 
+        lowercaseMessage.includes("tech stack") || 
+        lowercaseMessage.includes("technologies")) {
+      console.log("Detected skills section via additional check")
+      return "skills"
+    }
+    
+    if (lowercaseMessage.includes("how to contact") || 
+        lowercaseMessage.includes("get in touch") || 
+        lowercaseMessage.includes("email") || 
+        lowercaseMessage.includes("reach out")) {
+      console.log("Detected contact section via additional check")
+      return "contact"
+    }
+    
+    console.log(`No section detected for message: ${message}`)
+    return null // No matching section found
+  }
+
+  // Function to scroll to a section
+  const scrollToSection = (id: string) => {
+    console.log(`Attempting to scroll to section: ${id}`)
+    
+    // Try to find the element by ID
+    const element = document.getElementById(id)
+    
+    if (element) {
+      console.log(`Found element with id: ${id}, scrolling now`)
+      
+      // Use a more reliable scrolling method
+      try {
+        // First try scrollIntoView
+        element.scrollIntoView({ 
+          behavior: "smooth", 
+          block: "start" 
+        })
+        
+        // Also add a fallback with window.scrollTo
+        setTimeout(() => {
+          const rect = element.getBoundingClientRect()
+          const scrollTop = window.pageYOffset || document.documentElement.scrollTop
+          const targetPosition = scrollTop + rect.top - 100 // 100px offset for headers
+          
+          window.scrollTo({
+            top: targetPosition,
+            behavior: 'smooth'
+          })
+          
+          console.log(`Fallback scroll to position: ${targetPosition}`)
+        }, 100)
+        
+      } catch (error) {
+        console.error(`Error scrolling to section ${id}:`, error)
+        
+        // Last resort fallback
+        try {
+          window.location.hash = `#${id}`
+        } catch (hashError) {
+          console.error("Hash navigation failed:", hashError)
+        }
+      }
+    } else {
+      // Try alternative section IDs
+      const alternativeIds = {
+        "about": ["about-section", "about-me", "bio"],
+        "skills": ["skills-section", "technologies", "tech-stack"],
+        "projects": ["projects-section", "work", "portfolio"],
+        "contact": ["contact-section", "contact-me", "get-in-touch"]
+      }
+      
+      const alternatives = alternativeIds[id as keyof typeof alternativeIds] || []
+      
+      for (const altId of alternatives) {
+        const altElement = document.getElementById(altId)
+        if (altElement) {
+          console.log(`Found alternative element with id: ${altId}, scrolling now`)
+          altElement.scrollIntoView({ behavior: "smooth" })
+          return
+        }
+      }
+      
+      // If still not found, try looking for sections or headings with matching text
+      const headings = document.querySelectorAll('h1, h2, h3, h4, h5, h6, section')
+      for (const heading of headings) {
+        const headingText = heading.textContent?.toLowerCase() || ''
+        if (headingText.includes(id.toLowerCase())) {
+          console.log(`Found heading with matching text: "${headingText}", scrolling now`)
+          heading.scrollIntoView({ behavior: "smooth" })
+          return
+        }
+      }
+      
+      console.error(`Section not found: ${id}`)
+    }
+  }
+
   // Custom submit handler
   const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
@@ -146,9 +273,13 @@ export function ChatBox() {
       
       // If user asked about a specific section, scroll to that section
       if (sectionToScrollTo) {
+        // Close the chat window to make the section visible
+        setIsOpen(false);
+        
+        // Delay scrolling to ensure UI updates first
         setTimeout(() => {
           scrollToSection(sectionToScrollTo);
-        }, 500);
+        }, 300);
       }
       
       // Send message to API
@@ -197,34 +328,6 @@ export function ChatBox() {
       setIsLoading(false);
     }
   };
-
-  // Function to scroll to a section
-  const scrollToSection = (id: string) => {
-    const element = document.getElementById(id)
-    if (element) {
-      // Log for debugging
-      console.log(`Scrolling to section: ${id}`)
-      element.scrollIntoView({ behavior: "smooth" })
-    } else {
-      console.log(`Section not found: ${id}`)
-    }
-  }
-
-  // Function to check which section the message is about
-  const checkForSectionQuery = (message: string) => {
-    const lowercaseMessage = message.toLowerCase()
-    
-    // Check each section's keywords
-    for (const [section, keywords] of Object.entries(sectionKeywords)) {
-      if (keywords.some(keyword => lowercaseMessage.includes(keyword))) {
-        console.log(`Detected section: ${section} for message: ${message}`)
-        return section
-      }
-    }
-    
-    console.log(`No section detected for message: ${message}`)
-    return null // No matching section found
-  }
 
   // Handle form submission
   const handleChatSubmit = (e: React.FormEvent<HTMLFormElement>) => {
@@ -286,124 +389,336 @@ export function ChatBox() {
 
   return (
     <>
-      {/* Chat button */}
-      <Button
+      {/* Chat Button */}
+      <motion.button
+        initial={{ scale: 0.8, opacity: 0 }}
+        animate={{ scale: 1, opacity: 1 }}
+        whileHover={{ scale: 1.05 }}
+        whileTap={{ scale: 0.95 }}
         onClick={() => setIsOpen(true)}
         className={cn(
-          "fixed bottom-4 right-4 z-50 rounded-full p-4 shadow-lg",
-          hasNewMessages && "animate-pulse"
+          "fixed bottom-6 right-6 z-50 flex items-center justify-center",
+          "w-14 h-14 rounded-full shadow-lg",
+          "glass-effect backdrop-blur-md",
+          isDark 
+            ? "bg-black/40 border border-white/10 hover:bg-black/50" 
+            : "bg-white/70 border border-black/5 hover:bg-white/80",
+          "transition-all duration-300"
         )}
-        aria-label="Open chat"
+        aria-label="Chat with Giovanni"
       >
         <div className="relative">
+          <MessageSquare className={cn(
+            "h-6 w-6",
+            isDark ? "text-white/90" : "text-gray-900"
+          )} />
           {hasNewMessages && (
-            <div className="absolute -right-1 -top-1 h-3 w-3 rounded-full bg-red-500" />
+            <motion.div 
+              initial={{ scale: 0 }}
+              animate={{ scale: 1 }}
+              className="absolute -top-1 -right-1 w-3 h-3 bg-red-500 rounded-full"
+            />
           )}
-          <svg
-            xmlns="http://www.w3.org/2000/svg"
-            viewBox="0 0 24 24"
-            fill="none"
-            stroke="currentColor"
-            strokeWidth="2"
-            strokeLinecap="round"
-            strokeLinejoin="round"
-            className="h-6 w-6"
-          >
-            <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" />
-          </svg>
         </div>
-      </Button>
+      </motion.button>
 
-      {/* Chat modal */}
-      {isOpen && mounted && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 sm:p-6 md:p-20">
-          <div
-            className="fixed inset-0 bg-zinc-900/50 backdrop-blur-sm"
-            onClick={() => setIsOpen(false)}
-          />
-          <div className="z-50 grid w-full max-w-lg gap-4 rounded-xl border bg-background p-6 shadow-lg sm:max-w-xl">
-            {/* Header */}
-            <div className="flex items-center justify-between">
-              <div className="text-lg font-semibold">Chat with Giovanni&apos;s AI</div>
-              <div className="flex items-center gap-2">
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  onClick={handleEndChat}
-                  className="h-8 w-8"
-                  aria-label="End chat"
-                >
-                  <Trash2 className="h-4 w-4" />
-                </Button>
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  onClick={() => setIsOpen(false)}
-                  className="h-8 w-8"
-                  aria-label="Close chat"
-                >
-                  <X className="h-4 w-4" />
-                </Button>
-              </div>
-            </div>
+      {/* Chat Modal */}
+      <AnimatePresence>
+        {isOpen && (
+          <>
+            {/* Backdrop */}
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              transition={{ duration: 0.2 }}
+              className="fixed inset-0 bg-black/20 backdrop-blur-sm z-50 md:hidden"
+              onClick={() => setIsOpen(false)}
+            />
 
-            {/* Messages */}
-            <div
-              ref={messagesContainerRef}
-              className="custom-scrollbar h-[300px] space-y-4 overflow-y-auto rounded-md border bg-muted/50 p-4"
-            >
-              {messages.map((message) => (
-                <div
-                  key={message.id}
-                  className={cn(
-                    "flex w-max max-w-[80%] flex-col gap-2 rounded-lg p-3",
-                    message.role === "user"
-                      ? "ml-auto bg-primary text-primary-foreground"
-                      : "bg-muted"
-                  )}
-                >
-                  <div className="text-sm">{message.content}</div>
-                </div>
-              ))}
-              <div ref={messagesEndRef} />
-              {showScrollButton && (
-                <Button
-                  variant="outline"
-                  size="sm"
-                  className="absolute bottom-[120px] right-8 z-10 h-8 w-8 rounded-full bg-background shadow-md"
-                  onClick={scrollToBottom}
-                  aria-label="Scroll to bottom"
-                >
-                  <ArrowDown className="h-4 w-4" />
-                </Button>
+            {/* Chat Window */}
+            <motion.div
+              initial={{ opacity: 0, y: 20, scale: 0.95 }}
+              animate={{ opacity: 1, y: 0, scale: 1 }}
+              exit={{ opacity: 0, y: 20, scale: 0.95 }}
+              transition={{ duration: 0.3, type: "spring", stiffness: 300, damping: 25 }}
+              className={cn(
+                "fixed z-50 flex flex-col",
+                "bottom-6 right-6 w-[90vw] sm:w-[400px] h-[70vh] sm:h-[500px] rounded-2xl",
+                "shadow-xl overflow-hidden",
+                "glass-effect backdrop-blur-md",
+                isDark 
+                  ? "bg-black/60 border border-white/10" 
+                  : "bg-white/80 border border-black/5",
               )}
-            </div>
+            >
+              {/* Decorative elements */}
+              <div className="absolute top-0 left-0 w-40 h-40 bg-gray-500/5 dark:bg-gray-300/5 rounded-full blur-3xl -z-10" />
+              <div className="absolute bottom-0 right-0 w-60 h-60 bg-gray-500/5 dark:bg-gray-300/5 rounded-full blur-3xl -z-10" />
+              
+              {/* Header */}
+              <div className={cn(
+                "flex items-center justify-between px-5 py-4",
+                "border-b",
+                isDark 
+                  ? "border-white/10 bg-black/20" 
+                  : "border-black/5 bg-white/20"
+              )}>
+                <div className="flex items-center gap-3">
+                  <div className="relative">
+                    <div className={cn(
+                      "flex items-center justify-center w-8 h-8 rounded-full",
+                      isDark ? "bg-white/10" : "bg-black/5"
+                    )}>
+                      <Sparkles className={cn(
+                        "h-4 w-4",
+                        isDark ? "text-white/90" : "text-gray-900"
+                      )} />
+                    </div>
+                    <motion.div 
+                      animate={{ 
+                        scale: [1, 1.2, 1],
+                        opacity: [0.5, 1, 0.5]
+                      }}
+                      transition={{ 
+                        duration: 2, 
+                        repeat: Infinity,
+                        ease: "easeInOut" 
+                      }}
+                      className={cn(
+                        "absolute inset-0 rounded-full -z-10",
+                        isDark ? "bg-white/5" : "bg-black/5"
+                      )}
+                    />
+                  </div>
+                  <h3 className={cn(
+                    "font-medium text-base",
+                    isDark ? "text-white/90" : "text-gray-900"
+                  )}>
+                    Chat with Giovanni
+                  </h3>
+                </div>
+                <div className="flex items-center gap-2">
+                  {/* End Chat button */}
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={handleEndChat}
+                    className={cn(
+                      "h-8 px-3 rounded-full flex items-center gap-1",
+                      isDark 
+                        ? "text-white/70 hover:text-white hover:bg-white/10" 
+                        : "text-gray-700 hover:text-gray-900 hover:bg-black/5"
+                    )}
+                  >
+                    <Trash2 className="h-3.5 w-3.5" />
+                    <span className="text-xs">End Chat</span>
+                  </Button>
+                  
+                  {/* Close button */}
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => setIsOpen(false)}
+                    className={cn(
+                      "h-8 w-8 rounded-full",
+                      isDark 
+                        ? "text-white/70 hover:text-white hover:bg-white/10" 
+                        : "text-gray-700 hover:text-gray-900 hover:bg-black/5"
+                    )}
+                  >
+                    <X className="h-4 w-4" />
+                  </Button>
+                </div>
+              </div>
 
-            {/* Input */}
-            <form onSubmit={handleChatSubmit} className="flex items-end gap-2">
-              <Textarea
-                ref={inputRef}
-                value={input}
-                onChange={handleInputChange}
-                onKeyDown={handleKeyDown}
-                placeholder="Type your message..."
-                className="min-h-[36px] resize-none"
-                style={{ height: `${textareaHeight}px` }}
-              />
-              <Button
-                type="submit"
-                size="sm"
-                disabled={isLoading || !input.trim()}
-                className="h-9 w-9"
-                aria-label="Send message"
+              {/* Messages */}
+              <div
+                ref={messagesContainerRef}
+                className={cn(
+                  "flex-1 overflow-y-auto p-5 space-y-5",
+                  "scrollbar-thin",
+                  isDark 
+                    ? "scrollbar-thumb-white/10 scrollbar-track-transparent" 
+                    : "scrollbar-thumb-black/10 scrollbar-track-transparent"
+                )}
               >
-                <Send className="h-4 w-4" />
-                <span className="sr-only">Send</span>
-              </Button>
-            </form>
-          </div>
-        </div>
-      )}
+                {messages.map((message, index) => (
+                  <motion.div
+                    key={message.id}
+                    initial={{ opacity: 0, y: 10 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ 
+                      duration: 0.3, 
+                      delay: 0.05 * (index % 3),
+                      type: "spring",
+                      stiffness: 300,
+                      damping: 25
+                    }}
+                    className={cn(
+                      "flex",
+                      message.role === "user" ? "justify-end" : "justify-start"
+                    )}
+                  >
+                    <div className={cn(
+                      "max-w-[85%] rounded-2xl px-4 py-3",
+                      message.role === "user"
+                        ? isDark 
+                          ? "bg-gradient-to-br from-gray-800 to-gray-900 text-white shadow-md border border-white/10" 
+                          : "bg-gradient-to-br from-gray-900 to-gray-700 text-white shadow-md"
+                        : isDark 
+                          ? "bg-white/5 text-white/90 border border-white/10 shadow-sm" 
+                          : "bg-white/80 text-gray-900 border border-black/5 shadow-sm backdrop-blur-sm"
+                    )}>
+                      <p className="text-sm whitespace-pre-wrap leading-relaxed">{message.content}</p>
+                    </div>
+                  </motion.div>
+                ))}
+                {isLoading && (
+                  <motion.div 
+                    initial={{ opacity: 0, y: 10 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ type: "spring", stiffness: 300, damping: 25 }}
+                    className="flex justify-start"
+                  >
+                    <div className={cn(
+                      "max-w-[85%] rounded-2xl px-4 py-3",
+                      isDark 
+                        ? "bg-white/5 text-white/90 border border-white/10 shadow-sm" 
+                        : "bg-white/80 text-gray-900 border border-black/5 shadow-sm backdrop-blur-sm"
+                    )}>
+                      <div className="flex space-x-2">
+                        <motion.div 
+                          animate={{ 
+                            y: [0, -3, 0],
+                            opacity: [0.6, 1, 0.6]
+                          }}
+                          transition={{ 
+                            duration: 1.2, 
+                            repeat: Infinity,
+                            repeatType: "loop",
+                            ease: "easeInOut",
+                            times: [0, 0.5, 1],
+                            delay: 0
+                          }}
+                          className={cn(
+                            "w-2 h-2 rounded-full",
+                            isDark ? "bg-gray-500 dark:bg-gray-400" : "bg-gray-400"
+                          )}
+                        />
+                        <motion.div 
+                          animate={{ 
+                            y: [0, -3, 0],
+                            opacity: [0.6, 1, 0.6]
+                          }}
+                          transition={{ 
+                            duration: 1.2, 
+                            repeat: Infinity,
+                            repeatType: "loop",
+                            ease: "easeInOut",
+                            times: [0, 0.5, 1],
+                            delay: 0.15
+                          }}
+                          className={cn(
+                            "w-2 h-2 rounded-full",
+                            isDark ? "bg-gray-400 dark:bg-gray-300" : "bg-gray-600"
+                          )}
+                        />
+                        <motion.div 
+                          animate={{ 
+                            y: [0, -3, 0],
+                            opacity: [0.6, 1, 0.6]
+                          }}
+                          transition={{ 
+                            duration: 1.2, 
+                            repeat: Infinity,
+                            repeatType: "loop",
+                            ease: "easeInOut",
+                            times: [0, 0.5, 1],
+                            delay: 0.3
+                          }}
+                          className={cn(
+                            "w-2 h-2 rounded-full",
+                            isDark ? "bg-gray-300 dark:bg-gray-200" : "bg-gray-800"
+                          )}
+                        />
+                      </div>
+                    </div>
+                  </motion.div>
+                )}
+                <div ref={messagesEndRef} />
+              </div>
+
+              {/* Scroll to bottom button */}
+              <AnimatePresence>
+                {showScrollButton && (
+                  <motion.button
+                    initial={{ opacity: 0, scale: 0.8 }}
+                    animate={{ opacity: 1, scale: 1 }}
+                    exit={{ opacity: 0, scale: 0.8 }}
+                    transition={{ duration: 0.2 }}
+                    onClick={scrollToBottom}
+                    className={cn(
+                      "absolute bottom-20 right-4 z-10 p-2 rounded-full shadow-md",
+                      "backdrop-blur-sm",
+                      isDark 
+                        ? "bg-black/60 text-white/90 hover:bg-black/80 border border-white/10" 
+                        : "bg-white/80 text-gray-900 hover:bg-white/90 border border-black/5"
+                    )}
+                  >
+                    <ChevronDown className="h-4 w-4" />
+                  </motion.button>
+                )}
+              </AnimatePresence>
+
+              {/* Input */}
+              <form onSubmit={handleChatSubmit} className={cn(
+                "p-4",
+                "border-t",
+                isDark ? "border-white/10" : "border-black/5"
+              )}>
+                <div className={cn(
+                  "flex items-end gap-2",
+                  "rounded-xl p-2",
+                  isDark ? "bg-white/5" : "bg-black/5"
+                )}>
+                  <textarea
+                    ref={inputRef}
+                    value={input}
+                    onChange={(e) => {
+                      handleInputChange(e);
+                      handleTextareaResize();
+                    }}
+                    onKeyDown={handleKeyDown}
+                    placeholder="Type a message..."
+                    style={{ height: `${textareaHeight}px` }}
+                    className={cn(
+                      "flex-1 resize-none overflow-y-auto py-2 px-3 text-sm",
+                      "bg-transparent border-0 focus:ring-0 focus:outline-none rounded-lg",
+                      isDark ? "text-white/90 placeholder:text-white/50" : "text-gray-900 placeholder:text-gray-500"
+                    )}
+                    rows={1}
+                  />
+                  <Button
+                    type="submit"
+                    disabled={!input.trim() || isLoading}
+                    className={cn(
+                      "h-9 w-9 rounded-full flex items-center justify-center",
+                      "transition-all duration-300",
+                      isDark 
+                        ? "bg-white/10 text-white/90 hover:bg-white/20 border border-white/10" 
+                        : "bg-black/10 text-gray-900 hover:bg-black/20 border border-black/5",
+                      "disabled:opacity-50 disabled:cursor-not-allowed"
+                    )}
+                  >
+                    <Send className="h-4 w-4" />
+                  </Button>
+                </div>
+              </form>
+            </motion.div>
+          </>
+        )}
+      </AnimatePresence>
     </>
   )
 } 
