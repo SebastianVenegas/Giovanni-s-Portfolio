@@ -286,10 +286,10 @@ export function ChatBox() {
       
       // If user asked about a specific section, scroll to that section
       if (sectionToScrollTo) {
-        // Close the chat window to make the section visible
-        setIsOpen(false);
+        // Keep the chat window open as requested
+        console.log(`Scrolling to ${sectionToScrollTo} section while keeping chat open`);
         
-        // Delay scrolling to ensure UI updates first
+        // Scroll to the section without closing the chat
         setTimeout(() => {
           scrollToSection(sectionToScrollTo);
         }, 300);
