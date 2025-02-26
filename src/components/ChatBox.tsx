@@ -121,7 +121,32 @@ export function ChatBox() {
 
   // Toggle fullscreen mode
   const toggleFullScreen = () => {
-    setIsFullScreen(!isFullScreen);
+    // If we're currently in fullscreen, we need to exit it properly
+    if (isFullScreen) {
+      setIsFullScreen(false);
+      
+      // Restore navbar visibility
+      const navbar = document.querySelector('nav');
+      if (navbar) {
+        navbar.style.display = '';
+      }
+      
+      // Restore body scroll
+      document.body.style.overflow = '';
+    } else {
+      // Enter fullscreen mode
+      setIsFullScreen(true);
+      
+      // Hide navbar
+      const navbar = document.querySelector('nav');
+      if (navbar) {
+        navbar.style.display = 'none';
+      }
+      
+      // Prevent body scroll
+      document.body.style.overflow = 'hidden';
+    }
+    
     // Ensure we scroll to bottom after resize
     setTimeout(() => {
       if (messagesEndRef.current) {
@@ -132,25 +157,11 @@ export function ChatBox() {
 
   // Prevent body scroll when in fullscreen mode
   useEffect(() => {
-    if (isFullScreen) {
-      document.body.style.overflow = 'hidden';
-      
-      // Hide navigation bar when in fullscreen
-      const navbar = document.querySelector('nav');
-      if (navbar) {
-        navbar.style.display = 'none';
-      }
-    } else {
-      document.body.style.overflow = '';
-      
-      // Show navigation bar when exiting fullscreen
-      const navbar = document.querySelector('nav');
-      if (navbar) {
-        navbar.style.display = '';
-      }
-    }
+    // This effect is now handled directly in the toggleFullScreen function
+    // to ensure immediate application of changes
     
     return () => {
+      // Cleanup function to ensure everything is reset when component unmounts
       document.body.style.overflow = '';
       
       // Ensure navbar is visible when component unmounts
@@ -159,7 +170,7 @@ export function ChatBox() {
         navbar.style.display = '';
       }
     };
-  }, [isFullScreen]);
+  }, []);
 
   // Function to scroll to a section
   const scrollToSection = (id: string) => {
@@ -396,6 +407,7 @@ export function ChatBox() {
                         ? "text-white/70 hover:text-white hover:bg-white/10" 
                         : "text-gray-700 hover:text-gray-900 hover:bg-black/5"
                     )}
+                    aria-label={isFullScreen ? "Exit full screen" : "Enter full screen"}
                   >
                     {isFullScreen ? (
                       <Minimize2 className="h-4 w-4" />
