@@ -54,10 +54,12 @@ export function ChatBox() {
   const { resolvedTheme } = useTheme()
   const isDark = resolvedTheme === "dark"
   const mounted = useMounted()
+  const [key, setKey] = useState<number>(0) // Add this state for chat reset
 
   // Use the Vercel AI SDK useChat hook
-  const { messages, input, handleInputChange, handleSubmit, isLoading, reload, stop } = useChat({
+  const { messages, input, handleInputChange, handleSubmit, isLoading, reload, stop, setMessages } = useChat({
     api: '/api/chat',
+    id: `chat-${key}`, // Add a key to force recreation of the chat instance
     initialMessages: [
       { id: 'welcome-message', role: "assistant", content: "Hi there! I'm Giovanni's AI assistant. How can I help you today?" }
     ],
@@ -222,10 +224,13 @@ export function ChatBox() {
   // Function to end chat - clear messages and close window
   const handleEndChat = () => {
     console.log("Ending chat session");
-    // Reset to initial message
-    reload();
+    
+    // Reset the chat by incrementing the key to force a new chat instance
+    setKey(prevKey => prevKey + 1);
+    
     // Close the chat window
     setIsOpen(false);
+    
     // Reset any other state as needed
     setHasNewMessages(false);
   }
