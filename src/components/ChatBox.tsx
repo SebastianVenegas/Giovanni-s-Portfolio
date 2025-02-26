@@ -19,7 +19,8 @@ const sectionKeywords = {
   experience: [
     "experience", "work history", "job", "career", "employment", 
     "professional experience", "work experience", "previous jobs",
-    "where has giovanni worked", "companies", "positions"
+    "where has giovanni worked", "companies", "positions",
+    "epirence", "expireance", "experiance", "expirience", "expirence"
   ],
   projects: [
     "projects", "project", "portfolio", "work", "showcase", 
