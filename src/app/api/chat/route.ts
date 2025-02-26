@@ -83,7 +83,7 @@ export async function POST(request: Request) {
       apiMessages.map(m => ({ role: m.role, content: m.content.substring(0, 50) + '...' }))
     );
 
-    // Create a non-streaming response for testing
+    // Create a non-streaming response
     const completion = await openai.chat.completions.create({
       model: 'gpt-3.5-turbo',
       messages: apiMessages,
@@ -91,12 +91,26 @@ export async function POST(request: Request) {
       max_tokens: 800,
     });
 
-    // Return the completion content
+    // Format the response in the way Vercel AI SDK expects
+    const responseData = {
+      id: Date.now().toString(),
+      object: 'chat.completion',
+      created: Math.floor(Date.now() / 1000),
+      model: 'gpt-3.5-turbo',
+      choices: [
+        {
+          index: 0,
+          message: {
+            role: 'assistant',
+            content: completion.choices[0].message.content,
+          },
+          finish_reason: 'stop',
+        },
+      ],
+    };
+
     return new Response(
-      JSON.stringify({ 
-        role: "assistant",
-        content: completion.choices[0].message.content 
-      }),
+      JSON.stringify(responseData),
       { 
         status: 200, 
         headers: { 'Content-Type': 'application/json' } 
