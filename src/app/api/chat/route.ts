@@ -263,80 +263,95 @@ The website also features an AI-powered chat functionality that allows visitors 
 
     console.log('Sending request to OpenAI with messages:', allMessages.length);
 
-    // Create a stream with the OpenAI API
-    const response = await openai.chat.completions.create({
-      model: 'gpt-3.5-turbo',
-      messages: allMessages,
-      stream: true,
-      temperature: 0.7,
-      max_tokens: 800,
-    })
+    try {
+      // Create a stream with the OpenAI API
+      const response = await openai.chat.completions.create({
+        model: 'gpt-3.5-turbo',
+        messages: allMessages,
+        stream: true,
+        temperature: 0.7,
+        max_tokens: 800,
+      });
 
-    // Set up the response stream
-    const encoder = new TextEncoder();
-    const decoder = new TextDecoder();
-    
-    let counter = 0;
-    
-    const stream = new ReadableStream({
-      async start(controller) {
-        // Function to send a properly formatted SSE message
-        function sendMessage(data: any) {
-          const message = `data: ${JSON.stringify(data)}\n\n`;
-          controller.enqueue(encoder.encode(message));
-        }
-        
-        // Function to send the final [DONE] message
-        function sendDone() {
-          controller.enqueue(encoder.encode('data: [DONE]\n\n'));
-        }
-        
-        try {
-          for await (const chunk of response) {
-            const content = chunk.choices[0]?.delta?.content || '';
-            
-            if (content) {
-              // Format in the exact structure expected by Vercel AI SDK
-              sendMessage({
-                id: `chatcmpl-${Date.now()}-${counter++}`,
-                object: 'chat.completion.chunk',
-                created: Math.floor(Date.now() / 1000),
-                model: 'gpt-3.5-turbo',
-                choices: [
-                  {
-                    index: 0,
-                    delta: { content },
-                    finish_reason: null
-                  }
-                ]
-              });
-            }
-          }
+      // Set up the response stream
+      const encoder = new TextEncoder();
+      
+      // Create a stream that follows the exact format expected by Vercel AI SDK
+      const stream = new ReadableStream({
+        async start(controller) {
+          let counter = 0;
           
-          // Send the final [DONE] message
-          sendDone();
-          controller.close();
-          console.log('Streaming completed successfully');
-        } catch (error) {
-          console.error('Error during streaming:', error);
-          controller.error(error);
+          try {
+            for await (const chunk of response) {
+              const content = chunk.choices[0]?.delta?.content || '';
+              
+              if (content) {
+                // Format in the exact structure expected by Vercel AI SDK
+                const data = {
+                  id: `chatcmpl-${Date.now()}-${counter++}`,
+                  object: 'chat.completion.chunk',
+                  created: Math.floor(Date.now() / 1000),
+                  model: 'gpt-3.5-turbo',
+                  choices: [
+                    {
+                      index: 0,
+                      delta: { content },
+                      finish_reason: null
+                    }
+                  ]
+                };
+                
+                // The format must be exactly: data: {...}\n\n
+                const formattedData = `data: ${JSON.stringify(data)}\n\n`;
+                controller.enqueue(encoder.encode(formattedData));
+              }
+            }
+            
+            // Send the final [DONE] message - this is critical
+            controller.enqueue(encoder.encode('data: [DONE]\n\n'));
+            controller.close();
+            console.log('Streaming completed successfully');
+          } catch (error) {
+            console.error('Error during streaming:', error);
+            controller.error(error);
+          }
         }
-      }
-    });
-    
-    // Return the stream with the correct headers
-    return new Response(stream, {
-      headers: {
-        'Content-Type': 'text/event-stream',
-        'Cache-Control': 'no-cache',
-        'Connection': 'keep-alive',
-      },
-    });
+      });
+      
+      // Return the stream with the correct headers
+      return new Response(stream, {
+        headers: {
+          'Content-Type': 'text/event-stream',
+          'Cache-Control': 'no-cache',
+          'Connection': 'keep-alive',
+        },
+      });
+    } catch (openaiError: any) {
+      console.error('OpenAI API error:', openaiError);
+      
+      // Return a more specific error message
+      return new Response(
+        JSON.stringify({ 
+          error: 'An error occurred while communicating with the OpenAI API',
+          details: openaiError.message || 'Unknown OpenAI error'
+        }),
+        { 
+          status: 500, 
+          headers: { 'Content-Type': 'application/json' } 
+        }
+      );
+    }
   } catch (error) {
     console.error('Error in chat API:', error);
     return new Response(
-      JSON.stringify({ error: 'An error occurred during the chat request' }),
-      { status: 500, headers: { 'Content-Type': 'application/json' } }
-    )
+      JSON.stringify({ 
+        error: 'An error occurred during the chat request',
+        details: error instanceof Error ? error.message : 'Unknown error'
+      }),
+      { 
+        status: 500, 
+        headers: { 'Content-Type': 'application/json' } 
+      }
+    );
   }
 }
