@@ -1,0 +1,12 @@
+# Build output
+.next/
+out/
+
+# Node modules
+node_modules/
+
+# Public assets
+public/
+
+# Scripts
+scripts/ 
