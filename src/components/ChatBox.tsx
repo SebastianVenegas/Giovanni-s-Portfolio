@@ -134,12 +134,30 @@ export function ChatBox() {
   useEffect(() => {
     if (isFullScreen) {
       document.body.style.overflow = 'hidden';
+      
+      // Hide navigation bar when in fullscreen
+      const navbar = document.querySelector('nav');
+      if (navbar) {
+        navbar.style.display = 'none';
+      }
     } else {
       document.body.style.overflow = '';
+      
+      // Show navigation bar when exiting fullscreen
+      const navbar = document.querySelector('nav');
+      if (navbar) {
+        navbar.style.display = '';
+      }
     }
     
     return () => {
       document.body.style.overflow = '';
+      
+      // Ensure navbar is visible when component unmounts
+      const navbar = document.querySelector('nav');
+      if (navbar) {
+        navbar.style.display = '';
+      }
     };
   }, [isFullScreen]);
 
@@ -538,6 +556,29 @@ export function ChatBox() {
                   </motion.button>
                 )}
               </AnimatePresence>
+
+              {/* Always visible close button when in fullscreen */}
+              {isFullScreen && (
+                <motion.button
+                  initial={{ opacity: 0, scale: 0.8 }}
+                  animate={{ opacity: 1, scale: 1 }}
+                  exit={{ opacity: 0, scale: 0.8 }}
+                  transition={{ duration: 0.2 }}
+                  onClick={() => {
+                    setIsOpen(false);
+                    setIsFullScreen(false);
+                  }}
+                  className={cn(
+                    "absolute top-20 right-4 z-10 p-2 rounded-full shadow-md",
+                    "backdrop-blur-sm",
+                    isDark 
+                      ? "bg-black/60 text-white/90 hover:bg-black/80 border border-white/10" 
+                      : "bg-white/80 text-gray-900 hover:bg-white/90 border border-black/5"
+                  )}
+                >
+                  <X className="h-4 w-4" />
+                </motion.button>
+              )}
 
               {/* Input */}
               <form onSubmit={handleChatSubmit} className={cn(
