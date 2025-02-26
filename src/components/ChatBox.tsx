@@ -402,13 +402,15 @@ export function ChatBox() {
                       <div className="flex space-x-2">
                         <motion.div 
                           animate={{ 
-                            y: [0, -5, 0],
-                            opacity: [0.5, 1, 0.5]
+                            y: [0, -3, 0],
+                            opacity: [0.6, 1, 0.6]
                           }}
                           transition={{ 
-                            duration: 1.5, 
+                            duration: 1.2, 
                             repeat: Infinity,
+                            repeatType: "loop",
                             ease: "easeInOut",
+                            times: [0, 0.5, 1],
                             delay: 0
                           }}
                           className={cn(
@@ -418,14 +420,16 @@ export function ChatBox() {
                         />
                         <motion.div 
                           animate={{ 
-                            y: [0, -5, 0],
-                            opacity: [0.5, 1, 0.5]
+                            y: [0, -3, 0],
+                            opacity: [0.6, 1, 0.6]
                           }}
                           transition={{ 
-                            duration: 1.5, 
+                            duration: 1.2, 
                             repeat: Infinity,
+                            repeatType: "loop",
                             ease: "easeInOut",
-                            delay: 0.2
+                            times: [0, 0.5, 1],
+                            delay: 0.15
                           }}
                           className={cn(
                             "w-2 h-2 rounded-full",
@@ -434,14 +438,16 @@ export function ChatBox() {
                         />
                         <motion.div 
                           animate={{ 
-                            y: [0, -5, 0],
-                            opacity: [0.5, 1, 0.5]
+                            y: [0, -3, 0],
+                            opacity: [0.6, 1, 0.6]
                           }}
                           transition={{ 
-                            duration: 1.5, 
+                            duration: 1.2, 
                             repeat: Infinity,
+                            repeatType: "loop",
                             ease: "easeInOut",
-                            delay: 0.4
+                            times: [0, 0.5, 1],
+                            delay: 0.3
                           }}
                           className={cn(
                             "w-2 h-2 rounded-full",
