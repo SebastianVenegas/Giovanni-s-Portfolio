@@ -71,8 +71,7 @@ export function ChatBox() {
     },
     onError: (error) => {
       console.error("Chat error:", error);
-    },
-    streamProtocol: 'text'
+    }
   })
 
   // Scroll to bottom of messages
