@@ -30,7 +30,11 @@ const sectionKeywords = {
   certifications: [
     "certifications", "certificates", "credentials", "qualifications", 
     "certified", "certification", "diploma", "education", "degrees",
-    "what certifications", "what qualifications"
+    "what certifications", "what qualifications", "show me his certifications",
+    "show certifications", "view certifications", "see certifications",
+    "certifacations", "certifacation", "certifcations", "certifcation",
+    "his certifications", "his certificates", "giovanni certifications",
+    "giovanni certificates", "show me certificates", "show me his certificates"
   ],
   contact: [
     "contact", "email", "phone", "message", "get in touch", 
