@@ -1,0 +1,6 @@
+<svg width="100" height="100" viewBox="0 0 100 100" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <rect width="100" height="100" rx="20" fill="#0369a1" />
+  <path d="M50 20L75 70H25L50 20Z" fill="white"/>
+  <path d="M50 35L62.5 60H37.5L50 35Z" fill="#0369a1"/>
+  <text x="50" y="85" font-family="Arial, sans-serif" font-size="12" font-weight="bold" fill="white" text-anchor="middle">AUXO</text>
+</svg> 

@@ -1,0 +1,5 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" width="64" height="64">
+  <rect width="64" height="64" rx="8" fill="hsl(277, 70%, 85%)" />
+  <text x="32" y="32" font-family="Arial, sans-serif" font-size="32" font-weight="bold" fill="hsl(277, 70%, 30%)" text-anchor="middle" dominant-baseline="middle">F</text>
+  <text x="32" y="48" font-family="Arial, sans-serif" font-size="8" fill="hsl(277, 70%, 30%)" text-anchor="middle" dominant-baseline="middle">framer</text>
+</svg>

@@ -1,0 +1,22 @@
+COMPANY LOGO INSTRUCTIONS
+
+Place your PNG logo files in this directory with the following filenames:
+
+1. auxo.png - Auxo Solutions logo
+2. accenture.png - Accenture Federal logo
+3. mint.png - Mint Mobile logo
+4. ubs.png - UBS logo
+5. nyl.png - New York Life logo
+6. aetna.png - Aetna logo
+7. prudential.png - Prudential logo
+8. tsa.png - TSA logo
+9. irs.png - IRS logo
+10. usda.png - USDA logo
+
+For best results:
+- Use transparent PNG files
+- Keep a consistent height (recommended: around 40-50 pixels high)
+- Width can vary but try to maintain similar visual weight across logos
+- Use logos with good contrast that work well on light backgrounds
+- The component will automatically invert colors for dark mode
+- For best appearance, use high-quality logos with transparent backgrounds

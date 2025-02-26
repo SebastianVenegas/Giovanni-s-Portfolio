@@ -3,19 +3,228 @@
 @tailwind utilities;
 
 :root {
-  --background: #ffffff;
-  --foreground: #171717;
+  --background: 0 0% 100%;
+  --foreground: 222.2 84% 4.9%;
+  --card: 0 0% 100%;
+  --card-foreground: 222.2 84% 4.9%;
+  --popover: 0 0% 100%;
+  --popover-foreground: 222.2 84% 4.9%;
+  --primary: 0 0% 20%;
+  --primary-foreground: 0 0% 98%;
+  --secondary: 0 0% 40%;
+  --secondary-foreground: 222.2 47.4% 11.2%;
+  --muted: 210 40% 96.1%;
+  --muted-foreground: 215.4 16.3% 46.9%;
+  --accent: 0 0% 90%;
+  --accent-foreground: 222.2 47.4% 11.2%;
+  --destructive: 0 84.2% 60.2%;
+  --destructive-foreground: 210 40% 98%;
+  --border: 214.3 31.8% 91.4%;
+  --input: 214.3 31.8% 91.4%;
+  --ring: 0 0% 20%;
+  --radius: 0.5rem;
+  --terminal-bg: #1e1e1e;
+  --terminal-text: #d4d4d4;
+}
+
+.dark {
+  --background: 222.2 84% 4.9%;
+  --foreground: 210 40% 98%;
+  --card: 222.2 84% 4.9%;
+  --card-foreground: 210 40% 98%;
+  --popover: 222.2 84% 4.9%;
+  --popover-foreground: 210 40% 98%;
+  --primary: 0 0% 40%;
+  --primary-foreground: 0 0% 98%;
+  --secondary: 0 0% 30%;
+  --secondary-foreground: 0 0% 98%;
+  --muted: 0 0% 15%;
+  --muted-foreground: 0 0% 65%;
+  --accent: 0 0% 20%;
+  --accent-foreground: 0 0% 98%;
+  --destructive: 0 62.8% 30.6%;
+  --destructive-foreground: 0 0% 98%;
+  --border: 0 0% 20%;
+  --input: 0 0% 20%;
+  --ring: 0 0% 40%;
 }
 
 @media (prefers-color-scheme: dark) {
   :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
+    --background: 222.2 84% 4.9%;
+    --foreground: 210 40% 98%;
+    --primary: 0 0% 40%;
+    --primary-foreground: 0 0% 98%;
+    --secondary: 0 0% 30%;
+    --secondary-foreground: 0 0% 98%;
+    --accent: 0 0% 20%;
+    --accent-foreground: 0 0% 98%;
+    --ring: 0 0% 40%;
   }
 }
 
 body {
-  color: var(--foreground);
-  background: var(--background);
-  font-family: Arial, Helvetica, sans-serif;
+  color: hsl(var(--foreground));
+  background: hsl(var(--background));
+  font-family: var(--font-geist-sans), Arial, sans-serif;
+}
+
+@layer base {
+  * {
+    @apply border-border;
+  }
+  body {
+    @apply bg-background text-foreground;
+  }
+  *:focus-visible {
+    @apply ring-2 ring-gray-500 dark:ring-gray-400 outline-none ring-offset-2 ring-offset-background dark:ring-offset-background;
+  }
+}
+
+/* Custom Gradient Classes */
+.gradient-primary {
+  @apply bg-gradient-to-r from-gray-900 to-gray-700 dark:from-gray-800 dark:to-gray-900;
+}
+
+.gradient-text {
+  @apply text-transparent bg-gradient-to-r from-gray-900 to-gray-700 dark:from-gray-300 dark:to-gray-100 bg-clip-text;
+}
+
+.gradient-border {
+  @apply border-transparent bg-gradient-to-r from-gray-900 to-gray-700 dark:from-gray-700 dark:to-gray-900 bg-clip-border;
+}
+
+.gradient-hover {
+  @apply hover:bg-gradient-to-r hover:from-gray-900 hover:to-gray-700 dark:hover:from-gray-800 dark:hover:to-gray-900;
+}
+
+/* Section Styles */
+.section-container {
+  @apply relative min-h-screen flex items-center justify-center py-12 overflow-hidden bg-gray-100 dark:bg-[#0a0a0a];
+}
+
+.section-grid-bg {
+  @apply absolute inset-0 bg-[linear-gradient(to_right,#e5e5e5_1px,transparent_1px),linear-gradient(to_bottom,#e5e5e5_1px,transparent_1px)] dark:bg-[linear-gradient(to_right,#1d1d1d_1px,transparent_1px),linear-gradient(to_bottom,#1d1d1d_1px,transparent_1px)] bg-[size:44px_44px] [mask-image:radial-gradient(ellipse_60%_50%_at_50%_50%,#000_70%,transparent_100%)];
+}
+
+.section-heading {
+  @apply text-4xl font-bold text-gray-900 dark:text-white;
+}
+
+.section-subheading {
+  @apply text-gray-900 dark:text-gray-200 font-medium;
+}
+
+.section-divider {
+  @apply w-24 h-1 mx-auto bg-gradient-to-r from-gray-900 to-gray-700 dark:from-gray-700 dark:to-gray-900 rounded-full;
+}
+
+/* Card Styles */
+.glass-card {
+  @apply relative rounded-2xl p-6 border border-black/10 bg-white/70 dark:border-white/10 dark:bg-black/30 backdrop-blur-sm shadow-2xl hover:border-black/20 dark:hover:border-white/20 transition-all duration-300;
+}
+
+.glass-card-hover {
+  @apply hover:shadow-xl hover:scale-[1.01] hover:-translate-y-1 transition-all duration-300;
+}
+
+/* Icon Container */
+.icon-container {
+  @apply p-2 rounded-lg bg-black/5 text-gray-900 dark:bg-white/10 dark:text-gray-200;
+}
+
+/* Text Styles */
+.text-gradient {
+  @apply text-transparent bg-clip-text bg-gradient-to-r from-gray-900 to-gray-700 dark:from-gray-400 dark:to-gray-200;
+}
+
+/* Button Styles */
+.button-gradient {
+  @apply gradient-primary text-white hover:opacity-90 transition-opacity;
+}
+
+/* Animation Classes */
+.hover-lift {
+  @apply transition-transform duration-300 hover:-translate-y-1;
+}
+
+.hover-scale {
+  @apply transition-transform duration-300 hover:scale-105;
+}
+
+/* Glass Effect - Light Mode */
+.glass-light {
+  @apply bg-white/70 shadow-md border border-black/10;
+}
+
+/* Glass Effect - Dark Mode */
+.glass-dark {
+  @apply dark:bg-black/30 dark:backdrop-blur-sm dark:border-white/10;
+}
+
+/* Combined Glass Effect */
+.glass-effect {
+  @apply glass-light glass-dark;
+}
+
+/* Progress Bar Background */
+.progress-bg {
+  @apply bg-black/5 dark:bg-white/5;
+}
+
+/* Progress Bar Fill */
+.progress-fill {
+  @apply bg-gradient-to-r from-gray-900 to-gray-700 dark:from-gray-700 dark:to-gray-900;
+}
+
+/* Card Hover Effects */
+.card-hover {
+  @apply hover:border-black/20 dark:hover:border-white/20 transition-colors duration-300;
+}
+
+/* Button Gradients */
+.btn-gradient {
+  @apply bg-gradient-to-r from-gray-900 to-gray-700 dark:from-gray-700 dark:to-gray-900 text-white hover:opacity-90;
+}
+
+.typing-cursor {
+  display: inline-block;
+  width: 2px;
+  height: 1em;
+  background-color: currentColor;
+  margin-left: 2px;
+  animation: blink 1s step-end infinite;
+}
+
+@keyframes blink {
+  50% {
+    opacity: 0;
+  }
+}
+
+.terminal-line {
+  opacity: 0;
+  animation: fadeIn 0.1s forwards;
+}
+
+@keyframes fadeIn {
+  to {
+    opacity: 1;
+  }
+}
+
+@keyframes gradient-xy {
+  0% {
+    transform: rotate(0deg);
+  }
+  50% {
+    transform: rotate(180deg);
+  }
+  100% {
+    transform: rotate(360deg);
+  }
+}
+
+.animate-gradient-xy {
+  animation: gradient-xy 10s linear infinite;
 }

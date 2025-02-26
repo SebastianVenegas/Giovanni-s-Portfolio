@@ -1,0 +1,23 @@
+COMPANY LOGO INSTRUCTIONS
+
+Place your PNG logo files in this directory with the following filenames:
+
+1. auxo.png - Auxo Solutions logo
+2. accenture.png - Accenture Federal logo
+3. mint.png - Mint Mobile logo
+4. ubs.png - UBS logo
+5. nyl.png - New York Life logo
+6. aetna.png - Aetna logo
+7. prudential.png - Prudential logo
+8. tsa.png - TSA logo
+9. irs.png - IRS logo
+10. usda.png - USDA logo
+
+For best results:
+- Use transparent PNG files
+- Keep a consistent height (recommended: around 60-80 pixels high)
+- Width can vary but try to maintain similar visual weight across logos
+- For logos that need to be inverted in light or dark mode, update the CompanyBanner.tsx file:
+  - For white logos that should be black in light mode: set invertInLight to true
+  - For black logos that should be white in dark mode: set invertInDark to true
+- For best appearance, use high-quality logos with transparent backgrounds 
