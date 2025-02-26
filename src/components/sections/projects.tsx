@@ -28,7 +28,7 @@ const projects = [
   {
     title: "TSA Enterprise Portal",
     client: "TSA",
-    logo: "/images/logos/tsa.png",
+    logo: "/images/logos/TSAicon.png",
     description: "Secure Next.js application with AI-driven document processing for TSA personnel management.",
     fullDescription:
       "Developed a comprehensive enterprise portal for the Transportation Security Administration that streamlines personnel management, document processing, and security clearance workflows. The system leverages advanced AI capabilities to automate document classification and data extraction, significantly reducing manual processing time and improving accuracy.",
@@ -123,10 +123,10 @@ export default function Projects() {
   const getLogoFilter = (client: string) => {
     if (!mounted) return {}
 
-    // Special case for TSA - don't invert in dark mode
+    // Special case for TSA - make it white in dark mode
     if (client === "TSA") {
       return {
-        filter: "none",
+        filter: resolvedTheme === "dark" ? "brightness(0) invert(1)" : "none",
         background: "transparent",
       }
     }
