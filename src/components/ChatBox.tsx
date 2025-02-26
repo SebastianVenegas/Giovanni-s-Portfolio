@@ -15,6 +15,13 @@ interface ChatMessage {
   content: string
 }
 
+// Add new interface for user information
+interface UserInfo {
+  name: string;
+  phoneNumber: string;
+  submitted: boolean;
+}
+
 // Custom hook for mounted state
 function useMounted() {
   const [mounted, setMounted] = useState(false)
@@ -62,6 +69,13 @@ export function ChatBox() {
   const { resolvedTheme } = useTheme()
   const isDark = resolvedTheme === "dark"
   const mounted = useMounted()
+  
+  // Add user info state
+  const [userInfo, setUserInfo] = useState<UserInfo>({
+    name: '',
+    phoneNumber: '',
+    submitted: false
+  })
   
   // Custom chat state
   const [messages, setMessages] = useState<ChatMessage[]>([
@@ -400,6 +414,40 @@ export function ChatBox() {
     setHasNewMessages(false);
   }
 
+  // Handle user info submission
+  const handleUserInfoSubmit = (e: React.FormEvent<HTMLFormElement>) => {
+    e.preventDefault();
+    
+    // Validate inputs
+    if (!userInfo.name.trim() || !userInfo.phoneNumber.trim()) {
+      return;
+    }
+    
+    // Update user info state to mark as submitted
+    setUserInfo(prev => ({
+      ...prev,
+      submitted: true
+    }));
+    
+    // Add personalized welcome message
+    setMessages([
+      { 
+        id: 'welcome-message', 
+        role: "assistant", 
+        content: `Hi ${userInfo.name}! I'm Giovanni's AI assistant. How can I help you today?` 
+      }
+    ]);
+  };
+
+  // Handle user info input changes
+  const handleUserInfoChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const { name, value } = e.target;
+    setUserInfo(prev => ({
+      ...prev,
+      [name]: value
+    }));
+  };
+
   return (
     <>
       {/* Chat Button */}
@@ -508,226 +556,322 @@ export function ChatBox() {
                     "font-medium text-base",
                     isDark ? "text-white/90" : "text-gray-900"
                   )}>
-                    Chat with Giovanni
+                    Giovanni's Assistant
                   </h3>
                 </div>
                 <div className="flex items-center gap-2">
-                  {/* End Chat button */}
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    onClick={handleEndChat}
-                    className={cn(
-                      "h-8 px-3 rounded-full flex items-center gap-1",
-                      isDark 
-                        ? "text-white/70 hover:text-white hover:bg-white/10" 
-                        : "text-gray-700 hover:text-gray-900 hover:bg-black/5"
-                    )}
-                  >
-                    <Trash2 className="h-3.5 w-3.5" />
-                    <span className="text-xs">End Chat</span>
-                  </Button>
+                  {/* End Chat button - Only show when user has submitted info */}
+                  {userInfo.submitted && (
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={handleEndChat}
+                      className={cn(
+                        "h-8 px-3 rounded-full flex items-center gap-1",
+                        isDark 
+                          ? "text-white/70 hover:text-white hover:bg-white/10" 
+                          : "text-gray-700 hover:text-gray-900 hover:bg-black/5"
+                      )}
+                    >
+                      <Trash2 className="h-3.5 w-3.5" />
+                      <span className="text-xs">End Chat</span>
+                    </Button>
+                  )}
                   
                   {/* Close button */}
                   <Button
                     variant="ghost"
                     size="sm"
-                    onClick={() => setIsOpen(false)}
                     className={cn(
                       "h-8 w-8 rounded-full",
-                      isDark 
-                        ? "text-white/70 hover:text-white hover:bg-white/10" 
-                        : "text-gray-700 hover:text-gray-900 hover:bg-black/5"
+                      isDark ? "hover:bg-white/10" : "hover:bg-black/5"
                     )}
+                    onClick={() => setIsOpen(false)}
+                    aria-label="Close chat"
                   >
-                    <X className="h-4 w-4" />
+                    <X className={cn(
+                      "h-4 w-4",
+                      isDark ? "text-white/80" : "text-gray-700"
+                    )} />
                   </Button>
                 </div>
               </div>
-
-              {/* Messages */}
-              <div
-                ref={messagesContainerRef}
-                className={cn(
-                  "flex-1 overflow-y-auto p-5 space-y-5",
-                  "scrollbar-thin",
-                  isDark 
-                    ? "scrollbar-thumb-white/10 scrollbar-track-transparent" 
-                    : "scrollbar-thumb-black/10 scrollbar-track-transparent"
-                )}
-              >
-                {messages.map((message, index) => (
-                  <motion.div
-                    key={message.id}
-                    initial={{ opacity: 0, y: 10 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    transition={{ 
-                      duration: 0.3, 
-                      delay: 0.05 * (index % 3),
-                      type: "spring",
-                      stiffness: 300,
-                      damping: 25
-                    }}
-                    className={cn(
-                      "flex",
-                      message.role === "user" ? "justify-end" : "justify-start"
-                    )}
-                  >
-                    <div className={cn(
-                      "max-w-[85%] rounded-2xl px-4 py-3",
-                      message.role === "user"
-                        ? isDark 
-                          ? "bg-gradient-to-br from-gray-800 to-gray-900 text-white shadow-md border border-white/10" 
-                          : "bg-gradient-to-br from-gray-900 to-gray-700 text-white shadow-md"
-                        : isDark 
-                          ? "bg-white/5 text-white/90 border border-white/10 shadow-sm" 
-                          : "bg-white/80 text-gray-900 border border-black/5 shadow-sm backdrop-blur-sm"
+              
+              {/* User Info Form or Chat Content */}
+              {!userInfo.submitted ? (
+                <div className="flex-1 p-5 overflow-y-auto">
+                  <div className="mb-4 text-center">
+                    <h3 className={cn(
+                      "text-lg font-medium mb-2",
+                      isDark ? "text-white/90" : "text-gray-900"
                     )}>
-                      <p className="text-sm whitespace-pre-wrap leading-relaxed">{message.content}</p>
-                    </div>
-                  </motion.div>
-                ))}
-                {isLoading && (
-                  <motion.div 
-                    initial={{ opacity: 0, y: 10 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    transition={{ type: "spring", stiffness: 300, damping: 25 }}
-                    className="flex justify-start"
-                  >
-                    <div className={cn(
-                      "max-w-[85%] rounded-2xl px-4 py-3",
-                      isDark 
-                        ? "bg-white/5 text-white/90 border border-white/10 shadow-sm" 
-                        : "bg-white/80 text-gray-900 border border-black/5 shadow-sm backdrop-blur-sm"
+                      Before we chat
+                    </h3>
+                    <p className={cn(
+                      "text-sm",
+                      isDark ? "text-white/70" : "text-gray-600"
                     )}>
-                      <div className="flex space-x-2">
-                        <motion.div 
-                          animate={{ 
-                            y: [0, -3, 0],
-                            opacity: [0.6, 1, 0.6]
-                          }}
-                          transition={{ 
-                            duration: 1.2, 
-                            repeat: Infinity,
-                            repeatType: "loop",
-                            ease: "easeInOut",
-                            times: [0, 0.5, 1],
-                            delay: 0
-                          }}
-                          className={cn(
-                            "w-2 h-2 rounded-full",
-                            isDark ? "bg-gray-500 dark:bg-gray-400" : "bg-gray-400"
-                          )}
-                        />
-                        <motion.div 
-                          animate={{ 
-                            y: [0, -3, 0],
-                            opacity: [0.6, 1, 0.6]
-                          }}
-                          transition={{ 
-                            duration: 1.2, 
-                            repeat: Infinity,
-                            repeatType: "loop",
-                            ease: "easeInOut",
-                            times: [0, 0.5, 1],
-                            delay: 0.15
-                          }}
-                          className={cn(
-                            "w-2 h-2 rounded-full",
-                            isDark ? "bg-gray-400 dark:bg-gray-300" : "bg-gray-600"
-                          )}
-                        />
-                        <motion.div 
-                          animate={{ 
-                            y: [0, -3, 0],
-                            opacity: [0.6, 1, 0.6]
-                          }}
-                          transition={{ 
-                            duration: 1.2, 
-                            repeat: Infinity,
-                            repeatType: "loop",
-                            ease: "easeInOut",
-                            times: [0, 0.5, 1],
-                            delay: 0.3
-                          }}
-                          className={cn(
-                            "w-2 h-2 rounded-full",
-                            isDark ? "bg-gray-300 dark:bg-gray-200" : "bg-gray-800"
-                          )}
-                        />
-                      </div>
+                      Please provide your information to continue
+                    </p>
+                  </div>
+                  
+                  <form onSubmit={handleUserInfoSubmit} className="space-y-4">
+                    <div className="space-y-2">
+                      <label 
+                        htmlFor="name" 
+                        className={cn(
+                          "block text-sm font-medium",
+                          isDark ? "text-white/80" : "text-gray-700"
+                        )}
+                      >
+                        Your Name
+                      </label>
+                      <input
+                        type="text"
+                        id="name"
+                        name="name"
+                        value={userInfo.name}
+                        onChange={handleUserInfoChange}
+                        required
+                        className={cn(
+                          "w-full px-3 py-2 rounded-lg",
+                          "border focus:outline-none focus:ring-2",
+                          isDark 
+                            ? "bg-black/20 border-white/10 text-white focus:ring-white/30" 
+                            : "bg-white/80 border-black/10 text-gray-900 focus:ring-black/20"
+                        )}
+                        placeholder="Enter your name"
+                      />
                     </div>
-                  </motion.div>
-                )}
-                <div ref={messagesEndRef} />
-              </div>
-
-              {/* Scroll to bottom button */}
-              <AnimatePresence>
-                {showScrollButton && (
-                  <motion.button
-                    initial={{ opacity: 0, scale: 0.8 }}
-                    animate={{ opacity: 1, scale: 1 }}
-                    exit={{ opacity: 0, scale: 0.8 }}
-                    transition={{ duration: 0.2 }}
-                    onClick={scrollToBottom}
-                    className={cn(
-                      "absolute bottom-20 right-4 z-10 p-2 rounded-full shadow-md",
-                      "backdrop-blur-sm",
-                      isDark 
-                        ? "bg-black/60 text-white/90 hover:bg-black/80 border border-white/10" 
-                        : "bg-white/80 text-gray-900 hover:bg-white/90 border border-black/5"
-                    )}
-                  >
-                    <ChevronDown className="h-4 w-4" />
-                  </motion.button>
-                )}
-              </AnimatePresence>
-
-              {/* Input */}
-              <form onSubmit={handleChatSubmit} className={cn(
-                "p-4",
-                "border-t",
-                isDark ? "border-white/10" : "border-black/5"
-              )}>
-                <div className={cn(
-                  "flex items-end gap-2",
-                  "rounded-xl p-2",
-                  isDark ? "bg-white/5" : "bg-black/5"
-                )}>
-                  <textarea
-                    ref={inputRef}
-                    value={input}
-                    onChange={(e) => {
-                      handleInputChange(e);
-                      handleTextareaResize();
-                    }}
-                    onKeyDown={handleKeyDown}
-                    placeholder="Type a message..."
-                    style={{ height: `${textareaHeight}px` }}
-                    className={cn(
-                      "flex-1 resize-none overflow-y-auto py-2 px-3 text-sm",
-                      "bg-transparent border-0 focus:ring-0 focus:outline-none rounded-lg",
-                      isDark ? "text-white/90 placeholder:text-white/50" : "text-gray-900 placeholder:text-gray-500"
-                    )}
-                    rows={1}
-                  />
-                  <Button
-                    type="submit"
-                    disabled={!input.trim() || isLoading}
-                    className={cn(
-                      "h-9 w-9 rounded-full flex items-center justify-center",
-                      "transition-all duration-300",
-                      isDark 
-                        ? "bg-white/10 text-white/90 hover:bg-white/20 border border-white/10" 
-                        : "bg-black/10 text-gray-900 hover:bg-black/20 border border-black/5",
-                      "disabled:opacity-50 disabled:cursor-not-allowed"
-                    )}
-                  >
-                    <Send className="h-4 w-4" />
-                  </Button>
+                    
+                    <div className="space-y-2">
+                      <label 
+                        htmlFor="phoneNumber" 
+                        className={cn(
+                          "block text-sm font-medium",
+                          isDark ? "text-white/80" : "text-gray-700"
+                        )}
+                      >
+                        Phone Number
+                      </label>
+                      <input
+                        type="tel"
+                        id="phoneNumber"
+                        name="phoneNumber"
+                        value={userInfo.phoneNumber}
+                        onChange={handleUserInfoChange}
+                        required
+                        className={cn(
+                          "w-full px-3 py-2 rounded-lg",
+                          "border focus:outline-none focus:ring-2",
+                          isDark 
+                            ? "bg-black/20 border-white/10 text-white focus:ring-white/30" 
+                            : "bg-white/80 border-black/10 text-gray-900 focus:ring-black/20"
+                        )}
+                        placeholder="Enter your phone number"
+                      />
+                    </div>
+                    
+                    <Button
+                      type="submit"
+                      className={cn(
+                        "w-full py-2 rounded-lg transition-all",
+                        isDark 
+                          ? "bg-white/10 hover:bg-white/20 text-white" 
+                          : "bg-black/80 hover:bg-black text-white"
+                      )}
+                    >
+                      Start Chatting
+                    </Button>
+                  </form>
                 </div>
-              </form>
+              ) : (
+                <>
+                  {/* Messages Container */}
+                  <div 
+                    ref={messagesContainerRef}
+                    className={cn(
+                      "flex-1 overflow-y-auto p-5 space-y-5",
+                      "scrollbar-thin",
+                      isDark 
+                        ? "scrollbar-thumb-white/10 scrollbar-track-transparent" 
+                        : "scrollbar-thumb-black/10 scrollbar-track-transparent"
+                    )}
+                  >
+                    {messages.map((message, index) => (
+                      <motion.div
+                        key={message.id}
+                        initial={{ opacity: 0, y: 10 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        transition={{ 
+                          duration: 0.3, 
+                          delay: 0.05 * (index % 3),
+                          type: "spring",
+                          stiffness: 300,
+                          damping: 25
+                        }}
+                        className={cn(
+                          "flex",
+                          message.role === "user" ? "justify-end" : "justify-start"
+                        )}
+                      >
+                        <div className={cn(
+                          "max-w-[85%] rounded-2xl px-4 py-3",
+                          message.role === "user"
+                            ? isDark 
+                              ? "bg-gradient-to-br from-gray-800 to-gray-900 text-white shadow-md border border-white/10" 
+                              : "bg-gradient-to-br from-gray-900 to-gray-700 text-white shadow-md"
+                            : isDark 
+                              ? "bg-white/5 text-white/90 border border-white/10 shadow-sm" 
+                              : "bg-white/80 text-gray-900 border border-black/5 shadow-sm backdrop-blur-sm"
+                        )}>
+                          <p className="text-sm whitespace-pre-wrap leading-relaxed">{message.content}</p>
+                        </div>
+                      </motion.div>
+                    ))}
+                    {isLoading && (
+                      <motion.div 
+                        initial={{ opacity: 0, y: 10 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        transition={{ type: "spring", stiffness: 300, damping: 25 }}
+                        className="flex justify-start"
+                      >
+                        <div className={cn(
+                          "max-w-[85%] rounded-2xl px-4 py-3",
+                          isDark 
+                            ? "bg-white/5 text-white/90 border border-white/10 shadow-sm" 
+                            : "bg-white/80 text-gray-900 border border-black/5 shadow-sm backdrop-blur-sm"
+                        )}>
+                          <div className="flex space-x-2">
+                            <motion.div 
+                              animate={{ 
+                                y: [0, -3, 0],
+                                opacity: [0.6, 1, 0.6]
+                              }}
+                              transition={{ 
+                                duration: 1.2, 
+                                repeat: Infinity,
+                                repeatType: "loop",
+                                ease: "easeInOut",
+                                times: [0, 0.5, 1],
+                                delay: 0
+                              }}
+                              className={cn(
+                                "w-2 h-2 rounded-full",
+                                isDark ? "bg-gray-500 dark:bg-gray-400" : "bg-gray-400"
+                              )}
+                            />
+                            <motion.div 
+                              animate={{ 
+                                y: [0, -3, 0],
+                                opacity: [0.6, 1, 0.6]
+                              }}
+                              transition={{ 
+                                duration: 1.2, 
+                                repeat: Infinity,
+                                repeatType: "loop",
+                                ease: "easeInOut",
+                                times: [0, 0.5, 1],
+                                delay: 0.15
+                              }}
+                              className={cn(
+                                "w-2 h-2 rounded-full",
+                                isDark ? "bg-gray-400 dark:bg-gray-300" : "bg-gray-600"
+                              )}
+                            />
+                            <motion.div 
+                              animate={{ 
+                                y: [0, -3, 0],
+                                opacity: [0.6, 1, 0.6]
+                              }}
+                              transition={{ 
+                                duration: 1.2, 
+                                repeat: Infinity,
+                                repeatType: "loop",
+                                ease: "easeInOut",
+                                times: [0, 0.5, 1],
+                                delay: 0.3
+                              }}
+                              className={cn(
+                                "w-2 h-2 rounded-full",
+                                isDark ? "bg-gray-300 dark:bg-gray-200" : "bg-gray-800"
+                              )}
+                            />
+                          </div>
+                        </div>
+                      </motion.div>
+                    )}
+                    <div ref={messagesEndRef} />
+                  </div>
+
+                  {/* Scroll to bottom button */}
+                  <AnimatePresence>
+                    {showScrollButton && (
+                      <motion.button
+                        initial={{ opacity: 0, scale: 0.8 }}
+                        animate={{ opacity: 1, scale: 1 }}
+                        exit={{ opacity: 0, scale: 0.8 }}
+                        transition={{ duration: 0.2 }}
+                        onClick={scrollToBottom}
+                        className={cn(
+                          "absolute bottom-20 right-4 z-10 p-2 rounded-full shadow-md",
+                          "backdrop-blur-sm",
+                          isDark 
+                            ? "bg-black/60 text-white/90 hover:bg-black/80 border border-white/10" 
+                            : "bg-white/80 text-gray-900 hover:bg-white/90 border border-black/5"
+                        )}
+                      >
+                        <ChevronDown className="h-4 w-4" />
+                      </motion.button>
+                    )}
+                  </AnimatePresence>
+
+                  {/* Input */}
+                  <form onSubmit={handleChatSubmit} className={cn(
+                    "p-4",
+                    "border-t",
+                    isDark ? "border-white/10" : "border-black/5"
+                  )}>
+                    <div className={cn(
+                      "flex items-end gap-2",
+                      "rounded-xl p-2",
+                      isDark ? "bg-white/5" : "bg-black/5"
+                    )}>
+                      <textarea
+                        ref={inputRef}
+                        value={input}
+                        onChange={(e) => {
+                          handleInputChange(e);
+                          handleTextareaResize();
+                        }}
+                        onKeyDown={handleKeyDown}
+                        placeholder="Type a message..."
+                        style={{ height: `${textareaHeight}px` }}
+                        className={cn(
+                          "flex-1 resize-none overflow-y-auto py-2 px-3 text-sm",
+                          "bg-transparent border-0 focus:ring-0 focus:outline-none rounded-lg",
+                          isDark ? "text-white/90 placeholder:text-white/50" : "text-gray-900 placeholder:text-gray-500"
+                        )}
+                        rows={1}
+                      />
+                      <Button
+                        type="submit"
+                        disabled={!input.trim() || isLoading}
+                        className={cn(
+                          "h-9 w-9 rounded-full flex items-center justify-center",
+                          "transition-all duration-300",
+                          isDark 
+                            ? "bg-white/10 text-white/90 hover:bg-white/20 border border-white/10" 
+                            : "bg-black/10 text-gray-900 hover:bg-black/20 border border-black/5",
+                          "disabled:opacity-50 disabled:cursor-not-allowed"
+                        )}
+                      >
+                        <Send className="h-4 w-4" />
+                      </Button>
+                    </div>
+                  </form>
+                </>
+              )}
             </motion.div>
           </>
         )}
