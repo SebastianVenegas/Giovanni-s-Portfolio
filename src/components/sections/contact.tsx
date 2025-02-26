@@ -131,7 +131,7 @@ export function Contact() {
                     initial={{ opacity: 0, x: -20 }}
                     animate={hasBeenViewed ? { opacity: 1, x: 0 } : {}}
                     transition={{ duration: 0.3, delay: 0.4 }}
-                    href="mailto:Giovanni@vanguardsd.com"
+                    href="mailto:Giovanni@v.com"
                     className={cn(
                       "flex items-center gap-4 group p-4",
                       "rounded-xl",
