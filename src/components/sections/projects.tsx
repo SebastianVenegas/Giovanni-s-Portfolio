@@ -123,6 +123,15 @@ export default function Projects() {
   const getLogoFilter = (client: string) => {
     if (!mounted) return {}
 
+    // Special case for TSA - don't invert in dark mode
+    if (client === "TSA") {
+      return {
+        filter: "none",
+        background: "transparent",
+      }
+    }
+
+    // Default for all other logos
     return {
       filter: resolvedTheme === "dark" ? "brightness(0) invert(1)" : "none",
       background: "transparent",
