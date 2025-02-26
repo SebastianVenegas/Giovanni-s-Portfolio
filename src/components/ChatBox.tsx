@@ -63,6 +63,9 @@ export function ChatBox() {
     initialMessages: [
       { id: 'welcome-message', role: "assistant", content: "Hi there! I'm Giovanni's AI assistant. How can I help you today?" }
     ],
+    body: {
+      format: 'json' // Add this to handle non-streaming JSON responses
+    },
     onFinish: (message) => {
       console.log("Message finished:", message);
       if (!isOpen) {

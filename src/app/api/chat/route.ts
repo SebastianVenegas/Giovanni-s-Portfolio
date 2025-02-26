@@ -91,26 +91,12 @@ export async function POST(request: Request) {
       max_tokens: 800,
     });
 
-    // Format the response in the way Vercel AI SDK expects
-    const responseData = {
-      id: Date.now().toString(),
-      object: 'chat.completion',
-      created: Math.floor(Date.now() / 1000),
-      model: 'gpt-3.5-turbo',
-      choices: [
-        {
-          index: 0,
-          message: {
-            role: 'assistant',
-            content: completion.choices[0].message.content,
-          },
-          finish_reason: 'stop',
-        },
-      ],
-    };
-
+    // Return the assistant's message directly
     return new Response(
-      JSON.stringify(responseData),
+      JSON.stringify({
+        role: "assistant",
+        content: completion.choices[0].message.content
+      }),
       { 
         status: 200, 
         headers: { 'Content-Type': 'application/json' } 
