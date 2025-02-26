@@ -44,8 +44,10 @@ export function ChatBox() {
   const [hasNewMessages, setHasNewMessages] = useState(false)
   const [showScrollButton, setShowScrollButton] = useState(false)
   const [textareaHeight, setTextareaHeight] = useState(36) // Default height
+  const [windowWidth, setWindowWidth] = useState(0)
   const messagesEndRef = useRef<HTMLDivElement>(null)
   const messagesContainerRef = useRef<HTMLDivElement>(null)
+  const chatWindowRef = useRef<HTMLDivElement>(null)
   const inputRef = useRef<HTMLTextAreaElement>(null)
   const { resolvedTheme } = useTheme()
   const isDark = resolvedTheme === "dark"
@@ -65,8 +67,7 @@ export function ChatBox() {
     },
     onError: (error) => {
       console.error("Chat error:", error);
-    },
-    streamProtocol: 'text'
+    }
   })
 
   // Scroll to bottom of messages
@@ -119,15 +120,36 @@ export function ChatBox() {
     handleTextareaResize();
   }, [input]);
 
-  // Toggle expanded state
-  const toggleExpanded = () => {
-    setIsExpanded(!isExpanded);
-    // Scroll to bottom after expanding
-    if (!isExpanded) {
+  // Handle window resize
+  useEffect(() => {
+    const handleResize = () => {
+      setWindowWidth(window.innerWidth);
+    };
+    
+    // Set initial width
+    handleResize();
+    
+    window.addEventListener('resize', handleResize);
+    return () => window.removeEventListener('resize', handleResize);
+  }, []);
+
+  // Effect to handle expanded state changes
+  useEffect(() => {
+    if (isExpanded && messagesEndRef.current) {
       setTimeout(() => {
         scrollToBottom();
       }, 300);
     }
+    console.log("Expanded state changed:", isExpanded);
+  }, [isExpanded]);
+
+  // Toggle expanded state
+  const toggleExpanded = () => {
+    console.log("Toggling expanded state, current:", isExpanded);
+    setIsExpanded(prevState => {
+      console.log("Setting to:", !prevState);
+      return !prevState;
+    });
   };
 
   // Function to scroll to a section
@@ -277,14 +299,28 @@ export function ChatBox() {
 
             {/* Chat Window */}
             <motion.div
+              ref={chatWindowRef}
+              key={`chat-window-${isExpanded ? 'expanded' : 'collapsed'}`}
               initial={{ opacity: 0, y: 20, scale: 0.95 }}
-              animate={{ opacity: 1, y: 0, scale: 1 }}
+              animate={{ 
+                opacity: 1, 
+                y: 0, 
+                scale: 1
+              }}
+              transition={{ 
+                duration: 0.3, 
+                type: "spring", 
+                stiffness: 300, 
+                damping: 25 
+              }}
               exit={{ opacity: 0, y: 20, scale: 0.95 }}
-              transition={{ duration: 0.3, type: "spring", stiffness: 300, damping: 25 }}
+              layout="position"
               className={cn(
                 "fixed z-50 flex flex-col",
                 isExpanded 
-                  ? "top-4 right-4 left-4 bottom-4 sm:top-10 sm:right-10 sm:left-auto sm:bottom-10 sm:w-[600px] sm:h-[80vh]" 
+                  ? windowWidth < 768
+                    ? "top-2 right-2 left-2 bottom-2" 
+                    : "top-4 right-4 bottom-4 md:left-auto md:w-[650px] md:h-[85vh]" 
                   : "bottom-6 right-6 w-[90vw] sm:w-[400px] h-[70vh] sm:h-[500px]",
                 "rounded-2xl shadow-xl overflow-hidden",
                 "glass-effect backdrop-blur-md",
@@ -345,12 +381,16 @@ export function ChatBox() {
                   <Button
                     variant="ghost"
                     size="sm"
-                    onClick={toggleExpanded}
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      toggleExpanded();
+                    }}
                     className={cn(
                       "h-8 w-8 rounded-full",
                       isDark 
                         ? "text-white/70 hover:text-white hover:bg-white/10" 
-                        : "text-gray-700 hover:text-gray-900 hover:bg-black/5"
+                        : "text-gray-700 hover:text-gray-900 hover:bg-black/5",
+                      "transition-all duration-200"
                     )}
                     aria-label={isExpanded ? "Collapse chat" : "Expand chat"}
                   >
