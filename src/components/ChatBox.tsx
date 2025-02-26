@@ -44,7 +44,8 @@ Textarea.displayName = "Textarea"
 
 // Section keywords for navigation
 const sectionKeywords = {
-  "about": ["about", "who is giovanni", "background", "experience", "bio", "biography"],
+  "about": ["about", "who is giovanni", "background", "bio", "biography"],
+  "experience": ["experience", "work history", "job history", "career", "professional background", "work experience", "expireance", "expirience", "experiance"],
   "skills": ["skills", "technologies", "tech stack", "programming", "languages", "frameworks"],
   "projects": ["projects", "portfolio", "work", "applications", "apps", "websites"],
   "contact": ["contact", "email", "reach out", "message", "get in touch", "hire"]
@@ -128,6 +129,8 @@ export function ChatBox() {
   const checkForSectionQuery = (message: string) => {
     const lowercaseMessage = message.toLowerCase()
     
+    console.log("Checking for section in message:", lowercaseMessage)
+    
     // Check each section's keywords
     for (const [section, keywords] of Object.entries(sectionKeywords)) {
       if (keywords.some(keyword => lowercaseMessage.includes(keyword))) {
@@ -143,6 +146,16 @@ export function ChatBox() {
         lowercaseMessage.includes("your background")) {
       console.log("Detected about section via additional check")
       return "about"
+    }
+    
+    if (lowercaseMessage.includes("your experience") || 
+        lowercaseMessage.includes("where have you worked") || 
+        lowercaseMessage.includes("work history") || 
+        lowercaseMessage.includes("show me experience") ||
+        lowercaseMessage.includes("show me expireance") ||
+        lowercaseMessage.includes("show experience")) {
+      console.log("Detected experience section via additional check")
+      return "experience"
     }
     
     if (lowercaseMessage.includes("your projects") || 
