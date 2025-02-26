@@ -264,7 +264,7 @@ The website also features an AI-powered chat functionality that allows visitors 
     console.log('Sending request to OpenAI with messages:', allMessages.length);
 
     // Create a stream with the OpenAI API
-    const stream = await openai.chat.completions.create({
+    const response = await openai.chat.completions.create({
       model: 'gpt-3.5-turbo',
       messages: allMessages,
       stream: true,
@@ -272,23 +272,33 @@ The website also features an AI-powered chat functionality that allows visitors 
       max_tokens: 800,
     })
 
-    // Create a properly formatted stream for the Vercel AI SDK
+    // Set up the response stream
     const encoder = new TextEncoder();
+    const decoder = new TextDecoder();
     
-    const responseStream = new ReadableStream({
+    let counter = 0;
+    
+    const stream = new ReadableStream({
       async start(controller) {
+        // Function to send a properly formatted SSE message
+        function sendMessage(data: any) {
+          const message = `data: ${JSON.stringify(data)}\n\n`;
+          controller.enqueue(encoder.encode(message));
+        }
+        
+        // Function to send the final [DONE] message
+        function sendDone() {
+          controller.enqueue(encoder.encode('data: [DONE]\n\n'));
+        }
+        
         try {
-          // Process each chunk from OpenAI
-          for await (const chunk of stream) {
-            // Get the content delta if it exists
+          for await (const chunk of response) {
             const content = chunk.choices[0]?.delta?.content || '';
             
             if (content) {
-              // Format the content according to the Vercel AI SDK expectations
-              // The format is: data: {"id":"chatcmpl-123","object":"chat.completion.chunk","created":1694268190,"model":"gpt-3.5-turbo-0613","choices":[{"index":0,"delta":{"content":"Hello"},"finish_reason":null}]}
-              
-              const formattedChunk = {
-                id: chunk.id || 'chatcmpl',
+              // Format in the exact structure expected by Vercel AI SDK
+              sendMessage({
+                id: `chatcmpl-${Date.now()}-${counter++}`,
                 object: 'chat.completion.chunk',
                 created: Math.floor(Date.now() / 1000),
                 model: 'gpt-3.5-turbo',
@@ -299,18 +309,12 @@ The website also features an AI-powered chat functionality that allows visitors 
                     finish_reason: null
                   }
                 ]
-              };
-              
-              // Send the formatted chunk as a JSON string with the "data: " prefix
-              const formattedData = `data: ${JSON.stringify(formattedChunk)}\n\n`;
-              controller.enqueue(encoder.encode(formattedData));
+              });
             }
           }
           
-          // Send the final [DONE] message to indicate the stream is complete
-          controller.enqueue(encoder.encode('data: [DONE]\n\n'));
-          
-          // Close the stream when done
+          // Send the final [DONE] message
+          sendDone();
           controller.close();
           console.log('Streaming completed successfully');
         } catch (error) {
@@ -319,9 +323,9 @@ The website also features an AI-powered chat functionality that allows visitors 
         }
       }
     });
-
-    // Return the stream with the correct content type for the Vercel AI SDK
-    return new Response(responseStream, {
+    
+    // Return the stream with the correct headers
+    return new Response(stream, {
       headers: {
         'Content-Type': 'text/event-stream',
         'Cache-Control': 'no-cache',
