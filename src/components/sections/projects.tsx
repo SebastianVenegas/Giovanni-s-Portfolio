@@ -123,7 +123,15 @@ export default function Projects() {
   const getLogoFilter = (client: string) => {
     if (!mounted) return {}
 
-    // No special filtering for any logos - keep original colors
+    // Special case for UBS - make it white in dark mode
+    if (client === "UBS") {
+      return {
+        filter: resolvedTheme === "dark" ? "brightness(0) invert(1)" : "none",
+        background: "transparent",
+      }
+    }
+
+    // All other logos keep original colors
     return {
       filter: "none",
       background: "transparent",
