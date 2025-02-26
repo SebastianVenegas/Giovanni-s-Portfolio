@@ -2,7 +2,7 @@
 
 import { useState, useRef, useEffect } from "react"
 import { motion, AnimatePresence } from "framer-motion"
-import { Send, X, MessageSquare, ChevronDown, Sparkles } from "lucide-react"
+import { Send, X, MessageSquare, ChevronDown, Sparkles, Trash2 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { cn } from "@/lib/utils"
 import { useTheme } from "next-themes"
@@ -56,7 +56,7 @@ export function ChatBox() {
   const mounted = useMounted()
 
   // Use the Vercel AI SDK useChat hook
-  const { messages, input, handleInputChange, handleSubmit, isLoading } = useChat({
+  const { messages, input, handleInputChange, handleSubmit, isLoading, reload, stop } = useChat({
     api: '/api/chat',
     initialMessages: [
       { id: 'welcome-message', role: "assistant", content: "Hi there! I'm Giovanni's AI assistant. How can I help you today?" }
@@ -219,6 +219,17 @@ export function ChatBox() {
     console.log("Loading state:", isLoading);
   }, [isLoading]);
 
+  // Function to end chat - clear messages and close window
+  const handleEndChat = () => {
+    console.log("Ending chat session");
+    // Reset to initial message
+    reload();
+    // Close the chat window
+    setIsOpen(false);
+    // Reset any other state as needed
+    setHasNewMessages(false);
+  }
+
   return (
     <>
       {/* Chat Button */}
@@ -331,6 +342,22 @@ export function ChatBox() {
                   </h3>
                 </div>
                 <div className="flex items-center gap-2">
+                  {/* End Chat button */}
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={handleEndChat}
+                    className={cn(
+                      "h-8 px-3 rounded-full flex items-center gap-1",
+                      isDark 
+                        ? "text-white/70 hover:text-white hover:bg-white/10" 
+                        : "text-gray-700 hover:text-gray-900 hover:bg-black/5"
+                    )}
+                  >
+                    <Trash2 className="h-3.5 w-3.5" />
+                    <span className="text-xs">End Chat</span>
+                  </Button>
+                  
                   {/* Close button */}
                   <Button
                     variant="ghost"
