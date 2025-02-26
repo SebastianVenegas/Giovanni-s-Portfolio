@@ -52,7 +52,7 @@ const certifications = [
   {
     title: "Stripe Certified Professional Developer",
     issuer: "Stripe",
-    logo: "/images/certifications/stripe.png",
+    logo: "/images/certifications/Stripe.png",
     website: "https://stripe.com/",
     issueDate: "Sep 2022",
     expiryDate: "Sep 2024",
