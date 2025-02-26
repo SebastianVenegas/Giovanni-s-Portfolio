@@ -2,7 +2,7 @@
 
 import { useState, useRef, useEffect } from "react"
 import { motion, AnimatePresence } from "framer-motion"
-import { Send, X, MessageSquare, ChevronDown, Sparkles, Maximize2, Minimize2, LogOut } from "lucide-react"
+import { Send, X, MessageSquare, ChevronDown, Sparkles, Maximize2, Minimize2 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { cn } from "@/lib/utils"
 import { useTheme } from "next-themes"
@@ -40,15 +40,12 @@ const sectionKeywords = {
 
 export function ChatBox() {
   const [isOpen, setIsOpen] = useState(false)
-  const [isExpanded, setIsExpanded] = useState(false)
+  const [isFullScreen, setIsFullScreen] = useState(false)
   const [hasNewMessages, setHasNewMessages] = useState(false)
   const [showScrollButton, setShowScrollButton] = useState(false)
   const [textareaHeight, setTextareaHeight] = useState(36) // Default height
-  const [windowWidth, setWindowWidth] = useState(0)
-  const [chatKey, setChatKey] = useState<number>(1) // Add a key to force re-mount the chat
   const messagesEndRef = useRef<HTMLDivElement>(null)
   const messagesContainerRef = useRef<HTMLDivElement>(null)
-  const chatWindowRef = useRef<HTMLDivElement>(null)
   const inputRef = useRef<HTMLTextAreaElement>(null)
   const { resolvedTheme } = useTheme()
   const isDark = resolvedTheme === "dark"
@@ -69,7 +66,7 @@ export function ChatBox() {
     onError: (error) => {
       console.error("Chat error:", error);
     },
-    id: `chat-${chatKey}` // Use the key to create a new chat session
+    streamProtocol: 'text'
   })
 
   // Scroll to bottom of messages
@@ -122,37 +119,29 @@ export function ChatBox() {
     handleTextareaResize();
   }, [input]);
 
-  // Handle window resize
-  useEffect(() => {
-    const handleResize = () => {
-      setWindowWidth(window.innerWidth);
-    };
-    
-    // Set initial width
-    handleResize();
-    
-    window.addEventListener('resize', handleResize);
-    return () => window.removeEventListener('resize', handleResize);
-  }, []);
-
-  // Effect to handle expanded state changes
-  useEffect(() => {
-    if (isExpanded && messagesEndRef.current) {
-      setTimeout(() => {
-        scrollToBottom();
-      }, 300);
-    }
-    console.log("Expanded state changed:", isExpanded);
-  }, [isExpanded]);
-
-  // Toggle expanded state
-  const toggleExpanded = () => {
-    console.log("Toggling expanded state, current:", isExpanded);
-    setIsExpanded(prevState => {
-      console.log("Setting to:", !prevState);
-      return !prevState;
-    });
+  // Toggle fullscreen mode
+  const toggleFullScreen = () => {
+    setIsFullScreen(!isFullScreen);
+    // Ensure we scroll to bottom after resize
+    setTimeout(() => {
+      if (messagesEndRef.current) {
+        messagesEndRef.current.scrollIntoView({ behavior: "smooth" });
+      }
+    }, 300);
   };
+
+  // Prevent body scroll when in fullscreen mode
+  useEffect(() => {
+    if (isFullScreen) {
+      document.body.style.overflow = 'hidden';
+    } else {
+      document.body.style.overflow = '';
+    }
+    
+    return () => {
+      document.body.style.overflow = '';
+    };
+  }, [isFullScreen]);
 
   // Function to scroll to a section
   const scrollToSection = (id: string) => {
@@ -250,16 +239,17 @@ export function ChatBox() {
     console.log("Loading state:", isLoading);
   }, [isLoading]);
 
-  // Function to end chat (clear history and close)
-  const handleEndChat = () => {
-    console.log("Ending chat session");
-    // Increment the chat key to force a new chat session
-    setChatKey(prev => prev + 1);
-    // Close the chat window
-    setIsOpen(false);
-    // Reset expanded state
-    setIsExpanded(false);
-  };
+  // Handle escape key to exit fullscreen
+  useEffect(() => {
+    const handleEscKey = (e: KeyboardEvent) => {
+      if (e.key === 'Escape' && isFullScreen) {
+        setIsFullScreen(false);
+      }
+    };
+    
+    window.addEventListener('keydown', handleEscKey);
+    return () => window.removeEventListener('keydown', handleEscKey);
+  }, [isFullScreen]);
 
   return (
     <>
@@ -301,83 +291,43 @@ export function ChatBox() {
         {isOpen && (
           <>
             {/* Backdrop */}
-            <motion.div
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              exit={{ opacity: 0 }}
-              transition={{ duration: 0.2 }}
-              className={cn(
-                "fixed inset-0 bg-black/20 backdrop-blur-sm z-50",
-                !isExpanded && "md:hidden"
-              )}
-              onClick={() => {
-                if (isExpanded) {
-                  toggleExpanded();
-                } else {
-                  setIsOpen(false);
-                }
-              }}
-            />
+            {!isFullScreen && (
+              <motion.div
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                exit={{ opacity: 0 }}
+                transition={{ duration: 0.2 }}
+                className="fixed inset-0 bg-black/20 backdrop-blur-sm z-50 md:hidden"
+                onClick={() => setIsOpen(false)}
+              />
+            )}
 
             {/* Chat Window */}
             <motion.div
-              ref={chatWindowRef}
-              key={`chat-window-${isExpanded ? 'expanded' : 'collapsed'}`}
-              initial={{ opacity: 0, y: 20, scale: 0.95 }}
-              animate={{ 
-                opacity: 1, 
-                y: 0, 
-                scale: 1
-              }}
-              transition={{ 
-                duration: 0.3, 
-                type: "spring", 
-                stiffness: 300, 
-                damping: 25 
-              }}
-              exit={{ opacity: 0, y: 20, scale: 0.95 }}
-              layout="position"
+              initial={isFullScreen ? { opacity: 0 } : { opacity: 0, y: 20, scale: 0.95 }}
+              animate={isFullScreen ? { opacity: 1 } : { opacity: 1, y: 0, scale: 1 }}
+              exit={isFullScreen ? { opacity: 0 } : { opacity: 0, y: 20, scale: 0.95 }}
+              transition={{ duration: 0.3, type: "spring", stiffness: 300, damping: 25 }}
               className={cn(
                 "fixed z-50 flex flex-col",
-                isExpanded 
-                  ? "top-0 right-0 left-0 bottom-0 rounded-none" // Full screen on all devices
+                isFullScreen 
+                  ? "inset-0 rounded-none" 
                   : "bottom-6 right-6 w-[90vw] sm:w-[400px] h-[70vh] sm:h-[500px] rounded-2xl",
                 "shadow-xl overflow-hidden",
                 "glass-effect backdrop-blur-md",
                 isDark 
-                  ? isExpanded 
-                    ? "bg-black/80 border border-white/10" 
-                    : "bg-black/60 border border-white/10"
-                  : isExpanded
-                    ? "bg-white/90 border border-black/5"
-                    : "bg-white/80 border border-black/5",
-                "transition-all duration-300 ease-in-out"
+                  ? "bg-black/60 border border-white/10" 
+                  : "bg-white/80 border border-black/5",
               )}
             >
-              {/* Decorative elements - more prominent in expanded view */}
-              <div className={cn(
-                "absolute top-0 left-0 rounded-full blur-3xl -z-10",
-                isExpanded 
-                  ? "w-60 h-60 bg-gray-500/10 dark:bg-gray-300/10" 
-                  : "w-40 h-40 bg-gray-500/5 dark:bg-gray-300/5"
-              )} />
-              <div className={cn(
-                "absolute bottom-0 right-0 rounded-full blur-3xl -z-10",
-                isExpanded 
-                  ? "w-80 h-80 bg-gray-500/10 dark:bg-gray-300/10" 
-                  : "w-60 h-60 bg-gray-500/5 dark:bg-gray-300/5"
-              )} />
-              
-              {/* Additional decorative element for expanded view */}
-              {isExpanded && (
-                <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-96 h-96 bg-gray-500/5 dark:bg-gray-300/5 rounded-full blur-3xl -z-10" />
-              )}
+              {/* Decorative elements */}
+              <div className="absolute top-0 left-0 w-40 h-40 bg-gray-500/5 dark:bg-gray-300/5 rounded-full blur-3xl -z-10" />
+              <div className="absolute bottom-0 right-0 w-60 h-60 bg-gray-500/5 dark:bg-gray-300/5 rounded-full blur-3xl -z-10" />
               
               {/* Header */}
               <div className={cn(
                 "flex items-center justify-between px-5 py-4",
                 "border-b",
-                isExpanded ? "bg-gradient-to-r from-gray-100/10 to-gray-200/10 dark:from-gray-800/30 dark:to-gray-900/30" : "",
                 isDark 
                   ? "border-white/10 bg-black/20" 
                   : "border-black/5 bg-white/20"
@@ -410,61 +360,40 @@ export function ChatBox() {
                     />
                   </div>
                   <h3 className={cn(
-                    "font-medium",
-                    isExpanded ? "text-lg" : "text-base",
+                    "font-medium text-base",
                     isDark ? "text-white/90" : "text-gray-900"
                   )}>
                     Chat with Giovanni
                   </h3>
                 </div>
                 <div className="flex items-center gap-2">
-                  {/* End Chat Button */}
+                  {/* Fullscreen toggle button */}
                   <Button
                     variant="ghost"
                     size="sm"
-                    onClick={handleEndChat}
-                    className={cn(
-                      "h-8 px-3 rounded-full flex items-center gap-1.5",
-                      isDark 
-                        ? "text-white/70 hover:text-white hover:bg-white/10" 
-                        : "text-gray-700 hover:text-gray-900 hover:bg-black/5",
-                      "transition-all duration-200"
-                    )}
-                    aria-label="End chat"
-                  >
-                    <LogOut className="h-3.5 w-3.5" />
-                    <span className="text-xs">End Chat</span>
-                  </Button>
-                  
-                  {/* Expand/Collapse Button */}
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      toggleExpanded();
-                    }}
+                    onClick={toggleFullScreen}
                     className={cn(
                       "h-8 w-8 rounded-full",
                       isDark 
                         ? "text-white/70 hover:text-white hover:bg-white/10" 
-                        : "text-gray-700 hover:text-gray-900 hover:bg-black/5",
-                      "transition-all duration-200"
+                        : "text-gray-700 hover:text-gray-900 hover:bg-black/5"
                     )}
-                    aria-label={isExpanded ? "Collapse chat" : "Expand chat"}
                   >
-                    {isExpanded ? (
+                    {isFullScreen ? (
                       <Minimize2 className="h-4 w-4" />
                     ) : (
                       <Maximize2 className="h-4 w-4" />
                     )}
                   </Button>
                   
-                  {/* Close Button */}
+                  {/* Close button */}
                   <Button
                     variant="ghost"
                     size="sm"
-                    onClick={() => setIsOpen(false)}
+                    onClick={() => {
+                      setIsOpen(false);
+                      if (isFullScreen) setIsFullScreen(false);
+                    }}
                     className={cn(
                       "h-8 w-8 rounded-full",
                       isDark 
@@ -482,7 +411,6 @@ export function ChatBox() {
                 ref={messagesContainerRef}
                 className={cn(
                   "flex-1 overflow-y-auto p-5 space-y-5",
-                  isExpanded ? "px-6 py-5" : "p-5",
                   "scrollbar-thin",
                   isDark 
                     ? "scrollbar-thumb-white/10 scrollbar-track-transparent" 
@@ -508,7 +436,6 @@ export function ChatBox() {
                   >
                     <div className={cn(
                       "max-w-[85%] rounded-2xl px-4 py-3",
-                      isExpanded ? "text-base" : "text-sm",
                       message.role === "user"
                         ? isDark 
                           ? "bg-gradient-to-br from-gray-800 to-gray-900 text-white shadow-md border border-white/10" 
@@ -517,7 +444,7 @@ export function ChatBox() {
                           ? "bg-white/5 text-white/90 border border-white/10 shadow-sm" 
                           : "bg-white/80 text-gray-900 border border-black/5 shadow-sm backdrop-blur-sm"
                     )}>
-                      <p className="whitespace-pre-wrap leading-relaxed">{message.content}</p>
+                      <p className="text-sm whitespace-pre-wrap leading-relaxed">{message.content}</p>
                     </div>
                   </motion.div>
                 ))}
@@ -614,18 +541,15 @@ export function ChatBox() {
 
               {/* Input */}
               <form onSubmit={handleChatSubmit} className={cn(
-                isExpanded ? "p-5" : "p-4",
+                "p-4",
                 "border-t",
-                isDark ? "border-white/10" : "border-black/5",
-                isExpanded && (isDark 
-                  ? "bg-gradient-to-r from-gray-900/30 to-gray-800/30" 
-                  : "bg-gradient-to-r from-gray-50/50 to-gray-100/50")
+                isDark ? "border-white/10" : "border-black/5"
               )}>
                 <div className={cn(
                   "flex items-end gap-2",
                   "rounded-xl p-2",
-                  isExpanded ? "p-3" : "p-2",
-                  isDark ? "bg-white/5" : "bg-black/5"
+                  isDark ? "bg-white/5" : "bg-black/5",
+                  isFullScreen ? "max-w-3xl mx-auto w-full" : ""
                 )}>
                   <textarea
                     ref={inputRef}
@@ -639,7 +563,6 @@ export function ChatBox() {
                     style={{ height: `${textareaHeight}px` }}
                     className={cn(
                       "flex-1 resize-none overflow-y-auto py-2 px-3 text-sm",
-                      isExpanded && "text-base py-2.5 px-3.5",
                       "bg-transparent border-0 focus:ring-0 focus:outline-none rounded-lg",
                       isDark ? "text-white/90 placeholder:text-white/50" : "text-gray-900 placeholder:text-gray-500"
                     )}
@@ -649,8 +572,7 @@ export function ChatBox() {
                     type="submit"
                     disabled={!input.trim() || isLoading}
                     className={cn(
-                      isExpanded ? "h-10 w-10" : "h-9 w-9",
-                      "rounded-full flex items-center justify-center",
+                      "h-9 w-9 rounded-full flex items-center justify-center",
                       "transition-all duration-300",
                       isDark 
                         ? "bg-white/10 text-white/90 hover:bg-white/20 border border-white/10" 
@@ -658,7 +580,7 @@ export function ChatBox() {
                       "disabled:opacity-50 disabled:cursor-not-allowed"
                     )}
                   >
-                    <Send className={isExpanded ? "h-5 w-5" : "h-4 w-4"} />
+                    <Send className="h-4 w-4" />
                   </Button>
                 </div>
               </form>
