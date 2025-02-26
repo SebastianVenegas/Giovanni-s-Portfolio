@@ -2,7 +2,7 @@
 
 import { useState, useRef, useEffect } from "react"
 import { motion, AnimatePresence } from "framer-motion"
-import { Send, X, MessageSquare, ChevronDown, Sparkles, Maximize2, Minimize2 } from "lucide-react"
+import { Send, X, MessageSquare, ChevronDown, Sparkles, Maximize2, Minimize2, LogOut } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { cn } from "@/lib/utils"
 import { useTheme } from "next-themes"
@@ -45,6 +45,7 @@ export function ChatBox() {
   const [showScrollButton, setShowScrollButton] = useState(false)
   const [textareaHeight, setTextareaHeight] = useState(36) // Default height
   const [windowWidth, setWindowWidth] = useState(0)
+  const [chatKey, setChatKey] = useState<number>(1) // Add a key to force re-mount the chat
   const messagesEndRef = useRef<HTMLDivElement>(null)
   const messagesContainerRef = useRef<HTMLDivElement>(null)
   const chatWindowRef = useRef<HTMLDivElement>(null)
@@ -67,7 +68,8 @@ export function ChatBox() {
     },
     onError: (error) => {
       console.error("Chat error:", error);
-    }
+    },
+    id: `chat-${chatKey}` // Use the key to create a new chat session
   })
 
   // Scroll to bottom of messages
@@ -248,6 +250,17 @@ export function ChatBox() {
     console.log("Loading state:", isLoading);
   }, [isLoading]);
 
+  // Function to end chat (clear history and close)
+  const handleEndChat = () => {
+    console.log("Ending chat session");
+    // Increment the chat key to force a new chat session
+    setChatKey(prev => prev + 1);
+    // Close the chat window
+    setIsOpen(false);
+    // Reset expanded state
+    setIsExpanded(false);
+  };
+
   return (
     <>
       {/* Chat Button */}
@@ -407,6 +420,24 @@ export function ChatBox() {
                   </h3>
                 </div>
                 <div className="flex items-center gap-2">
+                  {/* End Chat Button */}
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={handleEndChat}
+                    className={cn(
+                      "h-8 px-3 rounded-full flex items-center gap-1.5",
+                      isDark 
+                        ? "text-white/70 hover:text-white hover:bg-white/10" 
+                        : "text-gray-700 hover:text-gray-900 hover:bg-black/5",
+                      "transition-all duration-200"
+                    )}
+                    aria-label="End chat"
+                  >
+                    <LogOut className="h-3.5 w-3.5" />
+                    <span className="text-xs">End Chat</span>
+                  </Button>
+                  
                   {/* Expand/Collapse Button */}
                   <Button
                     variant="ghost"
