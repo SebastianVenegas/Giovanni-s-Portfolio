@@ -293,8 +293,17 @@ export function ChatBox() {
               animate={{ opacity: 1 }}
               exit={{ opacity: 0 }}
               transition={{ duration: 0.2 }}
-              className="fixed inset-0 bg-black/20 backdrop-blur-sm z-50 md:hidden"
-              onClick={() => setIsOpen(false)}
+              className={cn(
+                "fixed inset-0 bg-black/20 backdrop-blur-sm z-50",
+                !isExpanded && "md:hidden"
+              )}
+              onClick={() => {
+                if (isExpanded) {
+                  toggleExpanded();
+                } else {
+                  setIsOpen(false);
+                }
+              }}
             />
 
             {/* Chat Window */}
@@ -319,25 +328,45 @@ export function ChatBox() {
                 "fixed z-50 flex flex-col",
                 isExpanded 
                   ? windowWidth < 768
-                    ? "top-2 right-2 left-2 bottom-2" 
-                    : "top-4 right-4 bottom-4 md:left-auto md:w-[650px] md:h-[85vh]" 
-                  : "bottom-6 right-6 w-[90vw] sm:w-[400px] h-[70vh] sm:h-[500px]",
-                "rounded-2xl shadow-xl overflow-hidden",
+                    ? "top-0 right-0 left-0 bottom-0 rounded-none" 
+                    : "top-[5vh] right-[5vw] bottom-[5vh] md:left-auto md:w-[700px] rounded-2xl" 
+                  : "bottom-6 right-6 w-[90vw] sm:w-[400px] h-[70vh] sm:h-[500px] rounded-2xl",
+                "shadow-xl overflow-hidden",
                 "glass-effect backdrop-blur-md",
                 isDark 
-                  ? "bg-black/60 border border-white/10" 
-                  : "bg-white/80 border border-black/5",
+                  ? isExpanded 
+                    ? "bg-black/80 border border-white/10" 
+                    : "bg-black/60 border border-white/10"
+                  : isExpanded
+                    ? "bg-white/90 border border-black/5"
+                    : "bg-white/80 border border-black/5",
                 "transition-all duration-300 ease-in-out"
               )}
             >
-              {/* Decorative elements */}
-              <div className="absolute top-0 left-0 w-40 h-40 bg-gray-500/5 dark:bg-gray-300/5 rounded-full blur-3xl -z-10" />
-              <div className="absolute bottom-0 right-0 w-60 h-60 bg-gray-500/5 dark:bg-gray-300/5 rounded-full blur-3xl -z-10" />
+              {/* Decorative elements - more prominent in expanded view */}
+              <div className={cn(
+                "absolute top-0 left-0 rounded-full blur-3xl -z-10",
+                isExpanded 
+                  ? "w-60 h-60 bg-gray-500/10 dark:bg-gray-300/10" 
+                  : "w-40 h-40 bg-gray-500/5 dark:bg-gray-300/5"
+              )} />
+              <div className={cn(
+                "absolute bottom-0 right-0 rounded-full blur-3xl -z-10",
+                isExpanded 
+                  ? "w-80 h-80 bg-gray-500/10 dark:bg-gray-300/10" 
+                  : "w-60 h-60 bg-gray-500/5 dark:bg-gray-300/5"
+              )} />
+              
+              {/* Additional decorative element for expanded view */}
+              {isExpanded && (
+                <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-96 h-96 bg-gray-500/5 dark:bg-gray-300/5 rounded-full blur-3xl -z-10" />
+              )}
               
               {/* Header */}
               <div className={cn(
                 "flex items-center justify-between px-5 py-4",
                 "border-b",
+                isExpanded ? "bg-gradient-to-r from-gray-100/10 to-gray-200/10 dark:from-gray-800/30 dark:to-gray-900/30" : "",
                 isDark 
                   ? "border-white/10 bg-black/20" 
                   : "border-black/5 bg-white/20"
@@ -370,7 +399,8 @@ export function ChatBox() {
                     />
                   </div>
                   <h3 className={cn(
-                    "font-medium text-base",
+                    "font-medium",
+                    isExpanded ? "text-lg" : "text-base",
                     isDark ? "text-white/90" : "text-gray-900"
                   )}>
                     Chat with Giovanni
@@ -423,6 +453,7 @@ export function ChatBox() {
                 ref={messagesContainerRef}
                 className={cn(
                   "flex-1 overflow-y-auto p-5 space-y-5",
+                  isExpanded ? "px-6 py-5" : "p-5",
                   "scrollbar-thin",
                   isDark 
                     ? "scrollbar-thumb-white/10 scrollbar-track-transparent" 
@@ -448,6 +479,7 @@ export function ChatBox() {
                   >
                     <div className={cn(
                       "max-w-[85%] rounded-2xl px-4 py-3",
+                      isExpanded ? "text-base" : "text-sm",
                       message.role === "user"
                         ? isDark 
                           ? "bg-gradient-to-br from-gray-800 to-gray-900 text-white shadow-md border border-white/10" 
@@ -456,7 +488,7 @@ export function ChatBox() {
                           ? "bg-white/5 text-white/90 border border-white/10 shadow-sm" 
                           : "bg-white/80 text-gray-900 border border-black/5 shadow-sm backdrop-blur-sm"
                     )}>
-                      <p className="text-sm whitespace-pre-wrap leading-relaxed">{message.content}</p>
+                      <p className="whitespace-pre-wrap leading-relaxed">{message.content}</p>
                     </div>
                   </motion.div>
                 ))}
@@ -553,13 +585,17 @@ export function ChatBox() {
 
               {/* Input */}
               <form onSubmit={handleChatSubmit} className={cn(
-                "p-4",
+                isExpanded ? "p-5" : "p-4",
                 "border-t",
-                isDark ? "border-white/10" : "border-black/5"
+                isDark ? "border-white/10" : "border-black/5",
+                isExpanded && (isDark 
+                  ? "bg-gradient-to-r from-gray-900/30 to-gray-800/30" 
+                  : "bg-gradient-to-r from-gray-50/50 to-gray-100/50")
               )}>
                 <div className={cn(
                   "flex items-end gap-2",
                   "rounded-xl p-2",
+                  isExpanded ? "p-3" : "p-2",
                   isDark ? "bg-white/5" : "bg-black/5"
                 )}>
                   <textarea
@@ -574,6 +610,7 @@ export function ChatBox() {
                     style={{ height: `${textareaHeight}px` }}
                     className={cn(
                       "flex-1 resize-none overflow-y-auto py-2 px-3 text-sm",
+                      isExpanded && "text-base py-2.5 px-3.5",
                       "bg-transparent border-0 focus:ring-0 focus:outline-none rounded-lg",
                       isDark ? "text-white/90 placeholder:text-white/50" : "text-gray-900 placeholder:text-gray-500"
                     )}
@@ -583,7 +620,8 @@ export function ChatBox() {
                     type="submit"
                     disabled={!input.trim() || isLoading}
                     className={cn(
-                      "h-9 w-9 rounded-full flex items-center justify-center",
+                      isExpanded ? "h-10 w-10" : "h-9 w-9",
+                      "rounded-full flex items-center justify-center",
                       "transition-all duration-300",
                       isDark 
                         ? "bg-white/10 text-white/90 hover:bg-white/20 border border-white/10" 
@@ -591,7 +629,7 @@ export function ChatBox() {
                       "disabled:opacity-50 disabled:cursor-not-allowed"
                     )}
                   >
-                    <Send className="h-4 w-4" />
+                    <Send className={isExpanded ? "h-5 w-5" : "h-4 w-4"} />
                   </Button>
                 </div>
               </form>
