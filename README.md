@@ -18,6 +18,30 @@ npm run dev
 
 Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
 
+## Email Configuration
+
+The contact form uses Nodemailer to send emails. To configure email functionality:
+
+1. Create or update the `.env.local` file with the following variables:
+   ```
+   EMAIL_SERVER=smtp.gmail.com
+   EMAIL_PORT=587
+   EMAIL_SECURE=false
+   EMAIL_USER=your-email@gmail.com
+   EMAIL_PASSWORD=your-app-password
+   EMAIL_FROM=your-email@gmail.com
+   EMAIL_TO=recipient-email@example.com
+   ```
+
+2. For Gmail, you need to use an App Password instead of your regular password:
+   - Go to your Google Account settings
+   - Navigate to Security > 2-Step Verification
+   - Scroll down and select "App passwords"
+   - Generate a new app password for "Mail" and "Other (Custom name)"
+   - Use this generated password in your `.env.local` file
+
+3. For production deployment on Vercel, add these environment variables in the Vercel project settings.
+
 ## Technologies Used
 
 - Next.js

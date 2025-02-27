@@ -73,7 +73,8 @@ const sectionKeywords = {
   "experience": ["experience", "work history", "job history", "career", "professional background", "work experience", "expireance", "expirience", "experiance"],
   "skills": ["skills", "technologies", "tech stack", "programming", "languages", "frameworks"],
   "projects": ["projects", "portfolio", "work", "applications", "apps", "websites"],
-  "contact": ["contact", "email", "reach out", "message", "get in touch", "hire"]
+  "contact": ["contact", "email", "reach out", "message", "get in touch", "hire"],
+  "certificates": ["certificate", "certification", "credentials", "qualifications"]
 }
 
 export function ModernChatBox() {
@@ -113,6 +114,25 @@ export function ModernChatBox() {
     sessionId: `session_${Date.now()}_${Math.random().toString(36).substring(2, 9)}` // Add unique session ID
   })
   
+  // Load user info from localStorage when component mounts
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      const savedUserInfo = localStorage.getItem('chatUserInfo');
+      if (savedUserInfo) {
+        try {
+          const parsedUserInfo = JSON.parse(savedUserInfo);
+          // Create a new session ID for this chat session
+          setUserInfo({
+            ...parsedUserInfo,
+            sessionId: `session_${Date.now()}_${Math.random().toString(36).substring(2, 9)}`
+          });
+        } catch (error) {
+          console.error('Error parsing saved user info:', error);
+        }
+      }
+    }
+  }, []);
+  
   // Add state to control when to show the user form
   const [shouldShowUserForm, setShouldShowUserForm] = useState(false)
   
@@ -121,6 +141,16 @@ export function ModernChatBox() {
     name: '',
     phoneNumber: ''
   })
+  
+  // Add state for contact form
+  const [contactFormData, setContactFormData] = useState({
+    email: '',
+    service: '',
+    message: ''
+  })
+  
+  // Add state for contact form step
+  const [contactFormStep, setContactFormStep] = useState(0)
   
   // Add loading state for form submission
   const [isSubmittingInfo, setIsSubmittingInfo] = useState(false)
@@ -154,7 +184,7 @@ export function ModernChatBox() {
     }
     setIsOpen(!isOpen)
   }
-  
+
   // Toggle sidebar mode
   const toggleSidebarMode = () => {
     if (sidebarMode) {
@@ -190,11 +220,13 @@ export function ModernChatBox() {
         {
           id: "welcome",
           role: "assistant",
-          content: "👋 Hi there! I'm Giovanni's Personal AI Assistant. How can I help you today?"
+          content: userInfo.submitted 
+            ? `Welcome back, ${userInfo.name}! I'm NextGio AI, Giovanni's custom-trained AI assistant. How can I help you today?`
+            : "Hello! I'm NextGio AI, a custom-trained AI assistant developed by Giovanni Venegas. Welcome to Giovanni's portfolio website, which showcases his work as a software engineer and AI specialist. This site highlights Giovanni's projects, skills, and professional experience in web development, AI integration, and enterprise solutions. Giovanni is currently available for new projects and collaborations. How can I help you learn more about Giovanni's expertise or answer any questions you might have about his services?"
         }
       ])
     }
-  }, [isOpen, messages.length])
+  }, [isOpen, messages.length, userInfo.submitted, userInfo.name])
   
   // Scroll to bottom when messages change
   useEffect(() => {
@@ -251,159 +283,445 @@ export function ModernChatBox() {
 
   // Function to check which section the message is about
   const checkForSectionQuery = (message: string) => {
-    const lowercaseMessage = message.toLowerCase()
-    
-    console.log("Checking for section in message:", lowercaseMessage)
-    
-    // Check for experience-related terms first (with common misspellings)
-    if (lowercaseMessage.includes("experience") || 
-        lowercaseMessage.includes("expirience") || 
-        lowercaseMessage.includes("experiance") ||
-        lowercaseMessage.includes("expireance") ||
-        lowercaseMessage.includes("expirance") ||
-        lowercaseMessage.includes("work history") || 
-        lowercaseMessage.includes("job history") ||
-        lowercaseMessage.includes("career") ||
-        lowercaseMessage.includes("where have you worked") || 
-        lowercaseMessage.includes("show me experience") ||
-        lowercaseMessage.includes("show experience") ||
-        lowercaseMessage.includes("your experience")) {
-      console.log("Detected experience section via direct check")
-      return "experience"
-    }
-    
-    // Check each section's keywords
-    for (const [section, keywords] of Object.entries(sectionKeywords)) {
-      if (keywords.some(keyword => lowercaseMessage.includes(keyword))) {
-        console.log(`Detected section: ${section} for message: ${message}`)
-        return section
-      }
-    }
-    
-    // Additional checks for common variations
-    if (lowercaseMessage.includes("about you") || 
-        lowercaseMessage.includes("who are you") || 
-        lowercaseMessage.includes("tell me about") || 
-        lowercaseMessage.includes("your background")) {
-      console.log("Detected about section via additional check")
-      return "about"
-    }
-    
-    if (lowercaseMessage.includes("your projects") || 
-        lowercaseMessage.includes("what have you built") || 
-        lowercaseMessage.includes("portfolio") || 
-        lowercaseMessage.includes("show me your work")) {
-      console.log("Detected projects section via additional check")
-      return "projects"
-    }
-    
-    if (lowercaseMessage.includes("your skills") || 
-        lowercaseMessage.includes("what can you do") || 
-        lowercaseMessage.includes("tech stack") || 
-        lowercaseMessage.includes("technologies")) {
-      console.log("Detected skills section via additional check")
-      return "skills"
-    }
-    
-    if (lowercaseMessage.includes("how to contact") || 
-        lowercaseMessage.includes("get in touch") || 
-        lowercaseMessage.includes("email") || 
-        lowercaseMessage.includes("reach out")) {
-      console.log("Detected contact section via additional check")
-      return "contact"
-    }
-    
-    console.log(`No section detected for message: ${message}`)
-    return null // No matching section found
+    // This function is now deprecated as we're letting the AI decide when to scroll
+    // We'll keep it for backward compatibility but it will always return null
+    console.log("Section detection now handled by AI, skipping client-side detection")
+    return null
   }
 
   // Function to scroll to a section
   const scrollToSection = (id: string) => {
-    console.log(`Attempting to scroll to section: ${id}`)
+    console.log(`Attempting to scroll to section: ${id}`);
+    
+    // Map section names to actual section IDs used in the page
+    const sectionIdMap: Record<string, string> = {
+      "about": "about",
+      "experience": "experience",
+      "skills": "certifications", // Skills are shown in certifications section
+      "projects": "projects",
+      "contact": "contact",
+      "certificates": "certifications"
+    };
+    
+    // Get the actual section ID to look for
+    const actualSectionId = sectionIdMap[id] || id;
+    console.log(`Mapped section ${id} to actual section ID: ${actualSectionId}`);
+    
+    // Log all section IDs in the document for debugging
+    console.log("All section IDs in document:");
+    document.querySelectorAll('[id]').forEach(el => {
+      console.log(`- ${el.id} (${el.tagName})`);
+    });
     
     // Try to find the element by ID
-    const element = document.getElementById(id)
+    let element = document.getElementById(actualSectionId);
     
     if (element) {
-      console.log(`Found element with id: ${id}, scrolling now`)
+      console.log(`Found element with id: ${actualSectionId}, scrolling now`);
+    } else {
+      console.log(`Element with id ${actualSectionId} not found, trying alternative selectors`);
       
+      // Try alternative selectors if element not found by ID
+      const selectors = [
+        `section#${actualSectionId}`,
+        `section[id="${actualSectionId}"]`,
+        `div#${actualSectionId}`,
+        `div[id="${actualSectionId}"]`,
+        `#${actualSectionId}`
+      ];
+      
+      for (const selector of selectors) {
+        const foundElement = document.querySelector(selector);
+        if (foundElement) {
+          console.log(`Found element using selector: ${selector}`);
+          element = foundElement as HTMLElement;
+          break;
+        }
+      }
+      
+      // If still not found, try looking for sections with matching text content
+      if (!element) {
+        console.log(`Still couldn't find element, looking for sections with matching text`);
+        const sections = document.querySelectorAll('section, div.section');
+        for (const section of sections) {
+          const headings = section.querySelectorAll('h1, h2, h3, h4, h5, h6');
+          for (const heading of headings) {
+            const headingText = heading.textContent?.toLowerCase() || '';
+            if (headingText.includes(actualSectionId.toLowerCase()) || 
+                (actualSectionId === 'contact' && headingText.includes('get in touch'))) {
+              console.log(`Found section with matching heading text: "${headingText}"`);
+              element = section as HTMLElement;
+              break;
+            }
+          }
+          if (element) break;
+        }
+      }
+    }
+    
+    if (element) {
       // Use a more reliable scrolling method
       try {
-        // First try scrollIntoView
-        element.scrollIntoView({ 
-          behavior: "smooth", 
-          block: "start" 
-        })
-        
-        // Also add a fallback with window.scrollTo
+        // First try scrollIntoView with a slight delay to ensure DOM is ready
         setTimeout(() => {
-          const rect = element.getBoundingClientRect()
-          const scrollTop = window.pageYOffset || document.documentElement.scrollTop
-          const targetPosition = scrollTop + rect.top - 100 // 100px offset for headers
-          
-          window.scrollTo({
-            top: targetPosition,
-            behavior: 'smooth'
-          })
-          
-          console.log(`Fallback scroll to position: ${targetPosition}`)
-        }, 100)
+          console.log(`Executing scrollIntoView for element:`, element);
+          element!.scrollIntoView({ 
+            behavior: "smooth", 
+            block: "start" 
+          });
         
+          console.log(`Scrolled to element with id: ${actualSectionId}`);
+          
+          // Also add a fallback with window.scrollTo for better cross-browser support
+          setTimeout(() => {
+            const rect = element!.getBoundingClientRect();
+            const scrollTop = window.pageYOffset || document.documentElement.scrollTop;
+            const targetPosition = scrollTop + rect.top - 80; // 80px offset for headers
+          
+            console.log(`Executing window.scrollTo to position: ${targetPosition}`);
+            window.scrollTo({
+              top: targetPosition,
+              behavior: 'smooth'
+            });
+            
+            console.log(`Fallback scroll to position: ${targetPosition}`);
+            
+            // Create a temporary highlight overlay instead of modifying the element's style
+            // This prevents theme flickering issues
+            const overlay = document.createElement('div');
+            overlay.style.position = 'absolute';
+            overlay.style.top = '0';
+            overlay.style.left = '0';
+            overlay.style.width = '100%';
+            overlay.style.height = '100%';
+            
+            // Use theme-appropriate colors for the highlight
+            const isDarkMode = document.documentElement.classList.contains('dark');
+            overlay.style.backgroundColor = isDarkMode 
+              ? 'rgba(30, 41, 59, 0.2)' // Dark blue for dark mode
+              : 'rgba(255, 255, 255, 0.6)'; // White for light mode
+              
+            overlay.style.pointerEvents = 'none'; // Make sure it doesn't interfere with clicks
+            overlay.style.zIndex = '1';
+            overlay.style.borderRadius = '4px';
+            overlay.style.transition = 'opacity 0.5s ease-in-out';
+            
+            // Save the original position value
+            const originalPosition = element!.style.position;
+            
+            // Only set position to relative if it's not already positioned
+            if (originalPosition !== 'absolute' && originalPosition !== 'relative' && originalPosition !== 'fixed') {
+              element!.style.position = 'relative';
+            }
+            
+            // Add the overlay to the element
+            element!.appendChild(overlay);
+            
+            // Remove the overlay after animation completes
+            setTimeout(() => {
+              if (element!.contains(overlay)) {
+                element!.removeChild(overlay);
+              }
+              
+              // Restore original position if we changed it
+              if (originalPosition !== 'absolute' && originalPosition !== 'relative' && originalPosition !== 'fixed') {
+                element!.style.position = originalPosition;
+              }
+            }, 1500);
+            
+          }, 100);
+        }, 100);
       } catch (error) {
-        console.error(`Error scrolling to section ${id}:`, error)
+        console.error(`Error scrolling to section ${actualSectionId}:`, error);
         
         // Last resort fallback
         try {
-          window.location.hash = `#${id}`
+          console.log(`Using hash navigation as fallback: #${actualSectionId}`);
+          window.location.hash = `#${actualSectionId}`;
+          console.log(`Used hash navigation as fallback: #${actualSectionId}`);
         } catch (hashError) {
-          console.error("Hash navigation failed:", hashError)
+          console.error("Hash navigation failed:", hashError);
         }
       }
     } else {
-      // Try alternative section IDs
-      const alternativeIds = {
-        "about": ["about-section", "about-me", "bio"],
-        "skills": ["skills-section", "technologies", "tech-stack"],
-        "projects": ["projects-section", "work", "portfolio"],
-        "contact": ["contact-section", "contact-me", "get-in-touch"]
-      }
+      console.error(`Section not found: ${actualSectionId}`);
       
-      const alternatives = alternativeIds[id as keyof typeof alternativeIds] || []
+      // Last resort: try to find any section that might match
+      console.log("Attempting to find any section that might match...");
+      const allSections = document.querySelectorAll('section');
+      console.log(`Found ${allSections.length} sections on the page`);
       
-      for (const altId of alternatives) {
-        const altElement = document.getElementById(altId)
-        if (altElement) {
-          console.log(`Found alternative element with id: ${altId}, scrolling now`)
-          altElement.scrollIntoView({ behavior: "smooth" })
-          return
+      // Try to find a section with a matching ID or data attribute
+      for (const section of allSections) {
+        console.log(`Checking section: ${section.id || 'no-id'}`);
+        if (section.id.toLowerCase().includes(actualSectionId.toLowerCase())) {
+          console.log(`Found section with partial ID match: ${section.id}`);
+          section.scrollIntoView({ behavior: 'smooth', block: 'start' });
+          return;
         }
       }
+    }
+  };
+
+  // Function to check if message is about contacting Giovanni
+  const isContactRequest = (message: string) => {
+    const lowercaseMessage = message.toLowerCase().trim();
+    
+    const contactKeywords = [
+      'contact', 'hire', 'work with', 'get in touch', 'reach out',
+      'email', 'phone', 'call', 'message', 'project', 'job', 'opportunity',
+      'connect', 'talk to', 'speak with', 'meet', 'schedule', 'appointment',
+      'consultation', 'quote', 'estimate', 'proposal', 'services',
+      'lets contact', 'let\'s contact', 'contact in the chat', 'continue in the chat',
+      'continue here', 'through the chat', 'chat option', 'first option'
+    ];
+    
+    return contactKeywords.some(keyword => lowercaseMessage.includes(keyword));
+  }
+
+  // Handle contact form submission through chat
+  const handleChatContactSubmit = async () => {
+    // Validate inputs
+    let valid = true;
+    const errors = {
+      name: '',
+      phoneNumber: ''
+    };
+    
+    if (!userInfo.name.trim()) {
+      errors.name = 'Name is required';
+      valid = false;
+    }
+    
+    if (!userInfo.phoneNumber.trim()) {
+      errors.phoneNumber = 'Phone number is required';
+      valid = false;
+    }
+    
+    if (!contactFormData.email.trim()) {
+      // Add error message to chat instead of form validation
+      setMessages(prev => [...prev, {
+        role: 'assistant',
+        content: "I'll need your email address to proceed. Could you please provide it?",
+        id: Date.now().toString()
+      }]);
+      return;
+    }
+    
+    // Validate email format
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(contactFormData.email)) {
+      setMessages(prev => [...prev, {
+        role: 'assistant',
+        content: "That email address doesn't look valid. Could you please provide a valid email?",
+        id: Date.now().toString()
+      }]);
+      return;
+    }
+    
+    // Show loading state
+    setIsSubmittingInfo(true);
+    
+    try {
+      // Prepare the contact data
+      const contactData = {
+        name: userInfo.name,
+        email: contactFormData.email,
+        phone: userInfo.phoneNumber,
+        service: contactFormData.service || 'Not specified',
+        message: contactFormData.message || 'Contact request submitted via chat'
+      };
       
-      // If still not found, try looking for sections or headings with matching text
-      const headings = document.querySelectorAll('h1, h2, h3, h4, h5, h6, section')
-      for (const heading of headings) {
-        const headingText = heading.textContent?.toLowerCase() || ''
-        if (headingText.includes(id.toLowerCase())) {
-          console.log(`Found heading with matching text: "${headingText}", scrolling now`)
-          heading.scrollIntoView({ behavior: "smooth" })
-          return
-        }
+      // Send data to the API endpoint
+      const response = await fetch('/api/contact', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(contactData),
+      });
+      
+      const data = await response.json();
+      
+      if (!response.ok) {
+        throw new Error(data.error || 'Failed to send contact request');
       }
       
-      console.error(`Section not found: ${id}`)
+      // Reset contact form
+      setContactFormData({
+        email: '',
+        service: '',
+        message: ''
+      });
+      
+      setContactFormStep(0);
+      
+      // Add success message to chat
+      setMessages(prev => [...prev, {
+        role: 'assistant',
+        content: "Great! I've sent your contact information to Giovanni. He'll get back to you as soon as possible. Is there anything else you'd like to know about his work or experience?",
+        id: Date.now().toString()
+      }]);
+      
+    } catch (error) {
+      console.error('Error submitting contact form:', error);
+      
+      // Add error message to chat
+      setMessages(prev => [...prev, {
+        role: 'assistant',
+        content: "I'm having trouble sending your contact information. Please try again or use the contact form at the bottom of the page.",
+        id: Date.now().toString()
+      }]);
+    } finally {
+      setIsSubmittingInfo(false);
     }
   }
 
-  // Custom submit handler
+  // Handle contact form input through chat
+  const handleContactFormInput = (message: string) => {
+    const lowercaseMessage = message.toLowerCase().trim();
+    
+    // Check if user wants to exit the contact form flow
+    const exitKeywords = ['cancel', 'exit', 'stop', 'quit', 'no thanks', 'nevermind', 'never mind', 'no', 'don\'t want to'];
+    
+    if (exitKeywords.some(keyword => lowercaseMessage.includes(keyword))) {
+      // Reset contact form
+      setContactFormStep(0);
+      setContactFormData({
+        email: '',
+        service: '',
+        message: ''
+      });
+      
+      // Add message to chat
+      setTimeout(() => {
+        setMessages(prev => [...prev, {
+          role: 'assistant',
+          content: "No problem! I've canceled the contact form. Is there anything else I can help you with about Giovanni's experience or services?",
+          id: Date.now().toString()
+        }]);
+        
+        // Scroll to the messages end
+        scrollToBottom();
+      }, 500);
+      
+      return;
+    }
+    
+    // Process based on current step
+    switch (contactFormStep) {
+      case 1: // Email step
+        // Check if this is a conversational response rather than an email
+        const conversationalPhrases = [
+          'lets continue', 'let\'s continue', 'continue', 'go ahead', 'proceed',
+          'lets chat', 'let\'s chat', 'chat', 'talk', 'discuss', 'help me',
+          'i want to', 'i would like', 'i\'d like', 'yes', 'sure', 'okay', 'ok',
+          'lets do it', 'let\'s do it', 'do it', 'sounds good', 'alright',
+          'lets contact', 'let\'s contact', 'contact in the chat', 'continue in the chat',
+          'continue here', 'through the chat', 'chat option', 'first option'
+        ];
+        
+        // If it's a conversational response, ask for email again more clearly
+        if (conversationalPhrases.some(phrase => lowercaseMessage.includes(phrase))) {
+          setTimeout(() => {
+            setMessages(prev => [...prev, {
+              role: 'assistant',
+              content: "I'll need your email address to proceed with the contact form. Please provide a valid email address (like example@domain.com) or type 'cancel' to exit this process.",
+              id: Date.now().toString()
+            }]);
+            scrollToBottom();
+          }, 500);
+          return;
+        }
+        
+        // Basic email validation
+        const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+        if (emailRegex.test(message)) {
+          // Save email
+          setContactFormData(prev => ({
+            ...prev,
+            email: message
+          }));
+          
+          // Move to next step
+          setContactFormStep(2);
+          
+          // Ask for service interest
+          setTimeout(() => {
+            setMessages(prev => [...prev, {
+              role: 'assistant',
+              content: "Great! What type of service are you interested in? (e.g., Web Development, Mobile App, AI Integration, Consulting, etc.) Or type 'cancel' if you want to stop the contact process.",
+              id: Date.now().toString()
+            }]);
+            
+            // Scroll to the messages end
+            scrollToBottom();
+          }, 500);
+        } else {
+          // Invalid email format
+          setTimeout(() => {
+            setMessages(prev => [...prev, {
+              role: 'assistant',
+              content: "I need a valid email address to continue (like example@domain.com). If you'd prefer not to provide an email, you can type 'cancel' to exit and use the contact form below instead.",
+              id: Date.now().toString()
+            }]);
+            
+            // Scroll to the messages end
+            scrollToBottom();
+          }, 500);
+        }
+        break;
+        
+      case 2: // Service step
+        // Save service
+        setContactFormData(prev => ({
+          ...prev,
+          service: message
+        }));
+        
+        // Move to next step
+        setContactFormStep(3);
+        
+        // Ask for project description
+        setTimeout(() => {
+          setMessages(prev => [...prev, {
+            role: 'assistant',
+            content: "Thanks! Please provide a brief description of your project or what you'd like to discuss with Giovanni. Or type 'cancel' if you want to stop the contact process.",
+            id: Date.now().toString()
+          }]);
+          
+          // Scroll to the messages end
+          scrollToBottom();
+        }, 500);
+        break;
+        
+      case 3: // Message step
+        // Save message
+        setContactFormData(prev => ({
+          ...prev,
+          message: message
+        }));
+        
+        // Submit the form
+        handleChatContactSubmit();
+        break;
+        
+      default:
+        break;
+    }
+  }
+
+  // Update handleSubmit to handle contact requests
   const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     
-    if (!input.trim()) return;
+    const currentInput = input.trim();
+    if (!currentInput) return;
     
     // Check if user info has been submitted
     if (!userInfo.submitted && !shouldShowUserForm) {
       // Save the user's message for later
-      const savedMessage = input.trim();
+      const savedMessage = currentInput;
       
       // Show the user info form
       setShouldShowUserForm(true);
@@ -411,7 +729,7 @@ export function ModernChatBox() {
       // Add user message to chat
       const userMessage: ChatMessage = {
         role: 'user',
-        content: input,
+        content: currentInput,
         id: Date.now().toString()
       };
       
@@ -422,7 +740,7 @@ export function ModernChatBox() {
       setTimeout(() => {
         setMessages(prev => [...prev, {
           role: 'assistant',
-          content: "Before I answer, could you please share your name and phone number? This helps Giovanni keep track of who's interested in his work.",
+          content: "Sure, but could you please share your name and phone number first? This helps Giovanni keep track of who's interested in his work.",
           id: Date.now().toString()
         }]);
       }, 500);
@@ -430,20 +748,78 @@ export function ModernChatBox() {
       return;
     }
     
-    // If user info form is showing, don't process new messages
-    if (shouldShowUserForm) {
-      return;
-    }
-    
+    // If we're in contact form flow, handle that separately
+    if (contactFormStep > 0) {
     // Add user message to chat
     const userMessage: ChatMessage = {
       role: 'user',
-      content: input,
+        content: currentInput,
       id: Date.now().toString()
     };
     
     setMessages(prev => [...prev, userMessage]);
     setInput('');
+      
+      // Process the contact form input
+      handleContactFormInput(currentInput);
+      return;
+    }
+    
+    // If we get here, either user info is submitted or we're showing the form
+    // If we're showing the form, don't process the message yet
+    if (shouldShowUserForm) {
+      return;
+    }
+    
+    // Add user message to chat (skip if it's already in the messages array)
+    const messageExists = messages.some(msg => 
+      msg.role === 'user' && msg.content === currentInput
+    );
+    
+    let userMessage: ChatMessage;
+    
+    if (!messageExists) {
+      userMessage = {
+        role: 'user' as const,
+        content: currentInput,
+        id: Date.now().toString()
+      };
+      
+      setMessages(prev => [...prev, userMessage]);
+    } else {
+      userMessage = messages.find(msg => 
+        msg.role === 'user' && msg.content === currentInput
+      ) as ChatMessage;
+    }
+    
+    setInput('');
+    
+    // Check if this is a contact request
+    if (isContactRequest(currentInput) && userInfo.submitted) {
+      // Scroll to contact section first
+      console.log("Contact request detected, scrolling to contact section");
+      setTimeout(() => {
+        scrollToSection("contact");
+      }, 100);
+      
+      // Start contact form flow
+      setContactFormStep(1);
+      
+      // Ask for email and offer both options
+      setTimeout(() => {
+        setMessages(prev => [...prev, {
+          role: 'assistant',
+          content: "I'd be happy to help you get in touch with Giovanni! You have two options:\n\n1. Continue here in the chat and I'll guide you through a simple form (I already have your name and phone number)\n2. Use the contact form below that you can fill out directly\n\nIf you'd like to continue through the chat, please provide your email address. Or you can type 'cancel' at any time to exit this process.",
+          id: Date.now().toString()
+        }]);
+        
+        // Scroll to the messages end
+        scrollToBottom();
+      }, 500);
+      
+      return;
+    }
+    
     setIsLoading(true);
     
     // Add typing indicator immediately
@@ -455,20 +831,6 @@ export function ModernChatBox() {
     }]);
     
     try {
-      // Check which section the user is asking about
-      const sectionToScrollTo = checkForSectionQuery(userMessage.content);
-      
-      // If user asked about a specific section, scroll to that section
-      if (sectionToScrollTo) {
-        // Keep the chat window open as requested
-        console.log(`Scrolling to ${sectionToScrollTo} section while keeping chat open`);
-        
-        // Scroll to the section without closing the chat
-        setTimeout(() => {
-          scrollToSection(sectionToScrollTo);
-        }, 300);
-      }
-      
       // Send message to API with retry logic
       let response;
       let retryCount = 0;
@@ -477,16 +839,16 @@ export function ModernChatBox() {
       while (retryCount <= maxRetries) {
         try {
           response = await fetch('/api/chat', {
-            method: 'POST',
-            headers: {
-              'Content-Type': 'application/json',
-            },
-            body: JSON.stringify({
-              messages: messages.filter(msg => !msg.isTyping).concat(userMessage),
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          messages: messages.filter(msg => !msg.isTyping).concat(userMessage),
               userInfo: userInfo // Include user info with the request
-            }),
-          });
-          
+        }),
+      });
+      
           // If successful, break out of retry loop
           if (response.ok) break;
           
@@ -539,6 +901,52 @@ export function ModernChatBox() {
         };
         
         setMessages(prev => [...prev.filter(msg => !msg.isTyping), assistantMessage]);
+        
+        // Check if the AI response contains a scroll instruction
+        const scrollMatch = data.content.match(/\[SCROLL_TO:(\w+)\]/i);
+        console.log("Checking for scroll tag in response:", data.content.substring(0, 100));
+        
+        if (scrollMatch && scrollMatch[1]) {
+          const sectionToScrollTo = scrollMatch[1].toLowerCase();
+          console.log(`AI requested scroll to section: ${sectionToScrollTo}`);
+          
+          // Remove the scroll instruction from the displayed message
+          const cleanedContent = data.content.replace(/\[SCROLL_TO:\w+\]/i, '').trim();
+          
+          // Update the message with cleaned content
+          setMessages(prev => 
+            prev.map(msg => 
+              msg.id === assistantMessage.id 
+                ? {...msg, content: cleanedContent} 
+                : msg
+            )
+          );
+          
+          // Scroll to the requested section with a slight delay to ensure the DOM is ready
+          setTimeout(() => {
+            console.log(`Executing scroll to ${sectionToScrollTo} from AI instruction`);
+            scrollToSection(sectionToScrollTo);
+          }, 500); // Increased delay to ensure DOM is ready
+        } else {
+          // Check for section-specific keywords in the message as a fallback
+          console.log("No scroll tag found, checking for section keywords in message");
+          
+          // Extract the first 50 characters of the message for keyword checking
+          const messageStart = data.content.substring(0, 50).toLowerCase();
+          
+          if (messageStart.includes("work experience") || 
+              messageStart.includes("work history") || 
+              messageStart.includes("companies") ||
+              messageStart.includes("employment")) {
+            console.log("Detected experience-related content, scrolling to experience section");
+            setTimeout(() => scrollToSection("experience"), 500);
+          } else if (messageStart.includes("certification") || 
+                     messageStart.includes("credential") || 
+                     messageStart.includes("certificate")) {
+            console.log("Detected certificate-related content, scrolling to certificates section");
+            setTimeout(() => scrollToSection("certificates"), 500);
+          }
+        }
         
         // Notify if chat is closed
         if (!isOpen) {
@@ -597,51 +1005,51 @@ export function ModernChatBox() {
   const handleUserInfoSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     
-    // Reset validation errors
-    setValidationErrors({
-      name: '',
-      phoneNumber: ''
-    });
+    if (isSubmittingInfo) return;
+    
+    setIsSubmittingInfo(true);
     
     // Validate inputs
-    let hasErrors = false;
+    let valid = true;
+    const errors = {
+      name: '',
+      phoneNumber: ''
+    };
     
     if (!userInfo.name.trim()) {
-      setValidationErrors(prev => ({
-        ...prev,
-        name: 'Name is required'
-      }));
-      hasErrors = true;
+      errors.name = 'Name is required';
+      valid = false;
     }
     
     if (!userInfo.phoneNumber.trim()) {
-      setValidationErrors(prev => ({
-        ...prev,
-        phoneNumber: 'Phone number is required'
-      }));
-      hasErrors = true;
+      errors.phoneNumber = 'Phone number is required';
+      valid = false;
     } else {
-      // Basic phone number validation
-      const phoneRegex = /^[\d\+\-\(\) ]{7,20}$/;
+      // Basic phone validation
+      const phoneRegex = /^\+?[0-9\s\-\(\)]{7,}$/;
       if (!phoneRegex.test(userInfo.phoneNumber)) {
-        setValidationErrors(prev => ({
-          ...prev,
-          phoneNumber: 'Please enter a valid phone number'
-        }));
-        hasErrors = true;
+        errors.phoneNumber = 'Please enter a valid phone number';
+        valid = false;
       }
     }
     
-    if (hasErrors) {
+    if (!valid) {
+      setValidationErrors(errors);
+      setIsSubmittingInfo(false);
       return;
     }
     
-    // Set loading state
-    setIsSubmittingInfo(true);
+    // Add a temporary message to show submission is in progress
+    const submittingMessageId = Date.now().toString();
+    setMessages(prev => [...prev, {
+      role: 'assistant',
+      content: 'Submitting your information...',
+      id: submittingMessageId
+    }]);
     
     try {
-      // Save user info to the database
-      const response = await fetch('/api/contact', {
+      // Send user info to API - using the new endpoint
+      const response = await fetch('/api/chat/user', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -655,89 +1063,86 @@ export function ModernChatBox() {
       
       if (!response.ok) {
         const errorData = await response.json();
-        throw new Error(errorData.error || 'Failed to save contact information');
+        throw new Error(errorData.error || 'Failed to submit contact information');
       }
       
-      // Get the contact ID from the response
       const data = await response.json();
       
-      // Mark the user info as submitted and store the contact ID
-      setUserInfo(prev => ({ 
-        ...prev, 
+      // Update user info with contact ID and submitted status
+      const updatedUserInfo = {
+        ...userInfo,
         submitted: true,
-        contactId: data.contactId
-      }));
+        contactId: data.contactId || data.id
+      };
       
-      // Hide the user info form
+      setUserInfo(updatedUserInfo);
+      
+      // Save user info to localStorage
+      if (typeof window !== 'undefined') {
+        localStorage.setItem('chatUserInfo', JSON.stringify(updatedUserInfo));
+      }
+      
+      // Hide the form
       setShouldShowUserForm(false);
       
-      // Save the user's initial message if there is one
-      const savedMessage = input.trim();
+      // Find the welcome message and user's first message
+      const welcomeMessage = messages.find(msg => msg.id === "welcome");
+      const userFirstMessage = messages.find(msg => msg.role === "user");
       
-      // Add a personalized greeting with the user's name
-      setTimeout(() => {
-        // Show typing indicator first
-        setMessages([{ 
-          id: 'greeting-typing', 
-          role: 'assistant', 
-          content: '', 
-          isTyping: true 
-        }]);
-        
-        // Then show the actual greeting after a delay
-        setTimeout(() => {
-          // Replace with more human-sounding messages
-          const humanGreetings = [
-            `Great to meet you, ${userInfo.name}! I'm Giovanni's AI assistant. Giovanni is currently open to job opportunities. What would you like to know about his work?`,
-            `Thanks ${userInfo.name}! I'm an AI assistant built by Giovanni. He's currently available for new opportunities. What brings you to his portfolio today? 😊`,
-            `Hi ${userInfo.name}! I'm Giovanni's AI assistant. Giovanni is open to job opportunities and ready to work. How can I help you explore his portfolio?`,
-            `Nice to meet you, ${userInfo.name}! I'm an AI assistant built and trained by Giovanni. He's currently seeking new opportunities. Feel free to ask me anything about his projects, skills, or experience. 👨‍💻`,
-            `Thanks for connecting, ${userInfo.name}! I'm Giovanni's AI assistant. Giovanni is available for new roles. What would you like to explore in his portfolio?`,
-            `${userInfo.name}, it's great to connect! I'm an AI assistant built by Giovanni to tell you about his work. He's currently open to job opportunities. What are you interested in? 🚀`,
-            `Hey ${userInfo.name}! Thanks for sharing your info. I'm Giovanni's AI assistant - Giovanni is available for new opportunities. What part of his background or projects would you like to know more about?`,
-            `Oh hey, ${userInfo.name}! I'm an AI assistant built and trained by Giovanni. He's currently seeking new roles. What can I tell you about his experience or projects?`,
-            `Great, thanks ${userInfo.name}! I'm Giovanni's AI assistant here to help. Giovanni is open to job opportunities. Anything specific you're curious about?`,
-            `Nice to meet you, ${userInfo.name}! I'm an AI assistant built by Giovanni. He's currently available for work. What brings you to his portfolio? Anything I can help with?`,
-            `Hey there ${userInfo.name}! I'm Giovanni's AI assistant. Giovanni is open to new opportunities. What would you like to know about his work? 😊`,
-            `${userInfo.name}! Great to connect with you. I'm an AI assistant built by Giovanni. He's currently seeking new roles. What would you like to know about his background or projects?`
-          ];
-          
-          // Pick a random greeting
-          const randomGreeting = humanGreetings[Math.floor(Math.random() * humanGreetings.length)];
-          
-          setMessages([{
-            id: 'greeting-message',
-            role: 'assistant',
-            content: randomGreeting
-          }]);
-          
-          // Process the user's initial message if there was one
-          if (savedMessage) {
-            setTimeout(() => {
-              // Create a synthetic form event to submit the saved message
-              const formEvent = new Event('submit', { bubbles: true, cancelable: true }) as unknown as React.FormEvent<HTMLFormElement>;
-              
-              // Set the input to the saved message
-              setInput(savedMessage);
-              
-              // Small delay to ensure the input is set
+      // Create a new messages array with the welcome message and thank you message
+      const newMessages: ChatMessage[] = [];
+      
+      // Keep the welcome message
+      if (welcomeMessage) {
+        newMessages.push(welcomeMessage);
+      }
+      
+      // Keep the user's first message if it exists
+      if (userFirstMessage) {
+        newMessages.push(userFirstMessage);
+      }
+      
+      // Add the thank you message
+      newMessages.push({
+        role: 'assistant' as const,
+        content: `Thanks ${userInfo.name}! Now, how can I help you learn more about Giovanni's experience and skills?`,
+        id: Date.now().toString()
+      });
+      
+      // Update messages
+      setMessages(newMessages);
+      
+      // Process the user's first question if it exists
+      if (userFirstMessage) {
+        // Add a small delay before processing the first question
               setTimeout(() => {
-                handleSubmit(formEvent);
-              }, 50);
-            }, 800);
-          }
-        }, 300);
-      }, 100);
+          // Call handleSubmit programmatically with the first question
+          const fakeEvent = { preventDefault: () => {} } as React.FormEvent<HTMLFormElement>;
+          setInput(userFirstMessage.content);
+          handleSubmit(fakeEvent);
+        }, 1000);
+      }
       
     } catch (error) {
-      console.error("Error submitting user info:", error)
+      console.error('Error submitting user info:', error);
       
-      // Add an error message to the chat
+      // Remove the submitting message
+      setMessages(prev => prev.filter(msg => msg.id !== submittingMessageId));
+      
+      // Add error message
       setMessages(prev => [...prev, {
-        id: Math.random().toString(36).substring(2, 15),
-        role: "assistant",
-        content: "Hmm, looks like I'm having connection issues right now. Sorry about that! As Giovanni's AI assistant, I sometimes run into technical hiccups. Maybe try again in a bit? 🙄"
-      }])
+        role: 'assistant',
+        content: 'Sorry, there was an error submitting your information. Please try again.',
+        id: Date.now().toString()
+      }]);
+      
+      // Show validation error if any
+      if (error instanceof Error) {
+        setValidationErrors({
+          ...errors,
+          phoneNumber: error.message
+        });
+      }
     } finally {
       setIsSubmittingInfo(false);
     }
@@ -794,8 +1199,24 @@ export function ModernChatBox() {
           position: relative;
         }
         
+        /* Adjust navbar to stay centered with content when sidebar is active */
+        body.with-chat-sidebar .fixed.top-0.left-0.right-0.z-\[100\] {
+          transition: padding-right 0.3s ease;
+          padding-right: 350px;
+        }
+        
+        /* Adjust navbar's inner container to maintain proper width */
+        body.with-chat-sidebar .fixed.top-0.left-0.right-0.z-\[100\] .max-w-5xl {
+          margin-left: auto;
+          margin-right: auto;
+        }
+        
         @media (max-width: 768px) {
           body.with-chat-sidebar {
+            padding-right: 0;
+          }
+          
+          body.with-chat-sidebar .fixed.top-0.left-0.right-0.z-\[100\] {
             padding-right: 0;
           }
         }
@@ -1131,8 +1552,8 @@ export function ModernChatBox() {
                         {validationErrors.name && (
                           <div className="form-error mt-1">{validationErrors.name}</div>
                         )}
-                      </div>
-                      
+              </div>
+              
                       <div className="animate-fadeIn" style={{ animationDelay: "200ms" }}>
                         <input
                           type="tel"
@@ -1200,36 +1621,36 @@ export function ModernChatBox() {
                       ? "bg-black/30 border border-white/10" 
                       : "bg-white/50 border border-black/10"
                   )}>
-                    <textarea
+                  <textarea
                       ref={inputRef}
-                      value={input}
-                      onChange={handleInputChange}
+                    value={input}
+                    onChange={handleInputChange}
                       onKeyDown={handleKeyDown}
                       placeholder="Ask me anything..."
-                      className={cn(
+                    className={cn(
                         "flex-1 p-2.5 rounded-lg resize-none text-sm modern-input",
-                        isDark 
+                      isDark 
                           ? "bg-transparent border-none focus:ring-0 placeholder-gray-500 text-white" 
                           : "bg-transparent border-none focus:ring-0 placeholder-gray-500 text-black",
-                        "focus:outline-none"
-                      )}
+                      "focus:outline-none"
+                    )}
                       style={{ height: `${textareaHeight}px` }}
-                      rows={1}
-                    />
-                    <button
-                      type="submit"
-                      disabled={isLoading || !input.trim()}
-                      className={cn(
+                    rows={1}
+                  />
+                  <button
+                    type="submit"
+                    disabled={isLoading || !input.trim()}
+                    className={cn(
                         "p-2.5 rounded-xl transition-all shadow-sm hover:shadow",
-                        isDark 
+                      isDark 
                           ? "bg-white hover:bg-white/90 text-black" 
                           : "bg-black hover:bg-black/90 text-white",
-                        (isLoading || !input.trim()) && "opacity-50 cursor-not-allowed"
-                      )}
-                    >
+                      (isLoading || !input.trim()) && "opacity-50 cursor-not-allowed"
+                    )}
+                  >
                       <Send className="h-4 w-4" />
-                    </button>
-                  </div>
+                  </button>
+                </div>
                   
                   {/* AI capabilities hint */}
                   <div className="mt-2 flex justify-center">
@@ -1255,8 +1676,8 @@ export function ModernChatBox() {
                         Explore skills
                       </span>
                     </div>
-                  </div>
-                </form>
+                </div>
+              </form>
               )}
             </ResizableBox>
           </motion.div>

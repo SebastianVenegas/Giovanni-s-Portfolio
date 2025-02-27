@@ -12,18 +12,39 @@ export function Contact() {
   const [formState, setFormState] = useState({
     name: "",
     email: "",
+    phone: "",
     service: "",
     message: ""
   })
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [isSubmitted, setIsSubmitted] = useState(false)
+  const [error, setError] = useState<string | null>(null)
   
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     setIsSubmitting(true)
+    setError(null)
     
-    // Simulate form submission
-    setTimeout(() => {
+    try {
+      console.log('Submitting form data:', formState)
+      
+      // Send data to the API endpoint
+      const response = await fetch('/api/contact', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(formState),
+      })
+      
+      const data = await response.json()
+      console.log('API response:', data)
+      
+      if (!response.ok) {
+        throw new Error(data.error || 'Failed to send message')
+      }
+      
+      // Show success message
       setIsSubmitting(false)
       setIsSubmitted(true)
       
@@ -33,11 +54,20 @@ export function Contact() {
         setFormState({
           name: "",
           email: "",
+          phone: "",
           service: "",
           message: ""
         })
-      }, 3000)
-    }, 1500)
+      }, 5000)
+    } catch (err) {
+      setIsSubmitting(false)
+      setError(err instanceof Error ? err.message : 'An unexpected error occurred')
+      
+      // Hide error message after 5 seconds
+      setTimeout(() => {
+        setError(null)
+      }, 5000)
+    }
   }
   
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => {
@@ -131,7 +161,7 @@ export function Contact() {
                     initial={{ opacity: 0, x: -20 }}
                     animate={hasBeenViewed ? { opacity: 1, x: 0 } : {}}
                     transition={{ duration: 0.3, delay: 0.4 }}
-                    href="mailto:Giovanni@v.com"
+                    href="mailto:Giovanni@vanguardsd.com"
                     className={cn(
                       "flex items-center gap-4 group p-4",
                       "rounded-xl",
@@ -246,9 +276,20 @@ export function Contact() {
                       <CheckCircle className="h-8 w-8" />
                     </div>
                     <h3 className="text-xl font-semibold text-gray-900 dark:text-white mb-2">Message Sent!</h3>
-                    <p className="text-gray-600 dark:text-gray-300 text-center max-w-xs">
+                    <p className="text-gray-600 dark:text-gray-300 text-center max-w-xs mb-4">
                       Thank you for reaching out. I'll get back to you as soon as possible.
                     </p>
+                  </motion.div>
+                )}
+                
+                {/* Error message */}
+                {error && (
+                  <motion.div 
+                    initial={{ opacity: 0, y: -10 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    className="mb-4 p-3 rounded-lg bg-red-100 dark:bg-red-900/30 text-red-600 dark:text-red-400 text-sm"
+                  >
+                    <p>{error}</p>
                   </motion.div>
                 )}
                 
@@ -301,6 +342,30 @@ export function Contact() {
                       )}
                       placeholder="Your email"
                       required
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <label className="text-sm font-medium text-gray-900 dark:text-gray-200">
+                      Phone (optional)
+                    </label>
+                    <motion.input
+                      whileFocus={{ scale: 1.01 }}
+                      type="tel"
+                      name="phone"
+                      value={formState.phone}
+                      onChange={handleChange}
+                      className={cn(
+                        "w-full px-4 py-3 rounded-xl",
+                        "bg-black/5 dark:bg-white/5",
+                        "border border-black/10 dark:border-white/10",
+                        "focus:border-primary/50 dark:focus:border-primary/50",
+                        "focus:ring-2 focus:ring-primary/20 dark:focus:ring-primary/20",
+                        "text-gray-900 dark:text-white",
+                        "placeholder:text-gray-500 dark:placeholder:text-gray-400",
+                        "transition-all duration-300",
+                        "outline-none"
+                      )}
+                      placeholder="Your phone number"
                     />
                   </div>
                   <div className="space-y-2">
@@ -400,6 +465,6 @@ export function Contact() {
       </div>
     </section>
   )
-} 
+}
 
 // for domain name change

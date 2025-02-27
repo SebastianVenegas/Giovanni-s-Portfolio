@@ -8,6 +8,7 @@ import { Home, User, Briefcase, FolderGit2, Cpu, Award, Mail, Menu, X } from "lu
 import { ThemeSwitch } from "./theme-switch"
 import { useTheme } from "next-themes"
 import { useMounted } from "./theme-provider"
+import Image from "next/image"
 
 const navItems = [
   { id: "hero", label: "Home", icon: Home },
@@ -136,9 +137,18 @@ export function FloatingNav() {
           )}
         >
           <div className="flex h-12 items-center justify-between">
-            {/* Logo/Brand for mobile */}
-            <div className="md:hidden flex items-center">
-              <span className="font-semibold text-gray-900 dark:text-white">GV</span>
+            {/* Logo for both mobile and desktop */}
+            <div className="flex items-center">
+              <Image 
+                src="/GV Fav.png" 
+                alt="GV Logo" 
+                width={28} 
+                height={28} 
+                className={cn(
+                  "rounded-full",
+                  isDark ? "" : "brightness-0"
+                )}
+              />
             </div>
             
             {/* Desktop Navigation */}

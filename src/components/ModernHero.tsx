@@ -13,6 +13,7 @@ import {
   Linkedin,
   Award,
   Briefcase,
+  Sparkles,
 } from "lucide-react"
 import { useTheme } from "next-themes"
 import { useMounted } from "./theme-provider"
@@ -419,6 +420,7 @@ export default function ModernHero() {
   return (
     <div className="relative min-h-screen flex items-center justify-center py-12 overflow-hidden bg-gray-100 dark:bg-[#0a0a0a]">
       {mounted && <canvas ref={canvasRef} className="absolute inset-0 z-0 opacity-50" />}
+      
       <div className="container mx-auto px-4 relative z-10">
         <div className="flex flex-col lg:flex-row items-center justify-center gap-16 w-full">
           {/* Profile Content */}
@@ -696,7 +698,7 @@ export default function ModernHero() {
               </motion.div>
             </motion.div>
 
-            {/* CTAs */}
+            {/* Action Buttons */}
             <motion.div
               initial={{ y: 20, opacity: 0 }}
               animate={{ y: 0, opacity: 1 }}
@@ -709,11 +711,12 @@ export default function ModernHero() {
                   "bg-neutral-900 hover:bg-neutral-800 text-white",
                   "dark:bg-white dark:hover:bg-neutral-200 dark:text-black",
                 )}
-                onClick={() => (window.location.href = "mailto:Giovanni@vanguardsd.com")}
+                onClick={() => (window.location.href = "mailto:contact@giovanniv.com")}
               >
                 <Mail className="mr-2 h-4 w-4" />
                 Contact Me
               </Button>
+              
               <Button
                 className={cn(
                   "w-full sm:w-[200px] h-12 rounded-xl text-base font-medium",
@@ -725,6 +728,92 @@ export default function ModernHero() {
                 <Code className="mr-2 h-4 w-4" />
                 View My Work
               </Button>
+              
+              <motion.div
+                whileHover={{ scale: 1.03 }}
+                className="relative w-full sm:w-[200px]"
+              >
+                {/* Glow effect */}
+                <div className="absolute inset-0 rounded-xl bg-gradient-to-r from-cyan-400 to-blue-500 opacity-30 blur-md animate-pulse" />
+                
+                <Button
+                  className={cn(
+                    "w-full h-12 rounded-xl text-base font-medium relative z-10",
+                    "bg-white hover:bg-neutral-100 text-neutral-900 border border-neutral-200",
+                    "dark:bg-neutral-900 dark:hover:bg-neutral-800 dark:text-white dark:border-neutral-800",
+                  )}
+                  onClick={() => {
+                    console.log("Opening chat box in sidebar mode");
+                    // Try multiple methods to ensure the chat box opens in sidebar mode
+                    try {
+                      const chatBox = document.querySelector('.chat-box');
+                      if (chatBox) {
+                        // @ts-ignore
+                        chatBox.style.display = 'block';
+                        
+                        // First, make sure the chat is open
+                        const toggleButton = document.querySelector('.chat-toggle-button');
+                        if (toggleButton) {
+                          // @ts-ignore
+                          toggleButton.click();
+                        }
+                        
+                        // Then, find and click the sidebar mode button
+                        setTimeout(() => {
+                          const sidebarButton = document.querySelector('.sidebar-mode-button');
+                          if (sidebarButton) {
+                            // @ts-ignore
+                            sidebarButton.click();
+                          } else {
+                            // Try to find the sidebar button by its icon or other attributes
+                            const allButtons = document.querySelectorAll('button');
+                            for (const btn of allButtons) {
+                              if (btn.innerHTML.includes('Layout') || 
+                                  btn.getAttribute('aria-label')?.includes('sidebar') ||
+                                  btn.classList.contains('sidebar-toggle')) {
+                                btn.click();
+                                break;
+                              }
+                            }
+                          }
+                        }, 300); // Small delay to ensure chat is open first
+                      } else {
+                        // Alternative: try to find the button by other means
+                        const chatButtons = document.querySelectorAll('button');
+                        for (const btn of chatButtons) {
+                          if (btn.innerHTML.includes('MessageSquare') || 
+                              btn.classList.contains('chat-toggle-button') ||
+                              btn.getAttribute('aria-label')?.includes('chat')) {
+                            btn.click();
+                            
+                            // Then try to activate sidebar mode
+                            setTimeout(() => {
+                              const allButtons = document.querySelectorAll('button');
+                              for (const sidebarBtn of allButtons) {
+                                if (sidebarBtn.innerHTML.includes('Layout') || 
+                                    sidebarBtn.getAttribute('aria-label')?.includes('sidebar') ||
+                                    sidebarBtn.classList.contains('sidebar-toggle')) {
+                                  sidebarBtn.click();
+                                  break;
+                                }
+                              }
+                            }, 300);
+                            break;
+                          }
+                        }
+                      }
+                    } catch (err) {
+                      console.error("Error opening chat in sidebar mode:", err);
+                    }
+                  }}
+                >
+                  <Sparkles className="mr-2 h-4 w-4 text-blue-500 dark:text-blue-400 animate-pulse" />
+                  <span className="relative">
+                    AI Assistant
+                    <span className="absolute -bottom-1 left-0 w-full h-[1px] bg-gradient-to-r from-transparent via-blue-500 to-transparent"></span>
+                  </span>
+                </Button>
+              </motion.div>
             </motion.div>
 
             {/* Social Links */}
@@ -906,4 +995,5 @@ export default function ModernHero() {
     </div>
   )
 }
+
 
