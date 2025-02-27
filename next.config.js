@@ -7,6 +7,20 @@ const nextConfig = {
     // Warning: This allows production builds to successfully complete even if
     // your project has ESLint errors.
     ignoreDuringBuilds: true,
+  },
+  webpack: (config, { isServer }) => {
+    // Fix for PostgreSQL client in serverless environment
+    if (!isServer) {
+      // Don't resolve 'fs' module on the client to prevent this error on build
+      config.resolve.fallback = {
+        fs: false,
+        net: false,
+        tls: false,
+        pg: false,
+        'pg-native': false,
+      }
+    }
+    return config
   }
 }
 

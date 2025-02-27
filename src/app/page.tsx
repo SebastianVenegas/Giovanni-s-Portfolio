@@ -8,7 +8,7 @@ import { Certifications } from '@/components/sections/certifications'
 import { Contact } from '@/components/sections/contact'
 import { ScrollToTop } from '@/components/ScrollToTop'
 import { CompanyBanner } from '@/components/CompanyBanner'
-import { ChatBox } from '@/components/ChatBox'
+import { ModernChatBox } from '@/components/ModernChatBox'
 
 export default function Home() {
   return (  
@@ -27,7 +27,7 @@ export default function Home() {
       <Projects />
       <Certifications />
       <Contact />
-      <ChatBox />
+      <ModernChatBox />
     </main>
   )
 }

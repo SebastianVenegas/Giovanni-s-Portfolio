@@ -74,15 +74,31 @@ export function ChatBox() {
   const [userInfo, setUserInfo] = useState<UserInfo>({
     name: '',
     phoneNumber: '',
-    submitted: false
+    submitted: false // Set to false by default so we show the form
   })
   
+  // Add validation state
+  const [validationErrors, setValidationErrors] = useState({
+    name: '',
+    phoneNumber: ''
+  })
+  
+  // Add loading state for form submission
+  const [isSubmittingInfo, setIsSubmittingInfo] = useState(false)
+  
   // Custom chat state
-  const [messages, setMessages] = useState<ChatMessage[]>([
-    { id: 'welcome-message', role: "assistant", content: "Hi there! I'm Giovanni's AI assistant. How can I help you today?" }
-  ])
+  const [messages, setMessages] = useState<ChatMessage[]>([])
   const [input, setInput] = useState("")
   const [isLoading, setIsLoading] = useState(false)
+
+  // Add initial welcome message when component mounts
+  useEffect(() => {
+    if (messages.length === 0) {
+      setMessages([
+        { id: 'welcome-message', role: "assistant", content: "Hi there! I'm Giovanni's AI assistant. How can I help you today?" }
+      ]);
+    }
+  }, [messages.length]);
 
   // Scroll to bottom of messages
   useEffect(() => {
@@ -402,10 +418,8 @@ export function ChatBox() {
   const handleEndChat = () => {
     console.log("Ending chat session");
     
-    // Reset messages to initial state
-    setMessages([
-      { id: 'welcome-message', role: "assistant", content: "Hi there! I'm Giovanni's AI assistant. How can I help you today?" }
-    ]);
+    // Reset messages to empty array
+    setMessages([]);
     
     // Close the chat window
     setIsOpen(false);
@@ -415,28 +429,83 @@ export function ChatBox() {
   }
 
   // Handle user info submission
-  const handleUserInfoSubmit = (e: React.FormEvent<HTMLFormElement>) => {
+  const handleUserInfoSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     
+    // Reset validation errors
+    setValidationErrors({
+      name: '',
+      phoneNumber: ''
+    });
+    
     // Validate inputs
-    if (!userInfo.name.trim() || !userInfo.phoneNumber.trim()) {
+    let hasErrors = false;
+    
+    if (!userInfo.name.trim()) {
+      setValidationErrors(prev => ({
+        ...prev,
+        name: 'Name is required'
+      }));
+      hasErrors = true;
+    }
+    
+    if (!userInfo.phoneNumber.trim()) {
+      setValidationErrors(prev => ({
+        ...prev,
+        phoneNumber: 'Phone number is required'
+      }));
+      hasErrors = true;
+    } else {
+      // Basic phone number validation
+      const phoneRegex = /^[\d\+\-\(\) ]{7,20}$/;
+      if (!phoneRegex.test(userInfo.phoneNumber)) {
+        setValidationErrors(prev => ({
+          ...prev,
+          phoneNumber: 'Please enter a valid phone number'
+        }));
+        hasErrors = true;
+      }
+    }
+    
+    if (hasErrors) {
       return;
     }
     
-    // Update user info state to mark as submitted
-    setUserInfo(prev => ({
-      ...prev,
-      submitted: true
-    }));
+    // Set loading state
+    setIsSubmittingInfo(true);
     
-    // Add personalized welcome message
-    setMessages([
-      { 
-        id: 'welcome-message', 
-        role: "assistant", 
-        content: `Hi ${userInfo.name}! I'm Giovanni's AI assistant. How can I help you today?` 
+    try {
+      // Save user info to the database
+      const response = await fetch('/api/contact', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          name: userInfo.name,
+          phoneNumber: userInfo.phoneNumber
+        }),
+      });
+      
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.error || 'Failed to save contact information');
       }
-    ]);
+      
+      // Mark the user info as submitted
+      setUserInfo(prev => ({ ...prev, submitted: true }))
+    } catch (error) {
+      console.error("Error submitting user info:", error)
+      
+      // Add an error message to the chat
+      setMessages(prev => [...prev, {
+        id: Math.random().toString(36).substring(2, 15),
+        role: "assistant",
+        content: "I'm sorry, but I'm having trouble connecting right now. Please try again later."
+      }])
+    } finally {
+      setIsSubmittingInfo(false);
+    }
   };
 
   // Handle user info input changes
@@ -446,434 +515,228 @@ export function ChatBox() {
       ...prev,
       [name]: value
     }));
+    
+    // Clear validation error when user types
+    if (validationErrors[name as keyof typeof validationErrors]) {
+      setValidationErrors(prev => ({
+        ...prev,
+        [name]: ''
+      }));
+    }
   };
 
   return (
     <>
-      {/* Chat Button */}
-      <motion.button
-        initial={{ scale: 0.8, opacity: 0 }}
-        animate={{ scale: 1, opacity: 1 }}
-        whileHover={{ scale: 1.05 }}
-        whileTap={{ scale: 0.95 }}
-        onClick={() => setIsOpen(true)}
+      {/* Chat button */}
+      <Button
+        onClick={() => setIsOpen(!isOpen)}
         className={cn(
-          "fixed bottom-6 right-6 z-50 flex items-center justify-center",
-          "w-14 h-14 rounded-full shadow-lg",
-          "glass-effect backdrop-blur-md",
-          isDark 
-            ? "bg-black/40 border border-white/10 hover:bg-black/50" 
-            : "bg-white/70 border border-black/5 hover:bg-white/80",
-          "transition-all duration-300"
+          "fixed bottom-4 right-4 z-50 rounded-full p-3 shadow-lg transition-all duration-300",
+          isOpen ? "bg-red-500 hover:bg-red-600" : "bg-primary hover:bg-primary/90",
+          hasNewMessages && !isOpen && "animate-pulse"
         )}
-        aria-label="Chat with Giovanni"
+        aria-label={isOpen ? "Close chat" : "Open chat"}
       >
-        <div className="relative">
-          <MessageSquare className={cn(
-            "h-6 w-6",
-            isDark ? "text-white/90" : "text-gray-900"
-          )} />
-          {hasNewMessages && (
-            <motion.div 
-              initial={{ scale: 0 }}
-              animate={{ scale: 1 }}
-              className="absolute -top-1 -right-1 w-3 h-3 bg-red-500 rounded-full"
-            />
-          )}
-        </div>
-      </motion.button>
+        {isOpen ? (
+          <X className="h-6 w-6" />
+        ) : (
+          <div className="relative">
+            <MessageSquare className="h-6 w-6" />
+            {hasNewMessages && (
+              <span className="absolute -right-1 -top-1 flex h-3 w-3">
+                <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-red-400 opacity-75"></span>
+                <span className="relative inline-flex h-3 w-3 rounded-full bg-red-500"></span>
+              </span>
+            )}
+          </div>
+        )}
+      </Button>
 
-      {/* Chat Modal */}
+      {/* Chat window */}
       <AnimatePresence>
         {isOpen && (
-          <>
-            {/* Backdrop */}
-            <motion.div
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              exit={{ opacity: 0 }}
-              transition={{ duration: 0.2 }}
-              className="fixed inset-0 bg-black/20 backdrop-blur-sm z-50 md:hidden"
-              onClick={() => setIsOpen(false)}
-            />
-
-            {/* Chat Window */}
-            <motion.div
-              initial={{ opacity: 0, y: 20, scale: 0.95 }}
-              animate={{ opacity: 1, y: 0, scale: 1 }}
-              exit={{ opacity: 0, y: 20, scale: 0.95 }}
-              transition={{ duration: 0.3, type: "spring", stiffness: 300, damping: 25 }}
-              className={cn(
-                "fixed z-50 flex flex-col",
-                "bottom-6 right-6 w-[90vw] sm:w-[400px] h-[70vh] sm:h-[500px] rounded-2xl",
-                "shadow-xl overflow-hidden",
-                "glass-effect backdrop-blur-md",
-                isDark 
-                  ? "bg-black/60 border border-white/10" 
-                  : "bg-white/80 border border-black/5",
-              )}
-            >
-              {/* Decorative elements */}
-              <div className="absolute top-0 left-0 w-40 h-40 bg-gray-500/5 dark:bg-gray-300/5 rounded-full blur-3xl -z-10" />
-              <div className="absolute bottom-0 right-0 w-60 h-60 bg-gray-500/5 dark:bg-gray-300/5 rounded-full blur-3xl -z-10" />
-              
-              {/* Header */}
-              <div className={cn(
-                "flex items-center justify-between px-5 py-4",
-                "border-b",
-                isDark 
-                  ? "border-white/10 bg-black/20" 
-                  : "border-black/5 bg-white/20"
-              )}>
-                <div className="flex items-center gap-3">
-                  <div className="relative">
-                    <div className={cn(
-                      "flex items-center justify-center w-8 h-8 rounded-full",
-                      isDark ? "bg-white/10" : "bg-black/5"
-                    )}>
-                      <Sparkles className={cn(
-                        "h-4 w-4",
-                        isDark ? "text-white/90" : "text-gray-900"
-                      )} />
-                    </div>
-                    <motion.div 
-                      animate={{ 
-                        scale: [1, 1.2, 1],
-                        opacity: [0.5, 1, 0.5]
-                      }}
-                      transition={{ 
-                        duration: 2, 
-                        repeat: Infinity,
-                        ease: "easeInOut" 
-                      }}
-                      className={cn(
-                        "absolute inset-0 rounded-full -z-10",
-                        isDark ? "bg-white/5" : "bg-black/5"
-                      )}
-                    />
-                  </div>
-                  <h3 className={cn(
-                    "font-medium text-base",
-                    isDark ? "text-white/90" : "text-gray-900"
-                  )}>
-                    Giovanni's Assistant
-                  </h3>
+          <motion.div
+            initial={{ opacity: 0, y: 20, scale: 0.95 }}
+            animate={{ opacity: 1, y: 0, scale: 1 }}
+            exit={{ opacity: 0, y: 20, scale: 0.95 }}
+            transition={{ duration: 0.2 }}
+            className={cn(
+              "fixed bottom-20 right-4 z-50 flex h-[500px] w-[350px] flex-col rounded-xl shadow-2xl",
+              isDark ? "bg-zinc-900 text-white border border-zinc-800" : "bg-white text-black border border-zinc-200"
+            )}
+          >
+            {/* Chat header */}
+            <div className={cn(
+              "flex items-center justify-between rounded-t-xl p-4",
+              isDark ? "bg-zinc-800" : "bg-zinc-100"
+            )}>
+              <div className="flex items-center gap-2">
+                <div className="bg-primary/20 p-1.5 rounded-lg">
+                  <Sparkles className="h-5 w-5 text-primary" />
                 </div>
-                <div className="flex items-center gap-2">
-                  {/* End Chat button - Only show when user has submitted info */}
-                  {userInfo.submitted && (
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      onClick={handleEndChat}
-                      className={cn(
-                        "h-8 px-3 rounded-full flex items-center gap-1",
-                        isDark 
-                          ? "text-white/70 hover:text-white hover:bg-white/10" 
-                          : "text-gray-700 hover:text-gray-900 hover:bg-black/5"
-                      )}
-                    >
-                      <Trash2 className="h-3.5 w-3.5" />
-                      <span className="text-xs">End Chat</span>
-                    </Button>
+                <h3 className="font-medium">Giovanni's AI Assistant</h3>
+              </div>
+              <div className="flex items-center gap-1">
+                <Button
+                  onClick={handleEndChat}
+                  variant="ghost"
+                  size="sm"
+                  className="h-8 w-8 rounded-full hover:bg-red-500/10 hover:text-red-500 transition-colors"
+                  aria-label="End chat"
+                >
+                  <Trash2 className="h-4 w-4" />
+                </Button>
+                <Button
+                  onClick={() => setIsOpen(false)}
+                  variant="ghost"
+                  size="sm"
+                  className="h-8 w-8 rounded-full hover:bg-zinc-500/10 transition-colors"
+                  aria-label="Close chat"
+                >
+                  <X className="h-4 w-4" />
+                </Button>
+              </div>
+            </div>
+
+            {/* Chat content */}
+            <div 
+              ref={messagesContainerRef}
+              className="flex-1 overflow-y-auto p-4 space-y-4"
+            >
+              {messages.map((message) => (
+                <div
+                  key={message.id}
+                  className={cn(
+                    "flex flex-col max-w-[85%] rounded-lg p-3",
+                    message.role === "user"
+                      ? "ml-auto bg-primary text-primary-foreground"
+                      : isDark
+                      ? "bg-zinc-800"
+                      : "bg-zinc-100"
                   )}
-                  
-                  {/* Close button */}
-                  <Button
-                    variant="ghost"
-                    size="sm"
+                >
+                  <span className="text-xs opacity-70 mb-1">
+                    {message.role === "user" ? "You" : "AI Assistant"}
+                  </span>
+                  <div className="whitespace-pre-wrap">{message.content}</div>
+                </div>
+              ))}
+              <div ref={messagesEndRef} />
+            </div>
+
+            {/* Scroll to bottom button */}
+            {showScrollButton && (
+              <Button
+                onClick={scrollToBottom}
+                variant="outline"
+                size="sm"
+                className="absolute bottom-[80px] right-4 h-8 w-8 rounded-full opacity-80 shadow-md"
+              >
+                <ChevronDown className="h-4 w-4" />
+              </Button>
+            )}
+
+            {/* Chat input or user info form */}
+            {userInfo.submitted ? (
+              <form onSubmit={handleChatSubmit} className="p-3 pt-2 border-t">
+                <div className="relative">
+                  <Textarea
+                    ref={inputRef}
+                    value={input}
+                    onChange={handleInputChange}
+                    onKeyDown={handleKeyDown}
+                    placeholder="Type a message..."
                     className={cn(
-                      "h-8 w-8 rounded-full",
-                      isDark ? "hover:bg-white/10" : "hover:bg-black/5"
+                      "min-h-[36px] w-full resize-none pr-10",
+                      isDark ? "bg-zinc-800" : "bg-white"
                     )}
-                    onClick={() => setIsOpen(false)}
-                    aria-label="Close chat"
+                    style={{ height: `${textareaHeight}px` }}
+                    disabled={isLoading}
+                  />
+                  <Button
+                    type="submit"
+                    size="sm"
+                    className="absolute bottom-1 right-1 h-8 w-8"
+                    disabled={isLoading || !input.trim()}
                   >
-                    <X className={cn(
-                      "h-4 w-4",
-                      isDark ? "text-white/80" : "text-gray-700"
-                    )} />
+                    <Send className="h-4 w-4" />
                   </Button>
                 </div>
-              </div>
-              
-              {/* User Info Form or Chat Content */}
-              {!userInfo.submitted ? (
-                <div className="flex-1 p-5 overflow-y-auto">
-                  <div className="mb-4 text-center">
-                    <h3 className={cn(
-                      "text-lg font-medium mb-2",
-                      isDark ? "text-white/90" : "text-gray-900"
-                    )}>
-                      Before we chat
-                    </h3>
-                    <p className={cn(
-                      "text-sm",
-                      isDark ? "text-white/70" : "text-gray-600"
-                    )}>
-                      Please provide your information to continue
-                    </p>
+              </form>
+            ) : (
+              <form onSubmit={handleUserInfoSubmit} className="p-4 pt-2 border-t">
+                <div className="space-y-3">
+                  <div>
+                    <label htmlFor="name" className="block text-sm font-medium mb-1">
+                      Your Name
+                    </label>
+                    <input
+                      type="text"
+                      id="name"
+                      name="name"
+                      value={userInfo.name}
+                      onChange={handleUserInfoChange}
+                      className={cn(
+                        "w-full rounded-md border px-3 py-2 text-sm",
+                        isDark 
+                          ? "bg-zinc-800 border-zinc-700 text-white" 
+                          : "bg-white border-zinc-300 text-black",
+                        validationErrors.name && "border-red-500"
+                      )}
+                      placeholder="Enter your name"
+                      disabled={isSubmittingInfo}
+                    />
+                    {validationErrors.name && (
+                      <p className="mt-1 text-xs text-red-500">{validationErrors.name}</p>
+                    )}
                   </div>
                   
-                  <form onSubmit={handleUserInfoSubmit} className="space-y-4">
-                    <div className="space-y-2">
-                      <label 
-                        htmlFor="name" 
-                        className={cn(
-                          "block text-sm font-medium",
-                          isDark ? "text-white/80" : "text-gray-700"
-                        )}
-                      >
-                        Your Name
-                      </label>
-                      <input
-                        type="text"
-                        id="name"
-                        name="name"
-                        value={userInfo.name}
-                        onChange={handleUserInfoChange}
-                        required
-                        className={cn(
-                          "w-full px-3 py-2 rounded-lg",
-                          "border focus:outline-none focus:ring-2",
-                          isDark 
-                            ? "bg-black/20 border-white/10 text-white focus:ring-white/30" 
-                            : "bg-white/80 border-black/10 text-gray-900 focus:ring-black/20"
-                        )}
-                        placeholder="Enter your name"
-                      />
-                    </div>
-                    
-                    <div className="space-y-2">
-                      <label 
-                        htmlFor="phoneNumber" 
-                        className={cn(
-                          "block text-sm font-medium",
-                          isDark ? "text-white/80" : "text-gray-700"
-                        )}
-                      >
-                        Phone Number
-                      </label>
-                      <input
-                        type="tel"
-                        id="phoneNumber"
-                        name="phoneNumber"
-                        value={userInfo.phoneNumber}
-                        onChange={handleUserInfoChange}
-                        required
-                        className={cn(
-                          "w-full px-3 py-2 rounded-lg",
-                          "border focus:outline-none focus:ring-2",
-                          isDark 
-                            ? "bg-black/20 border-white/10 text-white focus:ring-white/30" 
-                            : "bg-white/80 border-black/10 text-gray-900 focus:ring-black/20"
-                        )}
-                        placeholder="Enter your phone number"
-                      />
-                    </div>
-                    
-                    <Button
-                      type="submit"
+                  <div>
+                    <label htmlFor="phoneNumber" className="block text-sm font-medium mb-1">
+                      Phone Number
+                    </label>
+                    <input
+                      type="tel"
+                      id="phoneNumber"
+                      name="phoneNumber"
+                      value={userInfo.phoneNumber}
+                      onChange={handleUserInfoChange}
                       className={cn(
-                        "w-full py-2 rounded-lg transition-all",
+                        "w-full rounded-md border px-3 py-2 text-sm",
                         isDark 
-                          ? "bg-white/10 hover:bg-white/20 text-white" 
-                          : "bg-black/80 hover:bg-black text-white"
+                          ? "bg-zinc-800 border-zinc-700 text-white" 
+                          : "bg-white border-zinc-300 text-black",
+                        validationErrors.phoneNumber && "border-red-500"
                       )}
-                    >
-                      Start Chatting
-                    </Button>
-                  </form>
-                </div>
-              ) : (
-                <>
-                  {/* Messages Container */}
-                  <div 
-                    ref={messagesContainerRef}
-                    className={cn(
-                      "flex-1 overflow-y-auto p-5 space-y-5",
-                      "scrollbar-thin",
-                      isDark 
-                        ? "scrollbar-thumb-white/10 scrollbar-track-transparent" 
-                        : "scrollbar-thumb-black/10 scrollbar-track-transparent"
+                      placeholder="Enter your phone number"
+                      disabled={isSubmittingInfo}
+                    />
+                    {validationErrors.phoneNumber && (
+                      <p className="mt-1 text-xs text-red-500">{validationErrors.phoneNumber}</p>
                     )}
-                  >
-                    {messages.map((message, index) => (
-                      <motion.div
-                        key={message.id}
-                        initial={{ opacity: 0, y: 10 }}
-                        animate={{ opacity: 1, y: 0 }}
-                        transition={{ 
-                          duration: 0.3, 
-                          delay: 0.05 * (index % 3),
-                          type: "spring",
-                          stiffness: 300,
-                          damping: 25
-                        }}
-                        className={cn(
-                          "flex",
-                          message.role === "user" ? "justify-end" : "justify-start"
-                        )}
-                      >
-                        <div className={cn(
-                          "max-w-[85%] rounded-2xl px-4 py-3",
-                          message.role === "user"
-                            ? isDark 
-                              ? "bg-gradient-to-br from-gray-800 to-gray-900 text-white shadow-md border border-white/10" 
-                              : "bg-gradient-to-br from-gray-900 to-gray-700 text-white shadow-md"
-                            : isDark 
-                              ? "bg-white/5 text-white/90 border border-white/10 shadow-sm" 
-                              : "bg-white/80 text-gray-900 border border-black/5 shadow-sm backdrop-blur-sm"
-                        )}>
-                          <p className="text-sm whitespace-pre-wrap leading-relaxed">{message.content}</p>
-                        </div>
-                      </motion.div>
-                    ))}
-                    {isLoading && (
-                      <motion.div 
-                        initial={{ opacity: 0, y: 10 }}
-                        animate={{ opacity: 1, y: 0 }}
-                        transition={{ type: "spring", stiffness: 300, damping: 25 }}
-                        className="flex justify-start"
-                      >
-                        <div className={cn(
-                          "max-w-[85%] rounded-2xl px-4 py-3",
-                          isDark 
-                            ? "bg-white/5 text-white/90 border border-white/10 shadow-sm" 
-                            : "bg-white/80 text-gray-900 border border-black/5 shadow-sm backdrop-blur-sm"
-                        )}>
-                          <div className="flex space-x-2">
-                            <motion.div 
-                              animate={{ 
-                                y: [0, -3, 0],
-                                opacity: [0.6, 1, 0.6]
-                              }}
-                              transition={{ 
-                                duration: 1.2, 
-                                repeat: Infinity,
-                                repeatType: "loop",
-                                ease: "easeInOut",
-                                times: [0, 0.5, 1],
-                                delay: 0
-                              }}
-                              className={cn(
-                                "w-2 h-2 rounded-full",
-                                isDark ? "bg-gray-500 dark:bg-gray-400" : "bg-gray-400"
-                              )}
-                            />
-                            <motion.div 
-                              animate={{ 
-                                y: [0, -3, 0],
-                                opacity: [0.6, 1, 0.6]
-                              }}
-                              transition={{ 
-                                duration: 1.2, 
-                                repeat: Infinity,
-                                repeatType: "loop",
-                                ease: "easeInOut",
-                                times: [0, 0.5, 1],
-                                delay: 0.15
-                              }}
-                              className={cn(
-                                "w-2 h-2 rounded-full",
-                                isDark ? "bg-gray-400 dark:bg-gray-300" : "bg-gray-600"
-                              )}
-                            />
-                            <motion.div 
-                              animate={{ 
-                                y: [0, -3, 0],
-                                opacity: [0.6, 1, 0.6]
-                              }}
-                              transition={{ 
-                                duration: 1.2, 
-                                repeat: Infinity,
-                                repeatType: "loop",
-                                ease: "easeInOut",
-                                times: [0, 0.5, 1],
-                                delay: 0.3
-                              }}
-                              className={cn(
-                                "w-2 h-2 rounded-full",
-                                isDark ? "bg-gray-300 dark:bg-gray-200" : "bg-gray-800"
-                              )}
-                            />
-                          </div>
-                        </div>
-                      </motion.div>
-                    )}
-                    <div ref={messagesEndRef} />
                   </div>
-
-                  {/* Scroll to bottom button */}
-                  <AnimatePresence>
-                    {showScrollButton && (
-                      <motion.button
-                        initial={{ opacity: 0, scale: 0.8 }}
-                        animate={{ opacity: 1, scale: 1 }}
-                        exit={{ opacity: 0, scale: 0.8 }}
-                        transition={{ duration: 0.2 }}
-                        onClick={scrollToBottom}
-                        className={cn(
-                          "absolute bottom-20 right-4 z-10 p-2 rounded-full shadow-md",
-                          "backdrop-blur-sm",
-                          isDark 
-                            ? "bg-black/60 text-white/90 hover:bg-black/80 border border-white/10" 
-                            : "bg-white/80 text-gray-900 hover:bg-white/90 border border-black/5"
-                        )}
-                      >
-                        <ChevronDown className="h-4 w-4" />
-                      </motion.button>
+                  
+                  <Button
+                    type="submit"
+                    className="w-full"
+                    disabled={isSubmittingInfo}
+                  >
+                    {isSubmittingInfo ? (
+                      <div className="flex items-center justify-center">
+                        <svg className="animate-spin -ml-1 mr-2 h-4 w-4 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                          <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                          <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                        </svg>
+                        Processing...
+                      </div>
+                    ) : (
+                      "Continue to Chat"
                     )}
-                  </AnimatePresence>
-
-                  {/* Input */}
-                  <form onSubmit={handleChatSubmit} className={cn(
-                    "p-4",
-                    "border-t",
-                    isDark ? "border-white/10" : "border-black/5"
-                  )}>
-                    <div className={cn(
-                      "flex items-end gap-2",
-                      "rounded-xl p-2",
-                      isDark ? "bg-white/5" : "bg-black/5"
-                    )}>
-                      <textarea
-                        ref={inputRef}
-                        value={input}
-                        onChange={(e) => {
-                          handleInputChange(e);
-                          handleTextareaResize();
-                        }}
-                        onKeyDown={handleKeyDown}
-                        placeholder="Type a message..."
-                        style={{ height: `${textareaHeight}px` }}
-                        className={cn(
-                          "flex-1 resize-none overflow-y-auto py-2 px-3 text-sm",
-                          "bg-transparent border-0 focus:ring-0 focus:outline-none rounded-lg",
-                          isDark ? "text-white/90 placeholder:text-white/50" : "text-gray-900 placeholder:text-gray-500"
-                        )}
-                        rows={1}
-                      />
-                      <Button
-                        type="submit"
-                        disabled={!input.trim() || isLoading}
-                        className={cn(
-                          "h-9 w-9 rounded-full flex items-center justify-center",
-                          "transition-all duration-300",
-                          isDark 
-                            ? "bg-white/10 text-white/90 hover:bg-white/20 border border-white/10" 
-                            : "bg-black/10 text-gray-900 hover:bg-black/20 border border-black/5",
-                          "disabled:opacity-50 disabled:cursor-not-allowed"
-                        )}
-                      >
-                        <Send className="h-4 w-4" />
-                      </Button>
-                    </div>
-                  </form>
-                </>
-              )}
-            </motion.div>
-          </>
+                  </Button>
+                </div>
+              </form>
+            )}
+          </motion.div>
         )}
       </AnimatePresence>
     </>
