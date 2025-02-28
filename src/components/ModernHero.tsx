@@ -711,7 +711,7 @@ export default function ModernHero() {
                   "bg-neutral-900 hover:bg-neutral-800 text-white",
                   "dark:bg-white dark:hover:bg-neutral-200 dark:text-black",
                 )}
-                onClick={() => (window.location.href = "mailto:contact@giovanniv.com")}
+                onClick={() => document.getElementById("contact")?.scrollIntoView({ behavior: "smooth" })}
               >
                 <Mail className="mr-2 h-4 w-4" />
                 Contact Me

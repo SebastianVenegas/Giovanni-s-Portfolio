@@ -160,7 +160,7 @@ export function About() {
                 </div>
                 <div className="flex ml-auto gap-3">
                   <motion.a
-                    href="https://github.com/yourusername"
+                    href="https://github.com/GiovanniV"
                     target="_blank"
                     rel="noopener noreferrer"
                     className="p-2 rounded-full bg-gray-100 hover:bg-gray-200 text-gray-700 dark:bg-black/40 dark:text-gray-300 dark:hover:bg-black/60 transition-colors"
@@ -170,7 +170,7 @@ export function About() {
                     <Github className="h-5 w-5" />
                   </motion.a>
                   <motion.a
-                    href="https://linkedin.com/in/yourusername"
+                    href="https://www.linkedin.com/in/giovannivenegas"
                     target="_blank"
                     rel="noopener noreferrer"
                     className="p-2 rounded-full bg-gray-100 hover:bg-gray-200 text-gray-700 dark:bg-black/40 dark:text-gray-300 dark:hover:bg-black/60 transition-colors"
