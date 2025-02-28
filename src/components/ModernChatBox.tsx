@@ -216,15 +216,28 @@ export function ModernChatBox() {
   // Add initial welcome message when component mounts
   useEffect(() => {
     if (isOpen && messages.length === 0) {
-      setMessages([
-        {
-          id: "welcome",
-          role: "assistant",
-          content: userInfo.submitted 
-            ? `Welcome back, ${userInfo.name}! I'm NextGio AI, Giovanni's custom-trained AI assistant. How can I help you today?`
-            : "Hello! I'm NextGio AI, a custom-trained AI assistant developed by Giovanni Venegas. Welcome to Giovanni's portfolio website, which showcases his work as a software engineer and AI specialist. This site highlights Giovanni's projects, skills, and professional experience in web development, AI integration, and enterprise solutions. Giovanni is currently available for new projects and collaborations. How can I help you learn more about Giovanni's expertise or answer any questions you might have about his services?"
-        }
-      ])
+      if (userInfo.submitted) {
+        setMessages([
+          {
+            id: "welcome",
+            role: "assistant",
+            content: `👋 Welcome back, ${userInfo.name}! I'm NextGio AI, Giovanni's custom-trained AI assistant. How can I help you today?`
+          }
+        ]);
+      } else {
+        setMessages([
+          {
+            id: "welcome-1",
+            role: "assistant",
+            content: "👋 Hello! I'm NextGio AI, Giovanni's custom-trained AI assistant. Welcome to his portfolio website!"
+          },
+          {
+            id: "welcome-3",
+            role: "assistant",
+            content: "🚀 Giovanni is currently available for new projects and collaborations. How can I help you learn more about his expertise or answer any questions about his services?"
+          }
+        ]);
+      }
     }
   }, [isOpen, messages.length, userInfo.submitted, userInfo.name])
   
@@ -360,104 +373,56 @@ export function ModernChatBox() {
     }
     
     if (element) {
-      // Use a more reliable scrolling method
+      // Use a direct scrolling method without any transitions or animations that could affect theme
       try {
-        // First try scrollIntoView with a slight delay to ensure DOM is ready
-        setTimeout(() => {
-          console.log(`Executing scrollIntoView for element:`, element);
-          element!.scrollIntoView({ 
-            behavior: "smooth", 
-            block: "start" 
-          });
+        // Get the element's position
+        const rect = element.getBoundingClientRect();
+        const scrollTop = window.pageYOffset || document.documentElement.scrollTop;
+        const targetPosition = scrollTop + rect.top - 80; // 80px offset for headers
         
-          console.log(`Scrolled to element with id: ${actualSectionId}`);
-          
-          // Also add a fallback with window.scrollTo for better cross-browser support
-          setTimeout(() => {
-            const rect = element!.getBoundingClientRect();
-            const scrollTop = window.pageYOffset || document.documentElement.scrollTop;
-            const targetPosition = scrollTop + rect.top - 80; // 80px offset for headers
-          
-            console.log(`Executing window.scrollTo to position: ${targetPosition}`);
-            window.scrollTo({
-              top: targetPosition,
-              behavior: 'smooth'
-            });
-            
-            console.log(`Fallback scroll to position: ${targetPosition}`);
-            
-            // Create a temporary highlight overlay instead of modifying the element's style
-            // This prevents theme flickering issues
-            const overlay = document.createElement('div');
-            overlay.style.position = 'absolute';
-            overlay.style.top = '0';
-            overlay.style.left = '0';
-            overlay.style.width = '100%';
-            overlay.style.height = '100%';
-            
-            // Use theme-appropriate colors for the highlight
-            const isDarkMode = document.documentElement.classList.contains('dark');
-            overlay.style.backgroundColor = isDarkMode 
-              ? 'rgba(30, 41, 59, 0.2)' // Dark blue for dark mode
-              : 'rgba(255, 255, 255, 0.6)'; // White for light mode
-              
-            overlay.style.pointerEvents = 'none'; // Make sure it doesn't interfere with clicks
-            overlay.style.zIndex = '1';
-            overlay.style.borderRadius = '4px';
-            overlay.style.transition = 'opacity 0.5s ease-in-out';
-            
-            // Save the original position value
-            const originalPosition = element!.style.position;
-            
-            // Only set position to relative if it's not already positioned
-            if (originalPosition !== 'absolute' && originalPosition !== 'relative' && originalPosition !== 'fixed') {
-              element!.style.position = 'relative';
-            }
-            
-            // Add the overlay to the element
-            element!.appendChild(overlay);
-            
-            // Remove the overlay after animation completes
-            setTimeout(() => {
-              if (element!.contains(overlay)) {
-                element!.removeChild(overlay);
-              }
-              
-              // Restore original position if we changed it
-              if (originalPosition !== 'absolute' && originalPosition !== 'relative' && originalPosition !== 'fixed') {
-                element!.style.position = originalPosition;
-              }
-            }, 1500);
-            
-          }, 100);
-        }, 100);
+        console.log(`Scrolling directly to position: ${targetPosition}`);
+        
+        // Use a single scrollTo operation with smooth behavior
+        window.scrollTo({
+          top: targetPosition,
+          behavior: 'smooth'
+        });
       } catch (error) {
         console.error(`Error scrolling to section ${actualSectionId}:`, error);
         
         // Last resort fallback
         try {
           console.log(`Using hash navigation as fallback: #${actualSectionId}`);
-          window.location.hash = `#${actualSectionId}`;
-          console.log(`Used hash navigation as fallback: #${actualSectionId}`);
+          // Use hash navigation without triggering history changes
+          const currentUrl = window.location.href.split('#')[0];
+          window.location.replace(`${currentUrl}#${actualSectionId}`);
         } catch (hashError) {
-          console.error("Hash navigation failed:", hashError);
+          console.error(`Hash navigation also failed:`, hashError);
         }
       }
     } else {
-      console.error(`Section not found: ${actualSectionId}`);
+      console.error(`Could not find any element for section: ${actualSectionId}`);
       
-      // Last resort: try to find any section that might match
-      console.log("Attempting to find any section that might match...");
+      // Try to find any section that might match as a last resort
       const allSections = document.querySelectorAll('section');
-      console.log(`Found ${allSections.length} sections on the page`);
+      console.log(`Looking through ${allSections.length} sections for a partial match`);
       
-      // Try to find a section with a matching ID or data attribute
       for (const section of allSections) {
-        console.log(`Checking section: ${section.id || 'no-id'}`);
-        if (section.id.toLowerCase().includes(actualSectionId.toLowerCase())) {
-          console.log(`Found section with partial ID match: ${section.id}`);
-          section.scrollIntoView({ behavior: 'smooth', block: 'start' });
-          return;
+        const sectionId = section.id || '';
+        if (sectionId.includes(actualSectionId) || actualSectionId.includes(sectionId)) {
+          console.log(`Found partial match with section id: ${sectionId}`);
+          
+          // Get the element's position
+          const rect = section.getBoundingClientRect();
+          const scrollTop = window.pageYOffset || document.documentElement.scrollTop;
+          const targetPosition = scrollTop + rect.top - 80; // 80px offset for headers
+          
+          // Use a single scrollTo operation with smooth behavior
+          window.scrollTo({
+            top: targetPosition,
+            behavior: 'smooth'
+          });
+          break;
         }
       }
     }
