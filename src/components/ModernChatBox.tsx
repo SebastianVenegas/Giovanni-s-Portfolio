@@ -1,9 +1,9 @@
 "use client"
 
-import { useEffect, useRef, useState } from "react"
+import { useEffect, useRef, useState, useLayoutEffect } from "react"
 import { useTheme } from "next-themes"
 import { Button } from "@/components/ui/button"
-import { X, Send, ChevronDown, MessageSquare, Sparkles, Trash2, Layout, Minimize2, Maximize2 } from "lucide-react"
+import { X, Send, ChevronDown, MessageSquare, Sparkles, Trash2, Layout } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { motion, AnimatePresence } from "framer-motion"
 import React from "react"
@@ -42,9 +42,18 @@ function useMounted() {
 const TypingIndicator = () => {
   return (
     <div className="flex space-x-1.5 items-center px-3 py-2">
-      <span className="w-2 h-2 rounded-full bg-primary/70 animate-pulse" style={{ animationDelay: "0ms" }}></span>
-      <span className="w-2 h-2 rounded-full bg-primary/70 animate-pulse" style={{ animationDelay: "300ms" }}></span>
-      <span className="w-2 h-2 rounded-full bg-primary/70 animate-pulse" style={{ animationDelay: "600ms" }}></span>
+      <span className={cn(
+        "w-2 h-2 rounded-full typing-dot",
+        "bg-black/70"
+      )}></span>
+      <span className={cn(
+        "w-2 h-2 rounded-full typing-dot",
+        "bg-black/70"
+      )}></span>
+      <span className={cn(
+        "w-2 h-2 rounded-full typing-dot",
+        "bg-black/70"
+      )}></span>
     </div>
   )
 }
@@ -155,56 +164,86 @@ export function ModernChatBox() {
   // Add loading state for form submission
   const [isSubmittingInfo, setIsSubmittingInfo] = useState(false)
   
-  // Add state to track if device is mobile
-  const [isMobile, setIsMobile] = useState(false)
-  
   // Custom chat state
   const [messages, setMessages] = useState<ChatMessage[]>([])
   const [input, setInput] = useState("")
   const [isLoading, setIsLoading] = useState(false)
 
-  // Detect mobile devices and set appropriate mode
-  useEffect(() => {
-    const checkMobile = () => {
-      const mobile = window.innerWidth < 768
-      setIsMobile(mobile)
-      
-      // If mobile and chat is open, automatically set to sidebar/fullscreen mode
-      if (mobile && isOpen) {
-        setSidebarMode(true)
-        setChatDimensions({ width: window.innerWidth, height: window.innerHeight })
-        document.body.classList.add('with-chat-sidebar')
-      }
-    }
-    
-    // Check on initial load
-    if (typeof window !== 'undefined') {
-      checkMobile()
-      
-      // Add resize listener
-      window.addEventListener('resize', checkMobile)
-    }
-    
-    // Cleanup
-    return () => {
-      if (typeof window !== 'undefined') {
-        window.removeEventListener('resize', checkMobile)
-      }
-    }
-  }, [isOpen])
+  // Add a new state variable to track mobile view
+  const [isMobile, setIsMobile] = useState(false)
+  const [keyboardOpen, setKeyboardOpen] = useState(false)
+  const [viewportHeight, setViewportHeight] = useState(0)
+
+  // Add a minimized state for mobile
+  const [minimizedOnMobile, setMinimizedOnMobile] = useState(false)
 
   // Handle resize with custom styling for resize handles
   const handleResize = (e: any, { size }: { size: { width: number, height: number } }) => {
-    // Don't allow resize on mobile
-    if (!isMobile) {
-      setChatDimensions({
-        width: size.width,
-        height: size.height
-      })
+    setChatDimensions({
+      width: size.width,
+      height: size.height
+    })
+  }
+
+  // Detect mobile screen and adjust layout
+  const checkMobileScreen = () => {
+    const mobileView = window.innerWidth < 768
+    setIsMobile(mobileView)
+    setViewportHeight(window.innerHeight)
+    
+    // If transitioning to mobile, automatically open in full screen sidebar mode
+    if (mobileView && !sidebarMode && isOpen) {
+      setSidebarMode(true)
+      document.body.classList.add('with-chat-sidebar')
+    }
+    
+    // Force re-layout on orientation change
+    if (mobileView) {
+      // Adjust layout immediately for orientation changes
+      setTimeout(() => {
+        if (messagesContainerRef.current) {
+          messagesContainerRef.current.scrollTop = messagesContainerRef.current.scrollHeight
+        }
+      }, 100)
     }
   }
 
-  // Toggle expanded state
+  // Add this useEffect for mobile detection
+  useEffect(() => {
+    // Initial check
+    checkMobileScreen()
+    
+    // Set up listeners for resize and viewport changes (for mobile keyboard)
+    window.addEventListener('resize', checkMobileScreen)
+    window.visualViewport?.addEventListener('resize', () => {
+      // Check if keyboard is likely open based on visual viewport height change
+      if (window.visualViewport) {
+        const heightDiff = window.innerHeight - window.visualViewport.height
+        setKeyboardOpen(heightDiff > 150) // Threshold to detect keyboard
+        setViewportHeight(window.visualViewport.height)
+        
+        // Scroll to bottom when keyboard opens
+        if (heightDiff > 150) {
+          setTimeout(() => scrollToBottom(), 100)
+        }
+      }
+    })
+    
+    return () => {
+      window.removeEventListener('resize', checkMobileScreen)
+      window.visualViewport?.removeEventListener('resize', () => {})
+    }
+  }, [])
+
+  // REMOVE automatic opening on mobile - only set mobile mode when manually opened
+  useEffect(() => {
+    if (isMobile && isOpen) {
+      setSidebarMode(true)
+      document.body.classList.add('with-chat-sidebar')
+    }
+  }, [isMobile, isOpen])
+
+  // Update toggleExpanded to handle minimization on mobile
   const toggleExpanded = () => {
     // If closing the chat, reset dimensions to default and exit all modes
     if (isOpen) {
@@ -213,10 +252,12 @@ export function ModernChatBox() {
       // Remove body class when closing
       document.body.classList.remove('with-chat-sidebar')
     } else {
-      // When opening, check if we should go directly to sidebar mode
-      if (isMobile || sidebarMode) {
+      // When opening, auto switch to sidebar mode on mobile
+      if (isMobile) {
         setSidebarMode(true)
-        setChatDimensions({ width: window.innerWidth, height: window.innerHeight })
+        setMinimizedOnMobile(false)
+        document.body.classList.add('with-chat-sidebar')
+      } else if (sidebarMode) {
         document.body.classList.add('with-chat-sidebar')
       }
     }
@@ -225,14 +266,6 @@ export function ModernChatBox() {
 
   // Toggle sidebar mode
   const toggleSidebarMode = () => {
-    // Don't allow toggling out of sidebar mode on mobile
-    if (isMobile && !sidebarMode) {
-      setSidebarMode(true)
-      setChatDimensions({ width: window.innerWidth, height: window.innerHeight })
-      document.body.classList.add('with-chat-sidebar')
-      return
-    }
-    
     if (sidebarMode) {
       // Return to default dimensions
       setChatDimensions(defaultDimensions)
@@ -263,10 +296,10 @@ export function ModernChatBox() {
   useEffect(() => {
     if (isOpen && messages.length === 0) {
       if (userInfo.submitted) {
-        setMessages([
-          {
-            id: "welcome",
-            role: "assistant",
+      setMessages([
+        {
+          id: "welcome",
+          role: "assistant",
             content: `👋 Welcome back, ${userInfo.name}! I'm NextGio AI, Giovanni's custom-trained AI assistant. How can I help you today?`
           }
         ]);
@@ -289,8 +322,10 @@ export function ModernChatBox() {
   
   // Scroll to bottom when messages change
   useEffect(() => {
-    messagesEndRef.current?.scrollIntoView({ behavior: "smooth" })
-  }, [messages])
+    if (messages.length > 0) {
+      scrollToBottom();
+    }
+  }, [messages]);
 
   // Check if scroll button should be shown
   useEffect(() => {
@@ -318,6 +353,29 @@ export function ModernChatBox() {
       setHasNewMessages(false)
     }
   }, [isOpen])
+
+  // Scroll to bottom when chat is opened or minimized state changes
+  useEffect(() => {
+    if (isOpen && !minimizedOnMobile) {
+      // First immediate scroll
+      scrollToBottom();
+      
+      // Then another scroll after a delay to ensure everything is rendered
+      const timer1 = setTimeout(() => {
+        scrollToBottom();
+      }, 300);
+      
+      // One more scroll after a longer delay for safety
+      const timer2 = setTimeout(() => {
+        scrollToBottom();
+      }, 600);
+      
+      return () => {
+        clearTimeout(timer1);
+        clearTimeout(timer2);
+      };
+    }
+  }, [isOpen, minimizedOnMobile]);
 
   // Auto-resize textarea based on content
   const handleTextareaResize = () => {
@@ -429,9 +487,9 @@ export function ModernChatBox() {
         console.log(`Scrolling directly to position: ${targetPosition}`);
         
         // Use a single scrollTo operation with smooth behavior
-        window.scrollTo({
-          top: targetPosition,
-          behavior: 'smooth'
+          window.scrollTo({
+            top: targetPosition,
+            behavior: 'smooth'
         });
       } catch (error) {
         console.error(`Error scrolling to section ${actualSectionId}:`, error);
@@ -478,16 +536,102 @@ export function ModernChatBox() {
   const isContactRequest = (message: string) => {
     const lowercaseMessage = message.toLowerCase().trim();
     
-    const contactKeywords = [
-      'contact', 'hire', 'work with', 'get in touch', 'reach out',
-      'email', 'phone', 'call', 'message', 'project', 'job', 'opportunity',
-      'connect', 'talk to', 'speak with', 'meet', 'schedule', 'appointment',
-      'consultation', 'quote', 'estimate', 'proposal', 'services',
-      'lets contact', 'let\'s contact', 'contact in the chat', 'continue in the chat',
-      'continue here', 'through the chat', 'chat option', 'first option'
+    // Don't trigger contact form for job availability questions
+    if (isJobAvailabilityQuestion(message)) {
+      return false;
+    }
+    
+    // Check for email addresses in the message - strong indicator of contact intent
+    const containsEmail = /\b[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Z|a-z]{2,}\b/.test(message);
+    
+    // Strong contact intent phrases (these almost certainly indicate a desire to contact)
+    const strongContactPhrases = [
+      'i want to contact', 'i need to contact', 'i would like to contact',
+      'can i contact', 'how do i contact', 'i want to get in touch',
+      'i need to get in touch', 'i would like to get in touch',
+      'can i get in touch', 'how do i get in touch', 'i want to reach out',
+      'i need to reach out', 'i would like to reach out', 'can i reach out',
+      'how do i reach out', 'i want to hire', 'i need to hire',
+      'i would like to hire', 'can i hire', 'how do i hire',
+      'send my info', 'send my contact', 'send my email',
+      'contact form', 'contact info', 'contact information',
+      'email him', 'email giovanni', 'call him', 'call giovanni'
     ];
     
-    return contactKeywords.some(keyword => lowercaseMessage.includes(keyword));
+    // Check for strong contact intent
+    const hasStrongContactIntent = strongContactPhrases.some(phrase => 
+      lowercaseMessage.includes(phrase)
+    );
+    
+    // If there's an email or strong contact intent, it's definitely a contact request
+    if (containsEmail || hasStrongContactIntent) {
+      return true;
+    }
+    
+    // Weaker contact keywords that might be mentioned in other contexts
+    const contactKeywords = [
+      'contact', 'hire', 'work with', 'get in touch', 'reach out',
+      'email', 'phone', 'call', 'message', 'project', 'opportunity',
+      'connect', 'talk to', 'speak with', 'meet', 'schedule', 'appointment',
+      'consultation', 'quote', 'estimate', 'proposal', 'services'
+    ];
+    
+    // Question patterns that indicate contact intent
+    const contactQuestionPatterns = [
+      'how can i', 'how do i', 'can i', 'is it possible', 
+      'would it be possible', 'i want to', 'i would like to',
+      'i need to', 'i\'d like to', 'i\'m interested in'
+    ];
+    
+    // Check if the message contains both a contact keyword and a question pattern
+    // This helps filter out casual mentions of contact-related words
+    const hasContactKeyword = contactKeywords.some(keyword => 
+      lowercaseMessage.includes(keyword)
+    );
+    
+    const hasQuestionPattern = contactQuestionPatterns.some(pattern => 
+      lowercaseMessage.includes(pattern)
+    );
+    
+    // If the message has both a contact keyword and a question pattern,
+    // it's likely a genuine contact request
+    if (hasContactKeyword && hasQuestionPattern) {
+      return true;
+    }
+    
+    // Special case for very direct messages
+    if (lowercaseMessage === 'contact' || 
+        lowercaseMessage === 'contact giovanni' || 
+        lowercaseMessage === 'i want to contact giovanni') {
+      return true;
+    }
+    
+    // For other cases, require at least 2 contact keywords to reduce false positives
+    let contactKeywordCount = 0;
+    for (const keyword of contactKeywords) {
+      if (lowercaseMessage.includes(keyword)) {
+        contactKeywordCount++;
+        if (contactKeywordCount >= 2) {
+          return true;
+        }
+      }
+    }
+    
+    return false;
+  }
+
+  // Function to check if message is asking about Giovanni's job availability
+  const isJobAvailabilityQuestion = (message: string) => {
+    const lowercaseMessage = message.toLowerCase().trim();
+    
+    const jobKeywords = [
+      'job', 'jobs', 'hiring', 'available for work', 'looking for work',
+      'open to work', 'employment', 'open for jobs', 'new job', 'new position',
+      'job hunting', 'job search', 'seeking employment', 'job opportunity',
+      'job opportunities', 'available for hire', 'available for jobs'
+    ];
+    
+    return jobKeywords.some(keyword => lowercaseMessage.includes(keyword));
   }
 
   // Handle contact form submission through chat
@@ -573,8 +717,8 @@ export function ModernChatBox() {
         content: "Great! I've sent your contact information to Giovanni. He'll get back to you as soon as possible. Is there anything else you'd like to know about his work or experience?",
         id: Date.now().toString()
       }]);
-      
-    } catch (error) {
+        
+      } catch (error) {
       console.error('Error submitting contact form:', error);
       
       // Add error message to chat
@@ -592,10 +736,51 @@ export function ModernChatBox() {
   const handleContactFormInput = (message: string) => {
     const lowercaseMessage = message.toLowerCase().trim();
     
-    // Check if user wants to exit the contact form flow
-    const exitKeywords = ['cancel', 'exit', 'stop', 'quit', 'no thanks', 'nevermind', 'never mind', 'no', 'don\'t want to'];
+    // Enhanced exit detection - check if user wants to exit the contact form flow
+    // or if they're talking about something completely different
+    const exitKeywords = [
+      'cancel', 'exit', 'stop', 'quit', 'no thanks', 'nevermind', 'never mind', 
+      'no', 'don\'t want to', 'i don\'t want', 'not interested', 'not now',
+      'maybe later', 'some other time', 'changed my mind', 'forget it',
+      'don\'t send', 'don\'t email', 'don\'t contact', 'i don\'t want to send an email',
+      'i don\'t want to contact', 'i don\'t need to contact', 'i don\'t need to get in touch',
+      'don\'t want', 'not now', 'skip', 'pass', 'i\'ll pass', 'let\'s skip', 'move on',
+      'don\'t need', 'not necessary', 'not needed', 'not required', 'not important',
+      'don\'t worry', 'forget about it', 'let\'s forget', 'let\'s not', 'i\'d rather not'
+    ];
     
-    if (exitKeywords.some(keyword => lowercaseMessage.includes(keyword))) {
+    // Check if the message is completely off-topic from contact form
+    const isOffTopic = () => {
+      // If the message is very short, it's likely not a proper response to form questions
+      if (message.length < 5 && !message.includes('@')) return true;
+      
+      // Check for common conversation starters that indicate topic change
+      const topicChangeIndicators = [
+        'tell me about', 'what is', 'how do', 'can you', 'i want to know',
+        'question', 'different topic', 'instead', 'actually', 'by the way',
+        'speaking of', 'on another note', 'changing subjects', 'moving on',
+        'let\'s talk about', 'what about', 'tell me more about', 'explain',
+        'portfolio', 'projects', 'experience', 'skills', 'background', 'education'
+      ];
+      
+      // If in email step, but message doesn't look like an email and contains topic changers
+      if (contactFormStep === 1 && !message.includes('@')) {
+        return topicChangeIndicators.some(indicator => lowercaseMessage.includes(indicator)) || 
+               exitKeywords.some(keyword => lowercaseMessage.includes(keyword));
+      }
+      
+      // If in service or message step, but message is asking a question
+      if ((contactFormStep === 2 || contactFormStep === 3) && 
+          (lowercaseMessage.includes('?') || 
+           topicChangeIndicators.some(indicator => lowercaseMessage.includes(indicator)))) {
+        return true;
+      }
+      
+      return false;
+    };
+    
+    // Exit if explicit exit keywords or detected off-topic conversation
+    if (exitKeywords.some(keyword => lowercaseMessage.includes(keyword)) || isOffTopic()) {
       // Reset contact form
       setContactFormStep(0);
       setContactFormData({
@@ -604,15 +789,13 @@ export function ModernChatBox() {
         message: ''
       });
       
-      // Add message to chat
+      // Add message to chat - more natural response
       setTimeout(() => {
         setMessages(prev => [...prev, {
           role: 'assistant',
-          content: "No problem! I've canceled the contact form. Is there anything else I can help you with about Giovanni's experience or services?",
+          content: "That's totally fine! Let's talk about something else. What would you like to know about Giovanni's work or expertise?",
           id: Date.now().toString()
         }]);
-        
-        // Scroll to the messages end
         scrollToBottom();
       }, 500);
       
@@ -632,12 +815,72 @@ export function ModernChatBox() {
           'continue here', 'through the chat', 'chat option', 'first option'
         ];
         
-        // If it's a conversational response, ask for email again more clearly
+        // Try to extract email from message if it contains an @ symbol
+        const emailMatch = message.match(/\b[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Z|a-z]{2,}\b/);
+        const extractedEmail = emailMatch ? emailMatch[0] : null;
+        
+        // If we found an email in the message
+        if (extractedEmail) {
+          // Save email
+          setContactFormData(prev => ({
+            ...prev,
+            email: extractedEmail
+          }));
+          
+          // Move to next step
+          setContactFormStep(2);
+          
+          // Ask for service interest in a more conversational way
+          setTimeout(() => {
+            setMessages(prev => [...prev, {
+              role: 'assistant',
+              content: `Thanks for your email ${extractedEmail}! What kind of project or service are you interested in discussing with Giovanni?`,
+              id: Date.now().toString()
+            }]);
+            
+            // Scroll to the messages end
+            scrollToBottom();
+          }, 500);
+          return;
+        }
+        
+        // Check for responses indicating user doesn't want to provide email
+        const noEmailPhrases = [
+          'don\'t have email', 'no email', 'without email', 'skip email',
+          'don\'t want to give', 'don\'t want to share', 'don\'t want to provide',
+          'rather not', 'prefer not', 'not comfortable', 'privacy', 'private',
+          'anonymous', 'don\'t need my email', 'don\'t need email',
+          'can we skip', 'can we continue without', 'move on without'
+        ];
+        
+        if (noEmailPhrases.some(phrase => lowercaseMessage.includes(phrase))) {
+          // Acknowledge user's preference and offer alternative
+          setTimeout(() => {
+            setMessages(prev => [...prev, {
+              role: 'assistant',
+              content: "I understand you'd prefer not to share your email. That's completely fine! Let's continue our conversation. What would you like to know about Giovanni's work or expertise?",
+              id: Date.now().toString()
+            }]);
+            
+            // Reset contact form
+            setContactFormStep(0);
+            setContactFormData({
+              email: '',
+              service: '',
+              message: ''
+            });
+            
+            scrollToBottom();
+          }, 500);
+          return;
+        }
+        
+        // If it's a conversational response without an email, ask for email again more conversationally
         if (conversationalPhrases.some(phrase => lowercaseMessage.includes(phrase))) {
           setTimeout(() => {
             setMessages(prev => [...prev, {
               role: 'assistant',
-              content: "I'll need your email address to proceed with the contact form. Please provide a valid email address (like example@domain.com) or type 'cancel' to exit this process.",
+              content: "Great! To help Giovanni get back to you, could you share your email address? Or if you prefer not to, just let me know and we can continue our conversation.",
               id: Date.now().toString()
             }]);
             scrollToBottom();
@@ -657,11 +900,11 @@ export function ModernChatBox() {
           // Move to next step
           setContactFormStep(2);
           
-          // Ask for service interest
+          // Ask for service interest in a more conversational way
           setTimeout(() => {
             setMessages(prev => [...prev, {
               role: 'assistant',
-              content: "Great! What type of service are you interested in? (e.g., Web Development, Mobile App, AI Integration, Consulting, etc.) Or type 'cancel' if you want to stop the contact process.",
+              content: "Perfect! What type of project or service are you interested in discussing with Giovanni?",
               id: Date.now().toString()
             }]);
             
@@ -669,11 +912,11 @@ export function ModernChatBox() {
             scrollToBottom();
           }, 500);
         } else {
-          // Invalid email format
+          // Invalid email format - more conversational response
           setTimeout(() => {
             setMessages(prev => [...prev, {
               role: 'assistant',
-              content: "I need a valid email address to continue (like example@domain.com). If you'd prefer not to provide an email, you can type 'cancel' to exit and use the contact form below instead.",
+              content: "I didn't quite catch a valid email address there. Could you please provide your email so Giovanni can reach out to you? Or if you prefer not to share your email, just let me know and we can talk about something else.",
               id: Date.now().toString()
             }]);
             
@@ -693,11 +936,11 @@ export function ModernChatBox() {
         // Move to next step
         setContactFormStep(3);
         
-        // Ask for project description
+        // Ask for project description in a more conversational way
         setTimeout(() => {
           setMessages(prev => [...prev, {
             role: 'assistant',
-            content: "Thanks! Please provide a brief description of your project or what you'd like to discuss with Giovanni. Or type 'cancel' if you want to stop the contact process.",
+            content: "That sounds interesting! Could you briefly describe what you have in mind for the project or what you'd like to discuss with Giovanni?",
             id: Date.now().toString()
           }]);
           
@@ -813,14 +1056,58 @@ export function ModernChatBox() {
         scrollToSection("contact");
       }, 100);
       
-      // Start contact form flow
-      setContactFormStep(1);
+      // Check if the message already contains an email address
+      const emailMatch = currentInput.match(/\b[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Z|a-z]{2,}\b/);
+      const extractedEmail = emailMatch ? emailMatch[0] : null;
       
-      // Ask for email and offer both options
+      // If we found an email in the message, start at step 2 (service)
+      if (extractedEmail) {
+        setContactFormStep(2);
+        setContactFormData(prev => ({
+          ...prev,
+          email: extractedEmail
+        }));
+        
+        // Respond acknowledging the email and asking for service
+        setTimeout(() => {
+          setMessages(prev => [...prev, {
+            role: 'assistant',
+            content: `I'd be happy to help you get in touch with Giovanni! I see your email is ${extractedEmail}. What kind of project or service are you interested in discussing with him?`,
+            id: Date.now().toString()
+          }]);
+          
+          // Scroll to the messages end
+          scrollToBottom();
+        }, 500);
+      } else {
+        // Start contact form flow at step 1 (email)
+        setContactFormStep(1);
+        
+        // Ask for email in a more conversational way
+        setTimeout(() => {
+          setMessages(prev => [...prev, {
+            role: 'assistant',
+            content: "I'd be happy to help you get in touch with Giovanni! What's your email address so he can reach out to you?",
+            id: Date.now().toString()
+          }]);
+          
+          // Scroll to the messages end
+          scrollToBottom();
+        }, 500);
+      }
+      
+      return;
+    }
+    
+    // Check if this is a job availability question
+    if (isJobAvailabilityQuestion(currentInput) && userInfo.submitted) {
+      console.log("Job availability question detected");
+      
+      // Respond with job availability information first
       setTimeout(() => {
         setMessages(prev => [...prev, {
           role: 'assistant',
-          content: "I'd be happy to help you get in touch with Giovanni! You have two options:\n\n1. Continue here in the chat and I'll guide you through a simple form (I already have your name and phone number)\n2. Use the contact form below that you can fill out directly\n\nIf you'd like to continue through the chat, please provide your email address. Or you can type 'cancel' at any time to exit this process.",
+          content: "Yes, Giovanni is currently available for new opportunities and is actively looking for interesting projects. He specializes in full-stack development with expertise in React, Node.js, and cloud technologies.\n\nWould you like to get in touch with him to discuss a potential opportunity? I can help you connect with him through the contact form or via email.",
           id: Date.now().toString()
         }]);
         
@@ -994,7 +1281,12 @@ export function ModernChatBox() {
 
   const scrollToBottom = () => {
     if (messagesEndRef.current) {
-      messagesEndRef.current.scrollIntoView({ behavior: "smooth" });
+      messagesEndRef.current.scrollIntoView({ behavior: "smooth", block: "end" });
+    }
+    
+    // Also ensure the container is scrolled to the bottom
+    if (messagesContainerRef.current) {
+      messagesContainerRef.current.scrollTop = messagesContainerRef.current.scrollHeight;
     }
   };
 
@@ -1199,6 +1491,68 @@ export function ModernChatBox() {
     }
   };
 
+  // Add minimized chat styles
+  <style jsx global>{`
+    @media (max-width: 768px) {
+      // ... existing mobile styles ...
+      
+      /* Minimized chat on mobile */
+      .minimized-mobile-chat {
+        box-shadow: 0 -4px 20px rgba(0, 0, 0, 0.2) !important;
+      }
+      
+      .minimized-header {
+        border-radius: 12px 12px 0 0 !important;
+        border-bottom: 1px solid rgba(127, 127, 127, 0.1);
+        padding-top: 12px !important;
+      }
+      
+      /* Show only header when minimized */
+      .minimized-mobile-chat .chat-scrollbar,
+      .minimized-mobile-chat form {
+        display: none !important;
+      }
+      
+      /* When the chat is minimized, allow body scrolling again */
+      body.with-chat-sidebar.allow-scroll {
+        overflow: auto !important;
+        position: static !important;
+      }
+      
+      /* Keyboard visible class */
+      .keyboard-visible {
+        position: fixed !important;
+        bottom: 0 !important;
+        left: 0 !important;
+        right: 0 !important;
+        z-index: 2100 !important;
+        transition: bottom 0.2s ease-out;
+        background-color: rgba(255, 255, 255, 0.95) !important;
+        box-shadow: 0 -4px 12px rgba(0, 0, 0, 0.15) !important;
+        padding-bottom: calc(10px + env(safe-area-inset-bottom)) !important;
+        margin: 0 !important;
+      }
+    }
+  `}</style>
+  
+  // Add effect to handle body overflow when chat is minimized on mobile
+  useEffect(() => {
+    if (isMobile && isOpen) {
+      if (minimizedOnMobile) {
+        document.body.classList.add('allow-scroll');
+      } else {
+        document.body.classList.remove('allow-scroll');
+      }
+    }
+  }, [minimizedOnMobile, isMobile, isOpen]);
+
+  // Scroll to bottom when chat is opened
+  useEffect(() => {
+    if (isOpen) {
+      setTimeout(() => scrollToBottom(), 100);
+    }
+  }, [isOpen]);
+
   return (
     <>
       {/* Add global styles for sidebar mode */}
@@ -1225,10 +1579,91 @@ export function ModernChatBox() {
         @media (max-width: 768px) {
           body.with-chat-sidebar {
             padding-right: 0;
+            overflow: hidden;
+            position: fixed;
+            width: 100%;
+            height: 100%;
           }
           
           body.with-chat-sidebar .fixed.top-0.left-0.right-0.z-\[100\] {
             padding-right: 0;
+          }
+          
+          /* Mobile chat styles */
+          .mobile-chat-box {
+            border-radius: 0 !important;
+            width: 100vw !important;
+            height: 100vh !important;
+            max-width: 100% !important;
+            max-height: 100% !important;
+            position: fixed !important;
+            top: 0 !important;
+            left: 0 !important;
+            right: 0 !important;
+            bottom: 0 !important;
+            z-index: 2000 !important;
+            margin: 0 !important;
+            transform: none !important;
+            background-color: rgba(255, 255, 255, 0.95) !important;
+          }
+          
+          /* Adjust keyboard handling */
+          .keyboard-visible {
+            position: fixed !important;
+            bottom: 0 !important;
+            left: 0 !important;
+            right: 0 !important;
+            z-index: 2100 !important;
+            transition: bottom 0.2s ease-out;
+            background-color: rgba(255, 255, 255, 0.95) !important;
+            padding-bottom: calc(10px + env(safe-area-inset-bottom)) !important;
+            margin: 0 !important;
+          }
+          
+          /* Hide the chat button when in mobile view */
+          body.with-chat-sidebar .chat-button-hidden {
+            display: none !important;
+          }
+          
+          /* Ensure message container takes proper space */
+          .mobile-chat-box .chat-scrollbar {
+            flex: 1 1 auto !important;
+            min-height: 0 !important;
+          }
+          
+          /* Improved textarea on mobile */
+          .mobile-textarea {
+            font-size: 16px !important; /* Prevent iOS zoom */
+            padding: 12px !important;
+            margin-bottom: 0 !important;
+            line-height: 1.3 !important;
+          }
+          
+          /* Fix chat input container positioning */
+          .mobile-chat-box form {
+            padding: 8px !important;
+            border-top: 1px solid rgba(127, 127, 127, 0.1);
+            box-shadow: 0 -2px 10px rgba(0, 0, 0, 0.1);
+            position: sticky !important;
+            bottom: 0 !important;
+            background-color: rgba(255, 255, 255, 0.95) !important;
+          }
+          
+          /* When keyboard is visible, ensure content remains accessible */
+          .keyboard-visible textarea {
+            max-height: 60px !important;
+          }
+          
+          /* Ensure the chat remains fixed on mobile */
+          .mobile-chat-box.sidebar-mode-active {
+            position: fixed !important;
+            width: 100vw !important;
+            height: 100vh !important;
+            transform: none !important;
+            transition: none !important;
+            top: 0 !important;
+            left: 0 !important;
+            margin: 0 !important;
           }
         }
         
@@ -1243,14 +1678,16 @@ export function ModernChatBox() {
         onClick={toggleExpanded}
         className={cn(
           "fixed bottom-4 right-4 z-50 rounded-full p-3.5 shadow-xl transition-all duration-300 hover:scale-105",
+          (isOpen && isMobile) && "chat-button-hidden",
           isOpen 
-            ? "bg-red-500 hover:bg-red-600" 
-            : isDark
-              ? "bg-white hover:bg-white/90 text-black"
-              : "bg-black hover:bg-black/90 text-white",
-          hasNewMessages && !isOpen && "animate-pulse"
+            ? "translate-y-20 opacity-0 pointer-events-none" 
+            : "translate-y-0 opacity-100 pointer-events-auto",
+          isDark 
+            ? "bg-white text-black hover:bg-gray-200" 
+            : "bg-black text-white hover:bg-gray-900",
+          hasNewMessages && "animate-bounce"
         )}
-        aria-label={isOpen ? "Close chat" : "Open chat"}
+        aria-label="Open chat"
       >
         {isOpen ? (
           <X className="h-6 w-6" />
@@ -1264,7 +1701,7 @@ export function ModernChatBox() {
                 height={32} 
                 className={cn(
                   "rounded-full",
-                  isDark ? "brightness-0" : ""
+                  isDark ? "brightness-0 invert" : ""
                 )}
               />
             </div>
@@ -1288,30 +1725,36 @@ export function ModernChatBox() {
             transition={{ duration: 0.2 }}
             className={cn(
               "fixed z-50",
-              sidebarMode 
-                ? "top-0 bottom-0 right-0 h-full" 
-                : "bottom-20 right-4"
+              isMobile
+                ? "top-0 left-0 right-0 bottom-0 w-full h-full"
+                : sidebarMode 
+                  ? "top-0 bottom-0 right-0 h-full" 
+                  : "bottom-20 right-4"
             )}
             style={{
-              zIndex: sidebarMode ? 1100 : 50,
+              zIndex: isMobile || sidebarMode ? 1100 : 50,
               pointerEvents: "auto"
             }}
           >
             <ResizableBox
-              width={chatDimensions.width}
-              height={sidebarMode ? window.innerHeight : chatDimensions.height}
-              minConstraints={[300, 400]}
+              width={isMobile ? window.innerWidth : chatDimensions.width}
+              height={isMobile ? viewportHeight : (sidebarMode ? window.innerHeight : chatDimensions.height)}
+              minConstraints={isMobile ? [window.innerWidth, 400] : [300, 400]}
               maxConstraints={
-                sidebarMode 
-                  ? [350, window.innerHeight] 
-                  : [600, 800]
+                isMobile 
+                  ? [window.innerWidth, viewportHeight]
+                  : (sidebarMode 
+                    ? [350, window.innerHeight] 
+                    : [600, 800])
               }
-              resizeHandles={sidebarMode || isMobile ? [] : ['nw']}
+              resizeHandles={isMobile || sidebarMode ? [] : ['nw']}
               onResize={handleResize}
               className={cn(
                 "flex flex-col overflow-hidden relative futuristic-border",
                 sidebarMode && "sidebar-mode sidebar-mode-active",
-                sidebarMode 
+                isMobile && "mobile-chat-box",
+                minimizedOnMobile && "minimized-mobile-chat",
+                sidebarMode || isMobile
                   ? isDark 
                     ? "bg-black border-l border-white/10" 
                     : "bg-white border-l border-black/10"
@@ -1319,6 +1762,22 @@ export function ModernChatBox() {
                     ? "bg-black/40 border border-white/10 rounded-xl backdrop-blur-md" 
                     : "bg-white/60 border border-black/10 rounded-xl backdrop-blur-md"
               )}
+              style={isMobile ? {
+                position: 'fixed',
+                bottom: 0,
+                left: 0,
+                right: 0,
+                top: minimizedOnMobile ? 'calc(100% - 60px)' : 0,
+                width: '100%',
+                height: minimizedOnMobile ? 'auto' : '100%',
+                zIndex: 1200,
+                borderRadius: 0,
+                transition: 'all 0.3s ease-in-out',
+                margin: 0,
+                transform: 'none',
+                display: 'flex',
+                flexDirection: 'column'
+              } : {}}
             >
               {/* Neural network background pattern */}
               {!sidebarMode && <div className="absolute inset-0 neural-bg opacity-10 pointer-events-none" />}
@@ -1326,25 +1785,34 @@ export function ModernChatBox() {
               {/* Chat header */}
               <div className={cn(
                 "flex items-center justify-between px-4 py-3 relative z-20",
-                sidebarMode
+                sidebarMode || isMobile
                   ? isDark 
                     ? "bg-black" 
-                    : "bg-white"
+                    : "bg-white/95"
                   : isDark 
                     ? "bg-black/30" 
-                    : "bg-white/50"
+                    : "bg-white/50",
+                minimizedOnMobile && "minimized-header"
               )}>
+                {isMobile && minimizedOnMobile && (
+                  <div 
+                    className="absolute top-0 left-0 right-0 flex justify-center p-1 cursor-pointer"
+                    onClick={() => setMinimizedOnMobile(false)}
+                  >
+                    <div className="w-12 h-1 bg-gray-500 rounded-full opacity-50"></div>
+                  </div>
+                )}
                 <div className="flex items-center space-x-3">
                   <div className="relative">
                     <div className={cn(
                       "flex h-9 w-9 items-center justify-center rounded-xl ai-pulse",
                       isDark 
-                        ? "bg-white text-black" 
+                        ? "bg-primary text-white" 
                         : "bg-black text-white"
                     )}>
                       <Image 
                         src="/GV Fav.png" 
-                        alt="NextGio AI" 
+                        alt="GV" 
                         width={24} 
                         height={24} 
                         className={cn(
@@ -1353,41 +1821,78 @@ export function ModernChatBox() {
                         )}
                       />
                     </div>
+                    <div className="absolute -bottom-1 -right-1 h-2.5 w-2.5 rounded-full bg-green-500 border-2 border-white dark:border-white"></div>
                   </div>
                   <div>
-                    <h3 className="font-medium text-sm">NextGio AI</h3>
-                    <p className="text-xs opacity-70">Giovanni's AI Assistant</p>
+                    <h3 className={cn(
+                      "font-semibold text-base",
+                      isDark ? "text-white" : "text-black"
+                    )}>Giovanni's Personal AI Assistant</h3>
+                    <div className="flex items-center text-xs">
+                      <span className={cn(
+                        "inline-block h-1.5 w-1.5 rounded-full mr-1.5",
+                        isDark ? "bg-green-500" : "bg-green-500"
+                      )}></span>
+                      <span className={cn(
+                        isDark ? "text-gray-400" : "text-gray-600"
+                      )}>
+                        Online
+                      </span>
+                    </div>
                   </div>
                 </div>
-                <div className="flex items-center space-x-2">
-                  {/* Only show sidebar toggle on non-mobile */}
-                  {!isMobile && (
-                    <Button
-                      onClick={toggleSidebarMode}
-                      size="sm"
-                      variant="ghost"
-                      className="h-8 w-8"
-                      aria-label={sidebarMode ? "Exit sidebar mode" : "Enter sidebar mode"}
-                    >
-                      {sidebarMode ? (
-                        <Minimize2 className="h-4 w-4" />
-                      ) : (
-                        <Maximize2 className="h-4 w-4" />
-                      )}
-                    </Button>
-                  )}
-                  <Button
-                    onClick={toggleExpanded}
-                    size="sm"
-                    variant={isMobile ? "default" : "ghost"}
+                <div className="flex items-center space-x-1 relative z-30">
+                  {/* Toggle sidebar mode button */}
+                  <button
+                    onClick={toggleSidebarMode}
                     className={cn(
-                      "h-8 w-8",
-                      isMobile && (isDark ? "bg-white text-black hover:bg-white/90" : "bg-black text-white hover:bg-black/90")
+                      "p-1.5 rounded-lg transition-colors",
+                      isDark 
+                        ? "hover:bg-black/10 text-gray-600" 
+                        : "hover:bg-black/10 text-gray-600",
+                      sidebarMode && "bg-primary/20"
+                    )}
+                    aria-label={sidebarMode ? "Exit sidebar mode" : "Enter sidebar mode"}
+                  >
+                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                      <rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect>
+                      <line x1="9" y1="3" x2="9" y2="21"></line>
+                    </svg>
+                  </button>
+                  
+                  {/* End chat button */}
+                  <button
+                    onClick={() => {
+                      setMessages([]);
+                      setChatDimensions(defaultDimensions);
+                      setSidebarMode(false);
+                      setIsOpen(false);
+                      document.body.classList.remove('with-chat-sidebar');
+                    }}
+                    className={cn(
+                      "p-1.5 rounded-lg transition-colors",
+                      isDark 
+                        ? "hover:bg-black/10 text-gray-600" 
+                        : "hover:bg-black/10 text-gray-600"
+                    )}
+                    aria-label="End chat"
+                  >
+                    <Trash2 className="h-4 w-4" />
+                  </button>
+                  
+                  {/* Close button */}
+                  <button
+                    onClick={toggleExpanded}
+                    className={cn(
+                      "p-1.5 rounded-lg transition-colors",
+                      isDark 
+                        ? "hover:bg-black/10 text-gray-600" 
+                        : "hover:bg-black/10 text-gray-600"
                     )}
                     aria-label="Close chat"
                   >
                     <X className="h-4 w-4" />
-                  </Button>
+                  </button>
                 </div>
               </div>
               
@@ -1396,93 +1901,111 @@ export function ModernChatBox() {
                 ref={messagesContainerRef}
                 className={cn(
                   "flex-1 overflow-y-auto p-4 space-y-4 relative z-10 chat-scrollbar",
+                  "flex flex-col",
                   isDark ? "scrollbar-thumb-white/10 hover:scrollbar-thumb-white/20" : "scrollbar-thumb-black/10 hover:scrollbar-thumb-black/20"
                 )}
                 style={{ 
-                  background: sidebarMode
+                  background: sidebarMode || isMobile
                     ? isDark 
-                      ? 'rgb(0, 0, 0)' 
-                      : 'rgb(255, 255, 255)'
+                      ? 'rgba(0, 0, 0, 0.95)' 
+                      : 'rgba(255, 255, 255, 0.95)'
                     : isDark 
-                      ? 'rgba(0, 0, 0, 0.1)' 
-                      : 'rgba(255, 255, 255, 0.1)',
-                  position: 'relative',
-                  zIndex: 10
+                      ? 'transparent' 
+                      : 'transparent',
+                  height: isMobile ? 'calc(100vh - 180px)' : '300px',
+                  overflowY: 'auto',
+                  paddingBottom: '120px',
+                  flexGrow: 1,
+                  flexShrink: 1,
+                  position: 'relative'
+                }}
+                onWheel={(e) => {
+                  // Prevent the wheel event from propagating to the parent elements
+                  e.stopPropagation();
+                }}
+                onTouchMove={(e) => {
+                  // For touch devices
+                  e.stopPropagation();
                 }}
               >
-                {messages.map((message, index) => (
+                <div className="flex-1"></div>
+                <div className="space-y-4">
+                  {messages.map((message, index) => (
                   <div
                     key={message.id}
                     className={cn(
-                      "max-w-[85%] message-animation",
+                        "max-w-[85%] message-animation",
                       message.role === "user" 
-                        ? "ml-auto" 
-                        : "mr-auto flex"
-                    )}
-                    style={{ 
-                      animationDelay: `${index * 0.1}s`
-                    }}
-                  >
-                    {message.role === "assistant" && (
-                      <div className={cn(
-                        "flex-shrink-0 h-8 w-8 rounded-xl flex items-center justify-center mr-2 mt-1",
-                        isDark 
-                          ? "bg-white text-black" 
-                          : "bg-black text-white"
-                      )}>
-                        <Image 
-                          src="/GV Fav.png" 
-                          alt="GV" 
-                          width={20} 
-                          height={20} 
-                          className={cn(
-                            "rounded-full",
-                            isDark ? "brightness-0" : ""
-                          )}
-                        />
-                      </div>
-                    )}
-                    <div
-                      className={cn(
-                        "p-3.5 shadow-sm transition-all duration-200",
-                        message.role === "user" 
-                          ? "rounded-2xl rounded-br-sm backdrop-blur-sm" 
-                          : "rounded-2xl rounded-bl-sm backdrop-blur-sm",
-                        message.role === "user"
-                          ? isDark 
-                            ? "bg-white/10 border border-white/5 text-white" 
-                            : "bg-black/10 border border-black/5 text-black"
-                          : isDark
-                            ? "bg-black/30 border border-white/5 text-white" 
-                            : "bg-white/50 border border-black/5 text-black"
+                          ? "ml-auto" 
+                          : "mr-auto flex"
                       )}
+                      style={{ 
+                        animationDelay: `${index * 0.1}s`
+                      }}
                     >
-                      {message.isTyping ? (
-                        <div className="flex space-x-1.5 items-center px-3 py-2">
-                          <span className={cn(
-                            "w-2 h-2 rounded-full typing-dot",
-                            isDark ? "bg-white/70" : "bg-black/70"
-                          )}></span>
-                          <span className={cn(
-                            "w-2 h-2 rounded-full typing-dot",
-                            isDark ? "bg-white/70" : "bg-black/70"
-                          )}></span>
-                          <span className={cn(
-                            "w-2 h-2 rounded-full typing-dot",
-                            isDark ? "bg-white/70" : "bg-black/70"
-                          )}></span>
-                        </div>
-                      ) : (
-                        <div className="text-sm leading-relaxed">
-                          {message.content}
+                      {message.role === "assistant" && (
+                        <div className={cn(
+                          "flex-shrink-0 h-8 w-8 rounded-xl flex items-center justify-center mr-2 mt-1",
+                          isDark 
+                            ? "bg-primary text-white" 
+                            : "bg-black text-white"
+                        )}>
+                          <Image 
+                            src="/GV Fav.png" 
+                            alt="GV" 
+                            width={20} 
+                            height={20} 
+                            className={cn(
+                              "rounded-full",
+                              isDark ? "brightness-0 invert" : ""
+                            )}
+                          />
                         </div>
                       )}
-                    </div>
+                      <div
+                        className={cn(
+                          "p-3.5 shadow-sm transition-all duration-200",
+                          message.role === "user" 
+                            ? "rounded-2xl rounded-br-sm backdrop-blur-sm" 
+                            : "rounded-2xl rounded-bl-sm backdrop-blur-sm",
+                          message.role === "user"
+                            ? isDark 
+                              ? "bg-primary/10 border border-primary/20 text-white" 
+                              : "bg-black/10 border border-black/5 text-black"
+                            : isDark
+                              ? "bg-black/80 border border-white/10 text-white" 
+                              : "bg-white/50 border border-black/5 text-black"
+                        )}
+                      >
+                        {message.isTyping ? (
+                          <div className="flex space-x-1.5 items-center px-3 py-2">
+                            <span className={cn(
+                              "w-2 h-2 rounded-full typing-dot",
+                              isDark ? "bg-white/70" : "bg-black/70"
+                            )}></span>
+                            <span className={cn(
+                              "w-2 h-2 rounded-full typing-dot",
+                              isDark ? "bg-white/70" : "bg-black/70"
+                            )}></span>
+                            <span className={cn(
+                              "w-2 h-2 rounded-full typing-dot",
+                              isDark ? "bg-white/70" : "bg-black/70"
+                            )}></span>
+                          </div>
+                        ) : (
+                          <div className="text-sm leading-relaxed">
+                    {message.content}
+                          </div>
+                        )}
+                      </div>
                   </div>
                 ))}
                 
-                <div ref={messagesEndRef} />
+                  {/* Scroll to bottom button - removed */}
+                  
+                  <div ref={messagesEndRef} style={{ height: '10px' }} />
                     </div>
+                  </div>
               
               {/* User info form */}
               {shouldShowUserForm ? (
@@ -1490,7 +2013,7 @@ export function ModernChatBox() {
                   onSubmit={handleUserInfoSubmit}
                   className={cn(
                     "p-6 relative z-20 glass-effect",
-                    sidebarMode
+                    sidebarMode || isMobile
                       ? isDark 
                         ? "bg-black" 
                         : "bg-white"
@@ -1514,14 +2037,12 @@ export function ModernChatBox() {
                           name="name"
                           value={userInfo.name}
                           onChange={handleUserInfoChange}
-                          placeholder="Your name"
-                          className={cn(
-                            "form-input w-full px-4 py-3 rounded-lg transition-all",
-                            isDark 
-                              ? "bg-black/30 text-white border-white/20 focus:border-white/40" 
-                              : "bg-white/70 text-black border-black/10 focus:border-black/30"
-                          )}
-                          disabled={isSubmittingInfo}
+                          placeholder="Your Name"
+                          className={`w-full p-2 rounded-md border ${
+                            isDark ? 'bg-gray-700 border-gray-600 text-white placeholder-gray-400'
+                              : 'bg-white border-gray-300 text-gray-900 placeholder-gray-500'
+                          } focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent text-base min-h-[44px] font-size-[16px]`}
+                          style={{ fontSize: '16px' }}
                         />
                         {validationErrors.name && (
                           <div className="form-error mt-1">{validationErrors.name}</div>
@@ -1535,13 +2056,11 @@ export function ModernChatBox() {
                           value={userInfo.phoneNumber}
                           onChange={handleUserInfoChange}
                           placeholder="Your phone number"
-                          className={cn(
-                            "form-input w-full px-4 py-3 rounded-lg transition-all",
-                            isDark 
-                              ? "bg-black/30 text-white border-white/20 focus:border-white/40" 
-                              : "bg-white/70 text-black border-black/10 focus:border-black/30"
-                          )}
-                          disabled={isSubmittingInfo}
+                          className={`w-full p-2 rounded-md border ${
+                            isDark ? 'bg-gray-700 border-gray-600 text-white placeholder-gray-400'
+                              : 'bg-white border-gray-300 text-gray-900 placeholder-gray-500'
+                          } focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent text-base min-h-[44px] font-size-[16px]`}
+                          style={{ fontSize: '16px' }}
                         />
                         {validationErrors.phoneNumber && (
                           <div className="form-error mt-1">{validationErrors.phoneNumber}</div>
@@ -1577,39 +2096,55 @@ export function ModernChatBox() {
               ) : (
                 /* Chat input */
                 <form 
-                  onSubmit={handleSubmit} 
+                  onSubmit={handleSubmit}
                   className={cn(
-                    "p-4 relative z-20 glass-effect",
-                    sidebarMode
-                      ? isDark 
-                        ? "bg-black" 
-                        : "bg-white"
-                      : isDark 
-                        ? "bg-black/20" 
-                        : "bg-white/40"
+                    "relative z-20",
+                    keyboardOpen && "keyboard-visible"
                   )}
+                  style={{
+                    position: 'fixed',
+                    bottom: 0,
+                    left: sidebarMode && !isMobile ? 'auto' : 0,
+                    right: 0,
+                    width: sidebarMode && !isMobile ? chatDimensions.width : '100%',
+                    padding: '8px 8px 10px 8px',
+                    borderTop: '1px solid rgba(127, 127, 127, 0.1)',
+                    backgroundColor: isDark ? 'rgba(18, 18, 18, 0.95)' : 'rgba(255, 255, 255, 0.95)',
+                    zIndex: 100,
+                    boxShadow: '0 -2px 10px rgba(0, 0, 0, 0.05)',
+                    paddingBottom: 'calc(8px + env(safe-area-inset-bottom))'
+                  }}
                 >
                   <div className={cn(
                     "flex items-center space-x-2 rounded-xl p-1.5 relative z-20",
                     isDark 
-                      ? "bg-black/30 border border-white/10" 
+                      ? "bg-gray-800/80 border border-gray-700/50" 
                       : "bg-white/50 border border-black/10"
-                  )}>
+                  )}
+                  style={{
+                    margin: '0 8px 4px 8px'
+                  }}
+                  >
                   <textarea
                       ref={inputRef}
                     value={input}
                     onChange={handleInputChange}
-                      onKeyDown={handleKeyDown}
-                      placeholder="Ask me anything..."
+                    onKeyDown={handleKeyDown}
+                    placeholder="Ask me anything..."
                     className={cn(
-                        "flex-1 p-2.5 rounded-lg resize-none text-sm modern-input",
+                      "flex-1 p-2.5 rounded-lg resize-none text-sm modern-input",
                       isDark 
-                          ? "bg-transparent border-none focus:ring-0 placeholder-gray-500 text-white" 
-                          : "bg-transparent border-none focus:ring-0 placeholder-gray-500 text-black",
-                      "focus:outline-none"
+                        ? "bg-transparent border-none focus:ring-0 placeholder-gray-400 text-white" 
+                        : "bg-transparent border-none focus:ring-0 placeholder-gray-500 text-black",
+                      "focus:outline-none",
+                      isMobile && "mobile-textarea"
                     )}
-                      style={{ height: `${textareaHeight}px` }}
-                    rows={1}
+                    style={{ 
+                      height: textareaHeight, 
+                      maxHeight: isMobile ? '80px' : '200px',
+                      paddingRight: '40px',
+                      fontSize: '16px'
+                    }}
                   />
                   <button
                     type="submit"
@@ -1617,7 +2152,7 @@ export function ModernChatBox() {
                     className={cn(
                         "p-2.5 rounded-xl transition-all shadow-sm hover:shadow",
                       isDark 
-                          ? "bg-white hover:bg-white/90 text-black" 
+                          ? "bg-primary hover:bg-primary/90 text-white" 
                           : "bg-black hover:bg-black/90 text-white",
                       (isLoading || !input.trim()) && "opacity-50 cursor-not-allowed"
                     )}
@@ -1627,7 +2162,7 @@ export function ModernChatBox() {
                 </div>
                   
                   {/* AI capabilities hint */}
-                  <div className="mt-2 flex justify-center">
+                  <div className="mt-2 mb-2 flex justify-center">
                     <div className="text-xs flex items-center space-x-4">
                       <span className={cn(
                         "flex items-center",
@@ -1654,26 +2189,6 @@ export function ModernChatBox() {
               </form>
               )}
             </ResizableBox>
-            
-            {/* Mobile exit button at bottom of screen */}
-            {isMobile && (
-              <div className="fixed bottom-6 left-1/2 transform -translate-x-1/2 z-[1200]">
-                <Button
-                  onClick={toggleExpanded}
-                  size="default"
-                  variant="default"
-                  className={cn(
-                    "px-6 py-2 rounded-full shadow-lg",
-                    isDark 
-                      ? "bg-white text-black hover:bg-white/90" 
-                      : "bg-black text-white hover:bg-black/90"
-                  )}
-                >
-                  <X className="h-4 w-4 mr-2" />
-                  Close Chat
-                </Button>
-              </div>
-            )}
           </motion.div>
         )}
       </AnimatePresence>

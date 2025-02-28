@@ -454,8 +454,8 @@ Remember, you MUST decide to scroll for EVERY question about a specific section 
       // Create a non-streaming response with timeout
       const completionPromise = openai.chat.completions.create({
         model: modelToUse,
-        messages: apiMessages,
-        temperature: 0.7,
+      messages: apiMessages,
+      temperature: 0.7,
         max_tokens: 200, // Reduced to 200 for much shorter responses
       });
       

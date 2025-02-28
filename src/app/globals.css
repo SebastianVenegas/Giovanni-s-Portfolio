@@ -393,3 +393,24 @@ body {
 .dark .react-resizable-handle-sw::after {
   border-color: rgba(200, 200, 200, 0.5);
 }
+
+/* Prevent scroll propagation */
+.prevent-scroll-propagation {
+  overscroll-behavior: contain;
+  touch-action: pan-y;
+  -ms-overflow-style: none;  /* IE and Edge */
+  scrollbar-width: thin;  /* Firefox */
+}
+
+.prevent-scroll-propagation::-webkit-scrollbar {
+  width: 6px;
+}
+
+.prevent-scroll-propagation::-webkit-scrollbar-thumb {
+  background-color: rgba(0, 0, 0, 0.2);
+  border-radius: 3px;
+}
+
+.prevent-scroll-propagation::-webkit-scrollbar-track {
+  background: transparent;
+}
