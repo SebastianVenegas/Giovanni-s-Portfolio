@@ -96,32 +96,32 @@ This message was sent from your portfolio website contact form.
   <title>New Contact Form Submission</title>
   <style>
     body {
-      font-family: Arial, sans-serif;
+      font-family: 'Helvetica Neue', Arial, sans-serif;
       line-height: 1.6;
-      color: #333;
+      color: #f5f5f5;
       max-width: 600px;
       margin: 0 auto;
+      background-color: #f5f5f5;
     }
     .container {
-      border: 1px solid #e0e0e0;
       border-radius: 8px;
       overflow: hidden;
-      box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+      box-shadow: 0 4px 12px rgba(0,0,0,0.15);
     }
     .header {
-      background-color: #4a6cf7;
+      background-color: #000000;
       color: white;
-      padding: 20px;
+      padding: 24px;
       text-align: center;
     }
     .content {
-      padding: 20px;
-      background-color: #ffffff;
+      padding: 24px;
+      background-color: #121212;
     }
     .section {
-      margin-bottom: 20px;
-      padding-bottom: 20px;
-      border-bottom: 1px solid #f0f0f0;
+      margin-bottom: 24px;
+      padding-bottom: 24px;
+      border-bottom: 1px solid #2a2a2a;
     }
     .section:last-child {
       border-bottom: none;
@@ -129,60 +129,72 @@ This message was sent from your portfolio website contact form.
       padding-bottom: 0;
     }
     .label {
-      font-weight: bold;
-      color: #555;
-      margin-bottom: 5px;
+      font-weight: 600;
+      color: #9e9e9e;
+      margin-bottom: 6px;
+      text-transform: uppercase;
+      font-size: 12px;
+      letter-spacing: 0.5px;
     }
     .value {
-      margin-bottom: 15px;
+      margin-bottom: 16px;
+      font-size: 16px;
     }
     .message-box {
-      background-color: #f9f9f9;
-      padding: 15px;
-      border-radius: 5px;
-      border-left: 4px solid #4a6cf7;
+      background-color: #1a1a1a;
+      padding: 18px;
+      border-radius: 6px;
+      border-left: 4px solid #555555;
     }
     .footer {
-      background-color: #f5f5f5;
-      padding: 15px;
+      background-color: #000000;
+      padding: 16px;
       text-align: center;
       font-size: 12px;
-      color: #777;
+      color: #9e9e9e;
     }
     .date {
       font-style: italic;
-      color: #888;
-      margin-bottom: 20px;
+      color: #9e9e9e;
+      margin-bottom: 24px;
+      font-size: 14px;
+    }
+    h2 {
+      color: #ffffff;
+      font-weight: 500;
+      margin-top: 0;
+      margin-bottom: 16px;
+      font-size: 18px;
     }
   </style>
 </head>
 <body>
   <div class="container">
     <div class="header">
-      <h1 style="margin: 0; font-size: 24px;">New Contact Form Submission</h1>
+      <h1 style="margin: 0; font-size: 24px; font-weight: 500;">New Contact Form Submission</h1>
     </div>
     
     <div class="content">
       <div class="date">Received on ${currentDate}</div>
       
       <div class="section">
-        <h2 style="margin-top: 0; color: #4a6cf7;">Contact Details</h2>
+        <h2>Contact Details</h2>
         
-        <div class="label">Name:</div>
+        <div class="label">Name</div>
         <div class="value">${name}</div>
         
-        <div class="label">Email:</div>
+        <div class="label">Email</div>
         <div class="value">${email}</div>
         
-        <div class="label">Phone:</div>
-        <div class="value">${phone || '<em>Not provided</em>'}</div>
+        <div class="label">Phone</div>
+        <div class="value">${phone || '<em style="color: #757575;">Not provided</em>'}</div>
         
-        <div class="label">Service Requested:</div>
-        <div class="value">${service || '<em>Not specified</em>'}</div>
+        <div class="label">Service Requested</div>
+        <div class="value">${service || '<em style="color: #757575;">Not specified</em>'}</div>
       </div>
       
       <div class="section">
-        <h2 style="margin-top: 0; color: #4a6cf7;">Message</h2>
+        <h2>Message</h2>
         <div class="message-box">
           ${message.replace(/\n/g, '<br>')}
         </div>
