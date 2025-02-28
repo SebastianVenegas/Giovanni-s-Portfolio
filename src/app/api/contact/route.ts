@@ -98,7 +98,7 @@ This message was sent from your portfolio website contact form.
     body {
       font-family: 'Helvetica Neue', Arial, sans-serif;
       line-height: 1.6;
-      color: #f5f5f5;
+      color: #ffffff;
       max-width: 600px;
       margin: 0 auto;
       background-color: #f5f5f5;
@@ -113,6 +113,11 @@ This message was sent from your portfolio website contact form.
       color: white;
       padding: 24px;
       text-align: center;
+    }
+    .logo {
+      width: 80px;
+      height: auto;
+      margin-bottom: 16px;
     }
     .content {
       padding: 24px;
@@ -139,12 +144,14 @@ This message was sent from your portfolio website contact form.
     .value {
       margin-bottom: 16px;
       font-size: 16px;
+      color: #ffffff;
     }
     .message-box {
       background-color: #1a1a1a;
       padding: 18px;
       border-radius: 6px;
       border-left: 4px solid #555555;
+      color: #ffffff;
     }
     .footer {
       background-color: #000000;
@@ -171,7 +178,8 @@ This message was sent from your portfolio website contact form.
 <body>
   <div class="container">
     <div class="header">
-      <h1 style="margin: 0; font-size: 24px; font-weight: 500;">New Contact Form Submission</h1>
+      <img src="https://${req.headers.get('host')}/GV%20Fav.png" alt="GV Logo" class="logo" />
+      <h1 style="margin: 0; font-size: 24px; font-weight: 500; color: #ffffff;">New Contact Form Submission</h1>
     </div>
     
     <div class="content">

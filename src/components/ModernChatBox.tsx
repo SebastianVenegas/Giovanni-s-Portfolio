@@ -3,7 +3,7 @@
 import { useEffect, useRef, useState } from "react"
 import { useTheme } from "next-themes"
 import { Button } from "@/components/ui/button"
-import { X, Send, ChevronDown, MessageSquare, Sparkles, Trash2, Layout } from "lucide-react"
+import { X, Send, ChevronDown, MessageSquare, Sparkles, Trash2, Layout, Minimize2, Maximize2 } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { motion, AnimatePresence } from "framer-motion"
 import React from "react"
@@ -155,17 +155,53 @@ export function ModernChatBox() {
   // Add loading state for form submission
   const [isSubmittingInfo, setIsSubmittingInfo] = useState(false)
   
+  // Add state to track if device is mobile
+  const [isMobile, setIsMobile] = useState(false)
+  
   // Custom chat state
   const [messages, setMessages] = useState<ChatMessage[]>([])
   const [input, setInput] = useState("")
   const [isLoading, setIsLoading] = useState(false)
 
+  // Detect mobile devices and set appropriate mode
+  useEffect(() => {
+    const checkMobile = () => {
+      const mobile = window.innerWidth < 768
+      setIsMobile(mobile)
+      
+      // If mobile and chat is open, automatically set to sidebar/fullscreen mode
+      if (mobile && isOpen) {
+        setSidebarMode(true)
+        setChatDimensions({ width: window.innerWidth, height: window.innerHeight })
+        document.body.classList.add('with-chat-sidebar')
+      }
+    }
+    
+    // Check on initial load
+    if (typeof window !== 'undefined') {
+      checkMobile()
+      
+      // Add resize listener
+      window.addEventListener('resize', checkMobile)
+    }
+    
+    // Cleanup
+    return () => {
+      if (typeof window !== 'undefined') {
+        window.removeEventListener('resize', checkMobile)
+      }
+    }
+  }, [isOpen])
+
   // Handle resize with custom styling for resize handles
   const handleResize = (e: any, { size }: { size: { width: number, height: number } }) => {
-    setChatDimensions({
-      width: size.width,
-      height: size.height
-    })
+    // Don't allow resize on mobile
+    if (!isMobile) {
+      setChatDimensions({
+        width: size.width,
+        height: size.height
+      })
+    }
   }
 
   // Toggle expanded state
@@ -178,7 +214,9 @@ export function ModernChatBox() {
       document.body.classList.remove('with-chat-sidebar')
     } else {
       // When opening, check if we should go directly to sidebar mode
-      if (sidebarMode) {
+      if (isMobile || sidebarMode) {
+        setSidebarMode(true)
+        setChatDimensions({ width: window.innerWidth, height: window.innerHeight })
         document.body.classList.add('with-chat-sidebar')
       }
     }
@@ -187,6 +225,14 @@ export function ModernChatBox() {
 
   // Toggle sidebar mode
   const toggleSidebarMode = () => {
+    // Don't allow toggling out of sidebar mode on mobile
+    if (isMobile && !sidebarMode) {
+      setSidebarMode(true)
+      setChatDimensions({ width: window.innerWidth, height: window.innerHeight })
+      document.body.classList.add('with-chat-sidebar')
+      return
+    }
+    
     if (sidebarMode) {
       // Return to default dimensions
       setChatDimensions(defaultDimensions)
@@ -1260,7 +1306,7 @@ export function ModernChatBox() {
                   ? [350, window.innerHeight] 
                   : [600, 800]
               }
-              resizeHandles={sidebarMode ? [] : ['nw']}
+              resizeHandles={sidebarMode || isMobile ? [] : ['nw']}
               onResize={handleResize}
               className={cn(
                 "flex flex-col overflow-hidden relative futuristic-border",
@@ -1298,87 +1344,50 @@ export function ModernChatBox() {
                     )}>
                       <Image 
                         src="/GV Fav.png" 
-                        alt="GV" 
+                        alt="NextGio AI" 
                         width={24} 
                         height={24} 
                         className={cn(
                           "rounded-full",
-                          isDark ? "brightness-0" : ""
+                          isDark ? "brightness-0 invert" : ""
                         )}
                       />
                     </div>
-                    <div className="absolute -bottom-1 -right-1 h-2.5 w-2.5 rounded-full bg-green-500 border-2 border-white dark:border-black"></div>
                   </div>
                   <div>
-                    <h3 className={cn(
-                      "font-semibold text-base",
-                      isDark ? "text-white" : "text-black"
-                    )}>Giovanni's Personal AI Assistant</h3>
-                    <div className="flex items-center text-xs">
-                      <span className={cn(
-                        "inline-block h-1.5 w-1.5 rounded-full mr-1.5",
-                        isDark ? "bg-green-400" : "bg-green-500"
-                      )}></span>
-                      <span className={cn(
-                        isDark ? "text-gray-300" : "text-gray-600"
-                      )}>
-                        Online
-                      </span>
-                    </div>
+                    <h3 className="font-medium text-sm">NextGio AI</h3>
+                    <p className="text-xs opacity-70">Giovanni's AI Assistant</p>
                   </div>
                 </div>
-                <div className="flex items-center space-x-1 relative z-30">
-                  {/* Toggle sidebar mode button */}
-                  <button
-                    onClick={toggleSidebarMode}
-                    className={cn(
-                      "p-1.5 rounded-lg transition-colors",
-                      isDark 
-                        ? "hover:bg-white/10 text-gray-300" 
-                        : "hover:bg-black/10 text-gray-600",
-                      sidebarMode && "bg-primary/20"
-                    )}
-                    aria-label={sidebarMode ? "Exit sidebar mode" : "Enter sidebar mode"}
-                  >
-                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                      <rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect>
-                      <line x1="9" y1="3" x2="9" y2="21"></line>
-                    </svg>
-                  </button>
-                  
-                  {/* End chat button */}
-                  <button
-                    onClick={() => {
-                      setMessages([]);
-                      setChatDimensions(defaultDimensions);
-                      setSidebarMode(false);
-                      setIsOpen(false);
-                      document.body.classList.remove('with-chat-sidebar');
-                    }}
-                    className={cn(
-                      "p-1.5 rounded-lg transition-colors",
-                      isDark 
-                        ? "hover:bg-white/10 text-gray-300" 
-                        : "hover:bg-black/10 text-gray-600"
-                    )}
-                    aria-label="End chat"
-                  >
-                    <Trash2 className="h-4 w-4" />
-                  </button>
-                  
-                  {/* Close button */}
-                  <button
+                <div className="flex items-center space-x-2">
+                  {/* Only show sidebar toggle on non-mobile */}
+                  {!isMobile && (
+                    <Button
+                      onClick={toggleSidebarMode}
+                      size="sm"
+                      variant="ghost"
+                      className="h-8 w-8"
+                      aria-label={sidebarMode ? "Exit sidebar mode" : "Enter sidebar mode"}
+                    >
+                      {sidebarMode ? (
+                        <Minimize2 className="h-4 w-4" />
+                      ) : (
+                        <Maximize2 className="h-4 w-4" />
+                      )}
+                    </Button>
+                  )}
+                  <Button
                     onClick={toggleExpanded}
+                    size="sm"
+                    variant={isMobile ? "default" : "ghost"}
                     className={cn(
-                      "p-1.5 rounded-lg transition-colors",
-                      isDark 
-                        ? "hover:bg-white/10 text-gray-300" 
-                        : "hover:bg-black/10 text-gray-600"
+                      "h-8 w-8",
+                      isMobile && (isDark ? "bg-white text-black hover:bg-white/90" : "bg-black text-white hover:bg-black/90")
                     )}
                     aria-label="Close chat"
                   >
                     <X className="h-4 w-4" />
-                  </button>
+                  </Button>
                 </div>
               </div>
               
@@ -1465,7 +1474,7 @@ export function ModernChatBox() {
                         </div>
                       ) : (
                         <div className="text-sm leading-relaxed">
-                    {message.content}
+                          {message.content}
                         </div>
                       )}
                     </div>
@@ -1645,6 +1654,26 @@ export function ModernChatBox() {
               </form>
               )}
             </ResizableBox>
+            
+            {/* Mobile exit button at bottom of screen */}
+            {isMobile && (
+              <div className="fixed bottom-6 left-1/2 transform -translate-x-1/2 z-[1200]">
+                <Button
+                  onClick={toggleExpanded}
+                  size="default"
+                  variant="default"
+                  className={cn(
+                    "px-6 py-2 rounded-full shadow-lg",
+                    isDark 
+                      ? "bg-white text-black hover:bg-white/90" 
+                      : "bg-black text-white hover:bg-black/90"
+                  )}
+                >
+                  <X className="h-4 w-4 mr-2" />
+                  Close Chat
+                </Button>
+              </div>
+            )}
           </motion.div>
         )}
       </AnimatePresence>
