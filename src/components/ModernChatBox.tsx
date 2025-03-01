@@ -1793,11 +1793,12 @@ export function ModernChatBox() {
                       "p-1.5 rounded-lg transition-colors",
                       isDark 
                           ? "hover:bg-gray-800 text-gray-300" 
-                          : "hover:bg-black/10 text-gray-600"
+                          : "hover:bg-black/10 text-gray-600",
+                      isMobile && "p-2.5" // Larger touch target on mobile
                     )}
                     aria-label="Close chat"
                   >
-                    <X className="h-4 w-4" />
+                    <X className={cn("h-4 w-4", isMobile && "h-5 w-5")} />
                   </button>
                 </div>
               </div>
