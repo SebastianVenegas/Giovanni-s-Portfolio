@@ -830,6 +830,34 @@ export default function ModernHero() {
                 <Linkedin className="w-6 h-6 text-gray-600 dark:text-gray-400 hover:text-gray-800 dark:hover:text-gray-200 transition-colors" />
               </a>
             </motion.div>
+
+            {/* Mobile Download Resume Button */}
+            <motion.div
+              initial={{ y: 20, opacity: 0 }}
+              animate={{ y: 0, opacity: 1 }}
+              transition={{ duration: 0.5, delay: 0.7 }}
+              className="md:hidden mt-4"
+            >
+              <Button
+                variant="outline"
+                size="lg"
+                className={cn(
+                  "w-full h-12 rounded-xl",
+                  "bg-black/5 dark:bg-white/5",
+                  "hover:bg-black/10 dark:hover:bg-white/10",
+                  "text-gray-900 dark:text-white",
+                  "border border-gray-200 dark:border-gray-800",
+                  "hover:border-gray-700 dark:hover:border-gray-600",
+                  "transition-all duration-300",
+                )}
+                onClick={handleDownloadResume}
+              >
+                <div className="flex items-center justify-center gap-3">
+                  <Download className="h-5 w-5" />
+                  <span className="font-medium">Download Resume</span>
+                </div>
+              </Button>
+            </motion.div>
           </div>
 
           {/* Right Side - Terminal */}
@@ -837,7 +865,7 @@ export default function ModernHero() {
             initial={{ opacity: 0, x: 50 }}
             animate={{ opacity: 1, x: 0 }}
             transition={{ duration: 0.8 }}
-            className="w-full lg:w-1/2"
+            className="w-full lg:w-1/2 hidden md:block"
           >
             <div
               className={cn(
@@ -910,7 +938,7 @@ export default function ModernHero() {
               initial={{ opacity: 0, y: -10 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ duration: 0.5, delay: 0.8 }}
-              className="mt-6"
+              className="mt-6 hidden md:block"
             >
               <Button
                 variant="outline"
