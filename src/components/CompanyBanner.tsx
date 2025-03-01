@@ -35,6 +35,10 @@ const clientLogos = [
   { name: "USAID", logo: "/images/clients/usaid.png" },
   { name: "K&N Filters", logo: "/images/clients/k&n.png", invertInDark: true },
   { name: "Mint", logo: "/images/logos/mint.png" },
+  { name: "Unqork", logo: "/images/tech-stack/unqork1.png", invertInDark: true },
+  { name: "Born Group", logo: "/images/logos/born.png", invertInDark: true },
+  { name: "Helm", logo: "/images/logos/helm.png", invertInDark: true },
+  { name: "MDX Health", logo: "/images/logos/mdx.png", invertInDark: true, scale: "h-40" },
 ]
 
 export function CompanyBanner() {
@@ -81,8 +85,15 @@ export function CompanyBanner() {
                         className={cn(
                           client.scale || "h-12",
                           "w-auto object-contain",
-                          isDark && client.invertInDark ? "brightness-0 invert" : isDark && "brightness-[0.9] contrast-[1.1]"
+                          mounted && isDark && client.invertInDark ? "brightness-0 invert" : mounted && isDark && "brightness-[0.9] contrast-[1.1]"
                         )}
+                        onError={(e) => {
+                          // Prevent broken image icons by setting a fallback
+                          const target = e.target as HTMLImageElement;
+                          console.warn(`Failed to load logo for ${client.name}`);
+                          // Hide the broken image
+                          target.style.display = 'none';
+                        }}
                       />
                     </div>
                   </div>
@@ -105,8 +116,15 @@ export function CompanyBanner() {
                         className={cn(
                           client.scale || "h-12",
                           "w-auto object-contain",
-                          isDark && client.invertInDark ? "brightness-0 invert" : isDark && "brightness-[0.9] contrast-[1.1]"
+                          mounted && isDark && client.invertInDark ? "brightness-0 invert" : mounted && isDark && "brightness-[0.9] contrast-[1.1]"
                         )}
+                        onError={(e) => {
+                          // Prevent broken image icons by setting a fallback
+                          const target = e.target as HTMLImageElement;
+                          console.warn(`Failed to load logo for ${client.name}`);
+                          // Hide the broken image
+                          target.style.display = 'none';
+                        }}
                       />
                     </div>
                   </div>

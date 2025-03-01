@@ -205,41 +205,14 @@ export function Experience() {
     setExpandedJob(expandedJob === index ? null : index)
   }
   
-  // Helper function for reliable scrolling across devices
-  const scrollToExperienceSection = () => {
-    // Small delay to ensure state updates have completed
-    setTimeout(() => {
-      // Try multiple approaches for maximum compatibility
-      const experienceSection = document.getElementById('experience')
-      
-      if (experienceSection) {
-        // Method 1: scrollIntoView (most browsers)
-        experienceSection.scrollIntoView({ behavior: 'smooth', block: 'start' })
-        
-        // Method 2: Fallback for iOS Safari and other mobile browsers
-        setTimeout(() => {
-          const yOffset = experienceSection.getBoundingClientRect().top + window.pageYOffset
-          window.scrollTo({
-            top: yOffset,
-            behavior: 'smooth'
-          })
-        }, 100)
-      }
-    }, 50)
-  }
-  
   const nextPage = () => {
     setExpandedJob(null)
     setCurrentPage((prev) => (prev + 1) % totalPages)
-    // Scroll to the top of the experience section
-    scrollToExperienceSection()
   }
   
   const prevPage = () => {
     setExpandedJob(null)
     setCurrentPage((prev) => (prev - 1 + totalPages) % totalPages)
-    // Scroll to the top of the experience section
-    scrollToExperienceSection()
   }
   
   const currentExperiences = experiences.slice(
@@ -340,7 +313,7 @@ export function Experience() {
       {/* Background with reduced opacity */}
       <div className="absolute inset-0 bg-[linear-gradient(to_right,#e5e5e5_1px,transparent_1px),linear-gradient(to_bottom,#e5e5e5_1px,transparent_1px)] dark:bg-[linear-gradient(to_right,#1d1d1d_1px,transparent_1px),linear-gradient(to_bottom,#1d1d1d_1px,transparent_1px)] bg-[size:44px_44px] [mask-image:radial-gradient(ellipse_60%_50%_at_50%_50%,#000_70%,transparent_100%)] opacity-50" />
       
-      <div className="container relative max-w-5xl px-4">
+      <div className="container relative max-w-5xl px-4 mx-auto">
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           animate={hasBeenViewed ? { opacity: 1, y: 0 } : {}}
@@ -383,10 +356,10 @@ export function Experience() {
                   transition={{ duration: 0.5, delay: index * 0.1 }}
                   className="relative pl-0 md:pl-8"
                 >
-                  {/* Timeline Line - Hidden on mobile */}
-                  <div className="absolute left-0 top-0 bottom-0 w-[2px] hidden md:block bg-gradient-to-b from-gray-300 via-gray-200 to-gray-100 dark:from-gray-600/50 dark:via-gray-600/20 dark:to-gray-600/10" />
+                  {/* Timeline Line */}
+                  <div className="absolute left-0 top-0 bottom-0 w-[2px] bg-gradient-to-b from-gray-300 via-gray-200 to-gray-100 dark:from-gray-600/50 dark:via-gray-600/20 dark:to-gray-600/10 hidden md:block" />
                   
-                  {/* Timeline Dot - Hidden on mobile */}
+                  {/* Timeline Dot */}
                   <motion.div 
                     initial={{ scale: 0 }}
                     animate={hasBeenViewed ? { scale: 1 } : {}}
@@ -395,7 +368,7 @@ export function Experience() {
                   />
                   
                   <div className={cn(
-                    "rounded-xl p-8",
+                    "rounded-xl p-6 md:p-8",
                     "bg-white/70 dark:bg-black/30",
                     "border border-black/5 dark:border-white/5",
                     "backdrop-blur-sm shadow-xl",
@@ -404,7 +377,7 @@ export function Experience() {
                   )}>
                     <div className="space-y-6">
                       {/* Top section with logo and title - Changed to row layout */}
-                      <div className="flex flex-col md:flex-row items-center md:items-start text-center md:text-left gap-8">
+                      <div className="flex flex-col md:flex-row items-center md:items-start text-center md:text-left gap-6 md:gap-8">
                         {/* Company Logo - Left aligned on desktop */}
                         <motion.div 
                           initial={{ opacity: 0, scale: 0.8 }}
@@ -412,11 +385,11 @@ export function Experience() {
                           transition={{ duration: 0.3, delay: 0.2 + (index * 0.1) }}
                           whileHover={{ scale: 1.05 }}
                           className={cn(
-                            "relative w-40 h-40 rounded-2xl overflow-hidden flex-shrink-0 flex items-center justify-center",
+                            "relative w-32 h-32 md:w-40 md:h-40 rounded-2xl overflow-hidden flex-shrink-0 flex items-center justify-center",
                             "border border-black/5 dark:border-white/5",
                             "shadow-lg hover:shadow-xl",
                             "transition-all duration-300",
-                            "bg-white dark:bg-black p-6",
+                            "bg-white dark:bg-black p-4 md:p-6",
                             "mx-auto md:mx-0" // Center on mobile, left on desktop
                           )}
                         >
@@ -1391,7 +1364,7 @@ export function Experience() {
                       </AnimatePresence>
                     </div>
                   </div>
-                </motion.div>
+                </div>
               );
             })}
           </div>
@@ -1423,8 +1396,6 @@ export function Experience() {
                     onClick={() => {
                       setExpandedJob(null)
                       setCurrentPage(i)
-                      // Scroll to the top of the experience section
-                      scrollToExperienceSection()
                     }}
                     className={cn(
                       "w-8 h-8 p-0 rounded-full",
@@ -1465,7 +1436,7 @@ export function Experience() {
               Download Full Resume
             </Button>
           </motion.div>
-        </motion.div>
+        </div>
       </div>
     </section>
   )

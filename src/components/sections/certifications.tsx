@@ -84,23 +84,30 @@ export function Certifications() {
   const getLogoFilter = (issuer: string) => {
     if (!mounted) return {}
     
-    if (issuer === "Harvard University") {
+    // These issuers need their logos to be white in dark mode
+    const needsInversionInDark = [
+      "AWS", 
+      "Microsoft", 
+      "Google",
+      "JAIC",
+      "Unqork",
+      "Accenture",
+      "Born Group",
+      "Helm",
+      "MDX Health"
+    ]
+    
+    if (needsInversionInDark.includes(issuer)) {
       return {
-        filter: "none" // No filter for Harvard logo in any mode
-      }
-    } else if (issuer === "edX" || issuer === "Unqork") {
-      return {
-        filter: isDark ? "brightness(0) invert(1)" : "none"
-      }
-    } else if (issuer === "Stripe") {
-      return {
-        filter: isDark ? "brightness(0) invert(1)" : "none"
+        filter: resolvedTheme === "dark" 
+          ? "brightness(0) invert(1)" // White in dark mode
+          : "none" // Original in light mode
       }
     }
     
-    // Default filter for other logos
+    // All other logos should maintain their original colors
     return {
-      filter: isDark ? "brightness(0.9) contrast(1.1)" : "none"
+      filter: "none"
     }
   }
   

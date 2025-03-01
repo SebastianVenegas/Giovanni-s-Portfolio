@@ -3,7 +3,7 @@
 import { useEffect, useRef, useState, useLayoutEffect } from "react"
 import { useTheme } from "next-themes"
 import { Button } from "@/components/ui/button"
-import { X, Send, ChevronDown, MessageSquare, Sparkles, Trash2, Layout } from "lucide-react"
+import { X, Send, ChevronDown, MessageSquare, Sparkles, Trash2, Layout, PanelLeftClose, PanelLeftOpen } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { motion, AnimatePresence } from "framer-motion"
 import React from "react"
@@ -247,6 +247,13 @@ export function ModernChatBox() {
   const toggleExpanded = () => {
     // If closing the chat, reset dimensions to default and exit all modes
     if (isOpen) {
+      // Don't allow closing on mobile - minimize instead
+      if (isMobile) {
+        // Toggle minimized state on mobile instead of closing
+        setMinimizedOnMobile(!minimizedOnMobile)
+        return
+      }
+      
       setChatDimensions(defaultDimensions)
       setSidebarMode(false)
       // Remove body class when closing
@@ -294,31 +301,18 @@ export function ModernChatBox() {
 
   // Add initial welcome message when component mounts
   useEffect(() => {
+    // Only add welcome message if there are no messages and the chat is open
     if (isOpen && messages.length === 0) {
-      if (userInfo.submitted) {
+      // Set a single welcome message regardless of user status
       setMessages([
         {
-          id: "welcome",
+          id: "welcome-1",
           role: "assistant",
-            content: `👋 Welcome back, ${userInfo.name}! I'm NextGio AI, Giovanni's custom-trained AI assistant. How can I help you today?`
-          }
-        ]);
-      } else {
-        setMessages([
-          {
-            id: "welcome-1",
-            role: "assistant",
-            content: "👋 Hello! I'm NextGio AI, Giovanni's custom-trained AI assistant. Welcome to his portfolio website!"
-          },
-          {
-            id: "welcome-3",
-            role: "assistant",
-            content: "🚀 Giovanni is currently available for new projects and collaborations. How can I help you learn more about his expertise or answer any questions about his services?"
-          }
-        ]);
-      }
+          content: "👋 Hello! I'm NextGio AI, Giovanni's custom-trained AI assistant. Welcome to his portfolio website!"
+        }
+      ]);
     }
-  }, [isOpen, messages.length, userInfo.submitted, userInfo.name])
+  }, [isOpen, messages.length])
   
   // Scroll to bottom when messages change
   useEffect(() => {
@@ -410,6 +404,11 @@ export function ModernChatBox() {
   const scrollToSection = (id: string) => {
     console.log(`Attempting to scroll to section: ${id}`);
     
+    if (!id) {
+      console.error('Invalid section ID: empty or undefined');
+      return;
+    }
+    
     // Map section names to actual section IDs used in the page
     const sectionIdMap: Record<string, string> = {
       "about": "about",
@@ -423,12 +422,6 @@ export function ModernChatBox() {
     // Get the actual section ID to look for
     const actualSectionId = sectionIdMap[id] || id;
     console.log(`Mapped section ${id} to actual section ID: ${actualSectionId}`);
-    
-    // Log all section IDs in the document for debugging
-    console.log("All section IDs in document:");
-    document.querySelectorAll('[id]').forEach(el => {
-      console.log(`- ${el.id} (${el.tagName})`);
-    });
     
     // Try to find the element by ID
     let element = document.getElementById(actualSectionId);
@@ -444,7 +437,9 @@ export function ModernChatBox() {
         `section[id="${actualSectionId}"]`,
         `div#${actualSectionId}`,
         `div[id="${actualSectionId}"]`,
-        `#${actualSectionId}`
+        `#${actualSectionId}`,
+        `[data-section="${actualSectionId}"]`,
+        `section[data-id="${actualSectionId}"]`
       ];
       
       for (const selector of selectors) {
@@ -460,6 +455,13 @@ export function ModernChatBox() {
       if (!element) {
         console.log(`Still couldn't find element, looking for sections with matching text`);
         const sections = document.querySelectorAll('section, div.section');
+        
+        // Log all sections for debugging
+        console.log(`Found ${sections.length} sections to check`);
+        sections.forEach((section, index) => {
+          console.log(`Section ${index}: id=${(section as HTMLElement).id}, className=${section.className}`);
+        });
+        
         for (const section of sections) {
           const headings = section.querySelectorAll('h1, h2, h3, h4, h5, h6');
           for (const heading of headings) {
@@ -491,6 +493,16 @@ export function ModernChatBox() {
             top: targetPosition,
             behavior: 'smooth'
         });
+        
+        // Also try using the element's scrollIntoView method as a backup
+        setTimeout(() => {
+          try {
+            element?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+            console.log('Used scrollIntoView as backup');
+          } catch (scrollError) {
+            console.error('ScrollIntoView failed:', scrollError);
+          }
+        }, 500);
       } catch (error) {
         console.error(`Error scrolling to section ${actualSectionId}:`, error);
         
@@ -669,7 +681,7 @@ export function ModernChatBox() {
       setMessages(prev => [...prev, {
         role: 'assistant',
         content: "That email address doesn't look valid. Could you please provide a valid email?",
-        id: Date.now().toString()
+      id: Date.now().toString()
       }]);
       return;
     }
@@ -712,7 +724,7 @@ export function ModernChatBox() {
       setContactFormStep(0);
       
       // Add success message to chat
-      setMessages(prev => [...prev, {
+    setMessages(prev => [...prev, { 
         role: 'assistant',
         content: "Great! I've sent your contact information to Giovanni. He'll get back to you as soon as possible. Is there anything else you'd like to know about his work or experience?",
         id: Date.now().toString()
@@ -760,19 +772,48 @@ export function ModernChatBox() {
         'question', 'different topic', 'instead', 'actually', 'by the way',
         'speaking of', 'on another note', 'changing subjects', 'moving on',
         'let\'s talk about', 'what about', 'tell me more about', 'explain',
-        'portfolio', 'projects', 'experience', 'skills', 'background', 'education'
+        'portfolio', 'projects', 'experience', 'skills', 'background', 'education',
+        'something else', 'different', 'difftand', 'disregard', 'disgard',
+        'talk about', 'change subject', 'not interested', 'something completely',
+        'another topic', 'other topic', 'other subject', 'something different',
+        'who is', 'who are', 'what are', 'where is', 'when is', 'why is',
+        'how is', 'do you', 'could you', 'would you', 'should you'
       ];
       
       // If in email step, but message doesn't look like an email and contains topic changers
       if (contactFormStep === 1 && !message.includes('@')) {
+        // Check if the message is a question (contains question words or question mark)
+        const isQuestion = lowercaseMessage.includes('?') || 
+                          lowercaseMessage.includes('who') || 
+                          lowercaseMessage.includes('what') || 
+                          lowercaseMessage.includes('how') || 
+                          lowercaseMessage.includes('when') || 
+                          lowercaseMessage.includes('where') || 
+                          lowercaseMessage.includes('why');
+                          
+        // If it's a question, treat it as off-topic
+        if (isQuestion) return true;
+        
         return topicChangeIndicators.some(indicator => lowercaseMessage.includes(indicator)) || 
                exitKeywords.some(keyword => lowercaseMessage.includes(keyword));
       }
       
-      // If in service or message step, but message is asking a question
+      // If in service or message step, but message is asking a question or changing topic
       if ((contactFormStep === 2 || contactFormStep === 3) && 
           (lowercaseMessage.includes('?') || 
-           topicChangeIndicators.some(indicator => lowercaseMessage.includes(indicator)))) {
+           topicChangeIndicators.some(indicator => lowercaseMessage.includes(indicator)) ||
+           exitKeywords.some(keyword => lowercaseMessage.includes(keyword)))) {
+        return true;
+      }
+      
+      // Check for explicit mentions of wanting to talk about something else
+      if (lowercaseMessage.includes('something else') || 
+          lowercaseMessage.includes('different topic') ||
+          lowercaseMessage.includes('talk about') ||
+          lowercaseMessage.includes('disregard') ||
+          lowercaseMessage.includes('disgard') ||
+          lowercaseMessage.includes('difftand') ||
+          lowercaseMessage.includes('something completely')) {
         return true;
       }
       
@@ -789,140 +830,132 @@ export function ModernChatBox() {
         message: ''
       });
       
-      // Add message to chat - more natural response
-      setTimeout(() => {
-        setMessages(prev => [...prev, {
-          role: 'assistant',
-          content: "That's totally fine! Let's talk about something else. What would you like to know about Giovanni's work or expertise?",
-          id: Date.now().toString()
-        }]);
-        scrollToBottom();
-      }, 500);
+      // Check if the message is a question
+      const isQuestion = lowercaseMessage.includes('?') || 
+                         lowercaseMessage.includes('who') || 
+                         lowercaseMessage.includes('what') || 
+                         lowercaseMessage.includes('how') || 
+                         lowercaseMessage.includes('when') || 
+                         lowercaseMessage.includes('where') || 
+                         lowercaseMessage.includes('why');
       
+      if (isQuestion) {
+        // Process the question through the API
+        // Add typing indicator
+        setMessages(prev => [...prev, {
+          id: Date.now().toString(),
+      role: 'assistant', 
+      content: '', 
+      isTyping: true 
+    }]);
+    
+        // Process the message through the API
+        (async () => {
+          try {
+            const response = await fetch('/api/chat', {
+              method: 'POST',
+              headers: {
+                'Content-Type': 'application/json',
+              },
+              body: JSON.stringify({
+                message: message,
+                userInfo: userInfo
+              }),
+            });
+            
+            if (!response.ok) {
+              throw new Error('Failed to send message');
+            }
+            
+            const data = await response.json();
+            
+            // Remove typing indicator
+            setMessages(prev => prev.filter(msg => !msg.isTyping));
+            
+            // Clean the content to remove any remaining scroll tags
+            const cleanedContent = data.content.replace(/\[SCROLL_TO:[a-z]+\]/g, '').trim();
+            
+            // Add the response to the chat
+            setMessages(prev => [...prev, {
+              id: Date.now().toString(),
+              role: 'assistant',
+              content: cleanedContent
+            }]);
+            
+            // If there's a scroll tag, scroll to that section
+            if (data.scrollTag) {
+              const sectionId = data.scrollTag.match(/\[SCROLL_TO:([a-z]+)\]/)?.[1];
+              if (sectionId) {
+                scrollToSection(sectionId);
+              }
+            }
+            
+            // Scroll to bottom
+            scrollToBottom();
+          } catch (error) {
+            console.error('Error processing question:', error);
+            
+            // Remove typing indicator
+            setMessages(prev => prev.filter(msg => !msg.isTyping));
+            
+            // Add error message
+            setMessages(prev => [...prev, {
+              id: Date.now().toString(),
+              role: 'assistant',
+              content: "I'm having trouble processing your question right now. Let's try something else."
+            }]);
+            
+            // Scroll to bottom
+            scrollToBottom();
+          }
+        })();
+        
+        return;
+      }
+      
+      // Send a response acknowledging the change of topic
+      setMessages(prev => [...prev, {
+        role: 'assistant',
+        content: "No problem at all! I'm happy to talk about something else. Would you like to know about Giovanni's work experience, tech skills, projects, or certifications? Feel free to ask about any aspect of his professional background.",
+        id: Date.now().toString()
+      }]);
+      
+      setTimeout(scrollToBottom, 100);
       return;
     }
     
     // Process based on current step
     switch (contactFormStep) {
       case 1: // Email step
-        // Check if this is a conversational response rather than an email
-        const conversationalPhrases = [
-          'lets continue', 'let\'s continue', 'continue', 'go ahead', 'proceed',
-          'lets chat', 'let\'s chat', 'chat', 'talk', 'discuss', 'help me',
-          'i want to', 'i would like', 'i\'d like', 'yes', 'sure', 'okay', 'ok',
-          'lets do it', 'let\'s do it', 'do it', 'sounds good', 'alright',
-          'lets contact', 'let\'s contact', 'contact in the chat', 'continue in the chat',
-          'continue here', 'through the chat', 'chat option', 'first option'
-        ];
+        // Check if message contains an email
+        const emailRegex = /\b[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Z|a-z]{2,}\b/;
+        const emailMatch = message.match(emailRegex);
         
-        // Try to extract email from message if it contains an @ symbol
-        const emailMatch = message.match(/\b[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Z|a-z]{2,}\b/);
-        const extractedEmail = emailMatch ? emailMatch[0] : null;
-        
-        // If we found an email in the message
-        if (extractedEmail) {
+        if (emailMatch) {
+          const email = emailMatch[0];
+          
           // Save email
           setContactFormData(prev => ({
             ...prev,
-            email: extractedEmail
+            email: email
           }));
           
-          // Move to next step
+          // Move to service step
           setContactFormStep(2);
           
-          // Ask for service interest in a more conversational way
-          setTimeout(() => {
-            setMessages(prev => [...prev, {
-              role: 'assistant',
-              content: `Thanks for your email ${extractedEmail}! What kind of project or service are you interested in discussing with Giovanni?`,
-              id: Date.now().toString()
-            }]);
-            
-            // Scroll to the messages end
-            scrollToBottom();
-          }, 500);
-          return;
-        }
-        
-        // Check for responses indicating user doesn't want to provide email
-        const noEmailPhrases = [
-          'don\'t have email', 'no email', 'without email', 'skip email',
-          'don\'t want to give', 'don\'t want to share', 'don\'t want to provide',
-          'rather not', 'prefer not', 'not comfortable', 'privacy', 'private',
-          'anonymous', 'don\'t need my email', 'don\'t need email',
-          'can we skip', 'can we continue without', 'move on without'
-        ];
-        
-        if (noEmailPhrases.some(phrase => lowercaseMessage.includes(phrase))) {
-          // Acknowledge user's preference and offer alternative
-          setTimeout(() => {
-            setMessages(prev => [...prev, {
-              role: 'assistant',
-              content: "I understand you'd prefer not to share your email. That's completely fine! Let's continue our conversation. What would you like to know about Giovanni's work or expertise?",
-              id: Date.now().toString()
-            }]);
-            
-            // Reset contact form
-            setContactFormStep(0);
-            setContactFormData({
-              email: '',
-              service: '',
-              message: ''
-            });
-            
-            scrollToBottom();
-          }, 500);
-          return;
-        }
-        
-        // If it's a conversational response without an email, ask for email again more conversationally
-        if (conversationalPhrases.some(phrase => lowercaseMessage.includes(phrase))) {
-          setTimeout(() => {
-            setMessages(prev => [...prev, {
-              role: 'assistant',
-              content: "Great! To help Giovanni get back to you, could you share your email address? Or if you prefer not to, just let me know and we can continue our conversation.",
-              id: Date.now().toString()
-            }]);
-            scrollToBottom();
-          }, 500);
-          return;
-        }
-        
-        // Basic email validation
-        const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-        if (emailRegex.test(message)) {
-          // Save email
-          setContactFormData(prev => ({
-            ...prev,
-            email: message
-          }));
-          
-          // Move to next step
-          setContactFormStep(2);
-          
-          // Ask for service interest in a more conversational way
-          setTimeout(() => {
-            setMessages(prev => [...prev, {
-              role: 'assistant',
-              content: "Perfect! What type of project or service are you interested in discussing with Giovanni?",
-              id: Date.now().toString()
-            }]);
-            
-            // Scroll to the messages end
-            scrollToBottom();
-          }, 500);
+          // Send response
+          setMessages(prev => [...prev, {
+            role: 'assistant',
+            content: `Thanks for your email (${email}). What service are you interested in? (Web Development, Mobile App, Consulting, etc.)`,
+            id: Date.now().toString()
+          }]);
         } else {
-          // Invalid email format - more conversational response
-          setTimeout(() => {
-            setMessages(prev => [...prev, {
-              role: 'assistant',
-              content: "I didn't quite catch a valid email address there. Could you please provide your email so Giovanni can reach out to you? Or if you prefer not to share your email, just let me know and we can talk about something else.",
-              id: Date.now().toString()
-            }]);
-            
-            // Scroll to the messages end
-            scrollToBottom();
-          }, 500);
+          // Invalid email
+          setMessages(prev => [...prev, {
+            role: 'assistant',
+            content: "I didn't recognize a valid email address. Please provide a valid email so Giovanni can contact you, or type 'cancel' if you'd like to talk about something else.",
+            id: Date.now().toString()
+          }]);
         }
         break;
         
@@ -933,20 +966,15 @@ export function ModernChatBox() {
           service: message
         }));
         
-        // Move to next step
+        // Move to message step
         setContactFormStep(3);
         
-        // Ask for project description in a more conversational way
-        setTimeout(() => {
-          setMessages(prev => [...prev, {
-            role: 'assistant',
-            content: "That sounds interesting! Could you briefly describe what you have in mind for the project or what you'd like to discuss with Giovanni?",
-            id: Date.now().toString()
-          }]);
-          
-          // Scroll to the messages end
-          scrollToBottom();
-        }, 500);
+        // Send response
+        setMessages(prev => [...prev, {
+          role: 'assistant',
+          content: "Great! Finally, please provide a brief message about your project or inquiry.",
+          id: Date.now().toString()
+        }]);
         break;
         
       case 3: // Message step
@@ -963,308 +991,149 @@ export function ModernChatBox() {
       default:
         break;
     }
-  }
+    
+    setTimeout(scrollToBottom, 100);
+  };
 
   // Update handleSubmit to handle contact requests
-  const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
-    const currentInput = input.trim();
-    if (!currentInput) return;
+    if (!input.trim()) return;
     
-    // Check if user info has been submitted
-    if (!userInfo.submitted && !shouldShowUserForm) {
-      // Save the user's message for later
-      const savedMessage = currentInput;
-      
-      // Show the user info form
-      setShouldShowUserForm(true);
-      
-      // Add user message to chat
-      const userMessage: ChatMessage = {
-        role: 'user',
-        content: currentInput,
-        id: Date.now().toString()
-      };
-      
-      setMessages(prev => [...prev, userMessage]);
-      setInput('');
-      
-      // Add assistant message asking for contact info
-      setTimeout(() => {
-        setMessages(prev => [...prev, {
-          role: 'assistant',
-          content: "Sure, but could you please share your name and phone number first? This helps Giovanni keep track of who's interested in his work.",
-          id: Date.now().toString()
-        }]);
-      }, 500);
-      
-      return;
-    }
-    
-    // If we're in contact form flow, handle that separately
-    if (contactFormStep > 0) {
     // Add user message to chat
     const userMessage: ChatMessage = {
       role: 'user',
-        content: currentInput,
-      id: Date.now().toString()
+      content: input,
+      id: Date.now().toString(),
+      isTyping: false
     };
     
-    setMessages(prev => [...prev, userMessage]);
-    setInput('');
-      
-      // Process the contact form input
-      handleContactFormInput(currentInput);
-      return;
-    }
-    
-    // If we get here, either user info is submitted or we're showing the form
-    // If we're showing the form, don't process the message yet
-    if (shouldShowUserForm) {
-      return;
-    }
-    
-    // Add user message to chat (skip if it's already in the messages array)
-    const messageExists = messages.some(msg => 
-      msg.role === 'user' && msg.content === currentInput
-    );
-    
-    let userMessage: ChatMessage;
-    
-    if (!messageExists) {
-      userMessage = {
-        role: 'user' as const,
-        content: currentInput,
-        id: Date.now().toString()
-      };
-      
-      setMessages(prev => [...prev, userMessage]);
-    } else {
-      userMessage = messages.find(msg => 
-        msg.role === 'user' && msg.content === currentInput
-      ) as ChatMessage;
-    }
-    
+    setMessages((prev) => [...prev, userMessage]);
     setInput('');
     
-    // Check if this is a contact request
-    if (isContactRequest(currentInput) && userInfo.submitted) {
-      // Scroll to contact section first
-      console.log("Contact request detected, scrolling to contact section");
-      setTimeout(() => {
-        scrollToSection("contact");
-      }, 100);
+    // Check if this is a contact request when not already in contact form flow
+    if (contactFormStep === 0 && isContactRequest(input)) {
+      console.log("Contact request detected:", input);
       
-      // Check if the message already contains an email address
-      const emailMatch = currentInput.match(/\b[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Z|a-z]{2,}\b/);
-      const extractedEmail = emailMatch ? emailMatch[0] : null;
+      // Add assistant response about contact form
+      setMessages((prev) => [
+        ...prev.filter(msg => !msg.isTyping),
+        {
+          role: 'assistant', 
+          content: "I'd be happy to help you get in touch with Giovanni. Could you please provide your email address so he can contact you?",
+          id: Date.now().toString(),
+          isTyping: false
+        }
+      ]);
       
-      // If we found an email in the message, start at step 2 (service)
-      if (extractedEmail) {
-        setContactFormStep(2);
-        setContactFormData(prev => ({
-          ...prev,
-          email: extractedEmail
-        }));
-        
-        // Respond acknowledging the email and asking for service
+      // Start contact form flow
+      setContactFormStep(1);
+      
+      // Scroll to contact section
         setTimeout(() => {
-          setMessages(prev => [...prev, {
-            role: 'assistant',
-            content: `I'd be happy to help you get in touch with Giovanni! I see your email is ${extractedEmail}. What kind of project or service are you interested in discussing with him?`,
-            id: Date.now().toString()
-          }]);
-          
-          // Scroll to the messages end
-          scrollToBottom();
-        }, 500);
-      } else {
-        // Start contact form flow at step 1 (email)
-        setContactFormStep(1);
-        
-        // Ask for email in a more conversational way
-        setTimeout(() => {
-          setMessages(prev => [...prev, {
-            role: 'assistant',
-            content: "I'd be happy to help you get in touch with Giovanni! What's your email address so he can reach out to you?",
-            id: Date.now().toString()
-          }]);
-          
-          // Scroll to the messages end
-          scrollToBottom();
-        }, 500);
-      }
-      
-      return;
-    }
-    
-    // Check if this is a job availability question
-    if (isJobAvailabilityQuestion(currentInput) && userInfo.submitted) {
-      console.log("Job availability question detected");
-      
-      // Respond with job availability information first
-      setTimeout(() => {
-        setMessages(prev => [...prev, {
-          role: 'assistant',
-          content: "Yes, Giovanni is currently available for new opportunities and is actively looking for interesting projects. He specializes in full-stack development with expertise in React, Node.js, and cloud technologies.\n\nWould you like to get in touch with him to discuss a potential opportunity? I can help you connect with him through the contact form or via email.",
-          id: Date.now().toString()
-        }]);
-        
-        // Scroll to the messages end
-        scrollToBottom();
+        console.log("Scrolling to contact section for contact request");
+        scrollToSection('contact');
       }, 500);
       
+      // Scroll to bottom
+      setTimeout(scrollToBottom, 100);
       return;
     }
     
-    setIsLoading(true);
+    // Process contact form input if already in contact form flow
+    if (contactFormStep > 0) {
+      handleContactFormInput(input);
+      return;
+    }
     
-    // Add typing indicator immediately
-    setMessages(prev => [...prev, { 
-      role: 'assistant', 
-      content: '', 
-      id: `typing-${Date.now().toString()}`,
-      isTyping: true 
-    }]);
+    // Show typing indicator
+    const typingIndicator: ChatMessage = {
+      role: 'assistant',
+      content: '',
+      id: (Date.now() + 1).toString(),
+      isTyping: true
+    };
+    
+    setMessages((prev) => [...prev, typingIndicator]);
     
     try {
-      // Send message to API with retry logic
-      let response;
-      let retryCount = 0;
-      const maxRetries = 2;
-      
-      while (retryCount <= maxRetries) {
-        try {
-          response = await fetch('/api/chat', {
+      // Send message to API
+      const response = await fetch('/api/chat', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
-          messages: messages.filter(msg => !msg.isTyping).concat(userMessage),
-              userInfo: userInfo // Include user info with the request
+          message: input,
+          userInfo: contactFormStep > 0 && userInfo.name ? userInfo : null,
         }),
       });
       
-          // If successful, break out of retry loop
-          if (response.ok) break;
-          
-          // If we get here, the response wasn't ok
-          console.warn(`API responded with status ${response.status}, retry ${retryCount + 1}/${maxRetries}`);
-          retryCount++;
-          
-          // Wait before retrying (exponential backoff)
-          if (retryCount <= maxRetries) {
-            await new Promise(resolve => setTimeout(resolve, 1000 * Math.pow(2, retryCount - 1)));
-          }
-        } catch (fetchError) {
-          console.error('Fetch error:', fetchError);
-          retryCount++;
-          
-          // Wait before retrying
-          if (retryCount <= maxRetries) {
-            await new Promise(resolve => setTimeout(resolve, 1000 * Math.pow(2, retryCount - 1)));
-          }
-        }
-      }
-      
-      // Log for debugging
-      console.log('Sent chat message with user info:', {
-        submitted: userInfo.submitted,
-        contactId: userInfo.contactId,
-        sessionId: userInfo.sessionId
-      });
-
-      // Handle case where all retries failed
-      if (!response || !response.ok) {
-        throw new Error(`API request failed after ${maxRetries} retries`);
+      if (!response.ok) {
+        throw new Error('Failed to send message');
       }
       
       const data = await response.json();
       
-      // Calculate a minimal response delay for a more responsive experience
-      const responseDelay = Math.min(100 + data.content.length * 1, 500);
+      // Remove typing indicator
+      setMessages((prev) => prev.filter(msg => !msg.isTyping));
       
-      // Add occasional "thinking pause" (5% chance of adding 0.2-0.5 second)
-      const thinkingPause = Math.random() < 0.05 ? Math.random() * 300 + 200 : 0;
-      
-      // Add a small delay before showing the response to simulate thinking/typing
+      // Handle scroll tag if present
+      if (data.scrollTag) {
+        const sectionMatch = data.scrollTag.match(/\[SCROLL_TO:([a-z]+)\]/);
+        if (sectionMatch && sectionMatch[1]) {
+          const section = sectionMatch[1];
+          console.log(`Found scroll tag in handleSubmit: ${data.scrollTag}, section: ${section}`);
+          
+          // Scroll to the section after a short delay to ensure the DOM is updated
       setTimeout(() => {
-        // Add assistant message to chat
-        const assistantMessage: ChatMessage = {
-          role: 'assistant',
-          content: data.content,
-          id: Date.now().toString()
-        };
-        
-        setMessages(prev => [...prev.filter(msg => !msg.isTyping), assistantMessage]);
-        
-        // Check if the AI response contains a scroll instruction
-        const scrollMatch = data.content.match(/\[SCROLL_TO:(\w+)\]/i);
-        console.log("Checking for scroll tag in response:", data.content.substring(0, 100));
-        
-        if (scrollMatch && scrollMatch[1]) {
-          const sectionToScrollTo = scrollMatch[1].toLowerCase();
-          console.log(`AI requested scroll to section: ${sectionToScrollTo}`);
-          
-          // Remove the scroll instruction from the displayed message
-          const cleanedContent = data.content.replace(/\[SCROLL_TO:\w+\]/i, '').trim();
-          
-          // Update the message with cleaned content
-          setMessages(prev => 
-            prev.map(msg => 
-              msg.id === assistantMessage.id 
-                ? {...msg, content: cleanedContent} 
-                : msg
-            )
-          );
-          
-          // Scroll to the requested section with a slight delay to ensure the DOM is ready
-          setTimeout(() => {
-            console.log(`Executing scroll to ${sectionToScrollTo} from AI instruction`);
-            scrollToSection(sectionToScrollTo);
-          }, 500); // Increased delay to ensure DOM is ready
-        } else {
-          // Check for section-specific keywords in the message as a fallback
-          console.log("No scroll tag found, checking for section keywords in message");
-          
-          // Extract the first 50 characters of the message for keyword checking
-          const messageStart = data.content.substring(0, 50).toLowerCase();
-          
-          if (messageStart.includes("work experience") || 
-              messageStart.includes("work history") || 
-              messageStart.includes("companies") ||
-              messageStart.includes("employment")) {
-            console.log("Detected experience-related content, scrolling to experience section");
-            setTimeout(() => scrollToSection("experience"), 500);
-          } else if (messageStart.includes("certification") || 
-                     messageStart.includes("credential") || 
-                     messageStart.includes("certificate")) {
-            console.log("Detected certificate-related content, scrolling to certificates section");
-            setTimeout(() => scrollToSection("certificates"), 500);
-          }
+            console.log(`Executing scrollToSection for: ${section}`);
+            scrollToSection(section);
+          }, 1000);
         }
+      }
+      
+      // Add assistant's response to chat with required properties
+      // Only add the response if it's not a quick response that might be duplicated
+      if (!data.isQuickResponse || (data.isQuickResponse && !messages.some(msg => 
+        msg.role === 'assistant' && msg.content === data.content
+      ))) {
+        // Clean the content to remove any remaining scroll tags
+        const cleanedContent = data.content.replace(/\[SCROLL_TO:[a-z]+\]/g, '').trim();
         
-        // Notify if chat is closed
-        if (!isOpen) {
-          setHasNewMessages(true);
+        setMessages((prev) => [
+          ...prev,
+          { 
+            role: 'assistant',
+            content: cleanedContent,
+            id: Date.now().toString(),
+            isTyping: false
+          },
+        ]);
+      }
+      
+      // Scroll to bottom of chat
+      setTimeout(() => {
+        if (messagesContainerRef.current) {
+          messagesContainerRef.current.scrollTop = messagesContainerRef.current.scrollHeight;
         }
-      }, responseDelay + thinkingPause);
+      }, 100);
     } catch (error) {
       console.error('Error sending message:', error);
       
       // Remove typing indicator
-      setMessages(prev => prev.filter(msg => !msg.isTyping));
+      setMessages((prev) => prev.filter(msg => !msg.isTyping));
       
-      // Add error message to chat
-      setMessages(prev => [
+      // Add error message
+      setMessages((prev) => [
         ...prev,
         {
           role: 'assistant',
-          content: 'Hmm, looks like I\'m having connection issues right now. Sorry about that! As Giovanni\'s AI assistant, I sometimes run into technical hiccups. Maybe try again in a bit? 🙄',
-          id: Date.now().toString()
-        }
+          content: 'Sorry, I encountered an error. Please try again.',
+          id: Date.now().toString(),
+          isTyping: false
+        },
       ]);
     } finally {
       setIsLoading(false);
@@ -1280,13 +1149,26 @@ export function ModernChatBox() {
   }
 
   const scrollToBottom = () => {
-    if (messagesEndRef.current) {
-      messagesEndRef.current.scrollIntoView({ behavior: "smooth", block: "end" });
+    // Use a more reliable approach with multiple attempts
+    if (messagesContainerRef.current) {
+      const container = messagesContainerRef.current;
+      
+      // Immediate scroll attempt
+      container.scrollTop = container.scrollHeight;
+      
+      // Follow-up attempts with increasing delays to ensure scrolling works
+      setTimeout(() => {
+        container.scrollTop = container.scrollHeight;
+      }, 50);
+      
+      setTimeout(() => {
+        container.scrollTop = container.scrollHeight;
+      }, 150);
     }
     
-    // Also ensure the container is scrolled to the bottom
-    if (messagesContainerRef.current) {
-      messagesContainerRef.current.scrollTop = messagesContainerRef.current.scrollHeight;
+    // Also try the scrollIntoView approach as backup
+    if (messagesEndRef.current) {
+      messagesEndRef.current.scrollIntoView({ behavior: "auto", block: "end" });
     }
   };
 
@@ -1527,7 +1409,7 @@ export function ModernChatBox() {
         right: 0 !important;
         z-index: 2100 !important;
         transition: bottom 0.2s ease-out;
-        background-color: rgba(255, 255, 255, 0.95) !important;
+        background-color: var(--chat-bg-color, rgba(255, 255, 255, 0.95)) !important;
         box-shadow: 0 -4px 12px rgba(0, 0, 0, 0.15) !important;
         padding-bottom: calc(10px + env(safe-area-inset-bottom)) !important;
         margin: 0 !important;
@@ -1554,7 +1436,18 @@ export function ModernChatBox() {
   }, [isOpen]);
 
   return (
-    <>
+    <div className="chat-box-container prevent-scroll-propagation">
+      {/* Set CSS variables for dynamic styling */}
+      <style jsx global>{`
+        :root {
+          --chat-bg-color: rgba(255, 255, 255, 0.95);
+        }
+        
+        .dark {
+          --chat-bg-color: rgb(0, 0, 0);
+        }
+      `}</style>
+      
       {/* Add global styles for sidebar mode */}
       <style jsx global>{`
         /* Sidebar mode styles */
@@ -1604,7 +1497,7 @@ export function ModernChatBox() {
             z-index: 2000 !important;
             margin: 0 !important;
             transform: none !important;
-            background-color: rgba(255, 255, 255, 0.95) !important;
+            background-color: var(--chat-bg-color, rgba(255, 255, 255, 0.95)) !important;
           }
           
           /* Adjust keyboard handling */
@@ -1615,7 +1508,8 @@ export function ModernChatBox() {
             right: 0 !important;
             z-index: 2100 !important;
             transition: bottom 0.2s ease-out;
-            background-color: rgba(255, 255, 255, 0.95) !important;
+            background-color: var(--chat-bg-color, rgba(255, 255, 255, 0.95)) !important;
+            box-shadow: 0 -4px 12px rgba(0, 0, 0, 0.15) !important;
             padding-bottom: calc(10px + env(safe-area-inset-bottom)) !important;
             margin: 0 !important;
           }
@@ -1646,7 +1540,7 @@ export function ModernChatBox() {
             box-shadow: 0 -2px 10px rgba(0, 0, 0, 0.1);
             position: sticky !important;
             bottom: 0 !important;
-            background-color: rgba(255, 255, 255, 0.95) !important;
+            background-color: var(--chat-bg-color, rgba(255, 255, 255, 0.95)) !important;
           }
           
           /* When keyboard is visible, ensure content remains accessible */
@@ -1672,7 +1566,7 @@ export function ModernChatBox() {
           pointer-events: auto !important;
         }
       `}</style>
-    
+
       {/* Chat button */}
       <Button
         onClick={toggleExpanded}
@@ -1701,7 +1595,7 @@ export function ModernChatBox() {
                 height={32} 
                 className={cn(
                   "rounded-full",
-                  isDark ? "brightness-0 invert" : ""
+                  isDark ? "brightness-0" : ""
                 )}
               />
             </div>
@@ -1724,7 +1618,7 @@ export function ModernChatBox() {
             exit={{ opacity: 0, y: 20, scale: 0.95 }}
             transition={{ duration: 0.2 }}
             className={cn(
-              "fixed z-50",
+              "fixed z-50 prevent-scroll-propagation",
               isMobile
                 ? "top-0 left-0 right-0 bottom-0 w-full h-full"
                 : sidebarMode 
@@ -1735,149 +1629,157 @@ export function ModernChatBox() {
               zIndex: isMobile || sidebarMode ? 1100 : 50,
               pointerEvents: "auto"
             }}
+            onWheel={(e) => {
+              // Prevent the wheel event from propagating to the parent elements
+              e.stopPropagation();
+            }}
+            onTouchMove={(e) => {
+              // For touch devices
+              e.stopPropagation();
+            }}
+          >
+            <div 
+              className="chat-container-wrapper"
+              onWheel={(e) => {
+                // Prevent the wheel event from propagating to the parent elements
+                e.stopPropagation();
+              }}
+              onTouchMove={(e) => {
+                // For touch devices
+                e.stopPropagation();
+              }}
           >
             <ResizableBox
-              width={isMobile ? window.innerWidth : chatDimensions.width}
-              height={isMobile ? viewportHeight : (sidebarMode ? window.innerHeight : chatDimensions.height)}
-              minConstraints={isMobile ? [window.innerWidth, 400] : [300, 400]}
-              maxConstraints={
-                isMobile 
-                  ? [window.innerWidth, viewportHeight]
-                  : (sidebarMode 
-                    ? [350, window.innerHeight] 
-                    : [600, 800])
-              }
-              resizeHandles={isMobile || sidebarMode ? [] : ['nw']}
+                width={isMobile ? window.innerWidth : chatDimensions.width}
+                height={isMobile ? viewportHeight : (sidebarMode ? window.innerHeight : chatDimensions.height)}
+                minConstraints={isMobile ? [window.innerWidth, 400] : [300, 400]}
+                maxConstraints={
+                  isMobile 
+                    ? [window.innerWidth, viewportHeight]
+                    : (sidebarMode 
+                      ? [350, window.innerHeight] 
+                      : [600, 800])
+                }
+                resizeHandles={isMobile || sidebarMode ? [] : ['nw']}
               onResize={handleResize}
               className={cn(
-                "flex flex-col overflow-hidden relative futuristic-border",
-                sidebarMode && "sidebar-mode sidebar-mode-active",
-                isMobile && "mobile-chat-box",
-                minimizedOnMobile && "minimized-mobile-chat",
-                sidebarMode || isMobile
-                  ? isDark 
-                    ? "bg-black border-l border-white/10" 
-                    : "bg-white border-l border-black/10"
-                  : isDark 
-                    ? "bg-black/40 border border-white/10 rounded-xl backdrop-blur-md" 
-                    : "bg-white/60 border border-black/10 rounded-xl backdrop-blur-md"
-              )}
-              style={isMobile ? {
-                position: 'fixed',
-                bottom: 0,
-                left: 0,
-                right: 0,
-                top: minimizedOnMobile ? 'calc(100% - 60px)' : 0,
-                width: '100%',
-                height: minimizedOnMobile ? 'auto' : '100%',
-                zIndex: 1200,
-                borderRadius: 0,
-                transition: 'all 0.3s ease-in-out',
-                margin: 0,
-                transform: 'none',
-                display: 'flex',
-                flexDirection: 'column'
-              } : {}}
-            >
-              {/* Neural network background pattern */}
-              {!sidebarMode && <div className="absolute inset-0 neural-bg opacity-10 pointer-events-none" />}
-              
-              {/* Chat header */}
-              <div className={cn(
-                "flex items-center justify-between px-4 py-3 relative z-20",
-                sidebarMode || isMobile
-                  ? isDark 
-                    ? "bg-black" 
-                    : "bg-white/95"
-                  : isDark 
-                    ? "bg-black/30" 
-                    : "bg-white/50",
-                minimizedOnMobile && "minimized-header"
-              )}>
-                {isMobile && minimizedOnMobile && (
-                  <div 
-                    className="absolute top-0 left-0 right-0 flex justify-center p-1 cursor-pointer"
-                    onClick={() => setMinimizedOnMobile(false)}
-                  >
-                    <div className="w-12 h-1 bg-gray-500 rounded-full opacity-50"></div>
-                  </div>
+                  "flex flex-col overflow-hidden relative futuristic-border prevent-scroll-propagation",
+                  sidebarMode && "sidebar-mode sidebar-mode-active",
+                  isMobile && "mobile-chat-box",
+                  minimizedOnMobile && "minimized-mobile-chat",
+                isDark 
+                    ? sidebarMode 
+                      ? "bg-black border border-gray-800" // Pure black for sidebar mode (dark)
+                      : "bg-gray-900/90 border border-gray-800 backdrop-blur-md" // Keep semi-transparent for normal mode (dark)
+                    : sidebarMode
+                      ? "bg-white border border-black/10" // Pure white for sidebar mode (light)
+                      : "bg-white/60 border border-black/10 backdrop-blur-md", // Keep semi-transparent for normal mode (light)
+                  !sidebarMode && !isMobile && "rounded-xl"
                 )}
-                <div className="flex items-center space-x-3">
-                  <div className="relative">
-                    <div className={cn(
-                      "flex h-9 w-9 items-center justify-center rounded-xl ai-pulse",
-                      isDark 
-                        ? "bg-primary text-white" 
-                        : "bg-black text-white"
-                    )}>
-                      <Image 
-                        src="/GV Fav.png" 
-                        alt="GV" 
-                        width={24} 
-                        height={24} 
-                        className={cn(
-                          "rounded-full",
-                          isDark ? "brightness-0 invert" : ""
-                        )}
-                      />
+                style={isMobile ? {
+                  position: 'fixed',
+                  bottom: 0,
+                  left: 0,
+                  right: 0,
+                  top: minimizedOnMobile ? 'calc(100% - 60px)' : 0,
+                  width: '100%',
+                  height: minimizedOnMobile ? 'auto' : '100%',
+                  zIndex: 1200,
+                  borderRadius: 0,
+                  transition: 'all 0.3s ease-in-out',
+                  margin: 0,
+                  transform: 'none',
+                  display: 'flex',
+                  flexDirection: 'column'
+                } : {}}
+              >
+                {/* Neural network background pattern */}
+                {!sidebarMode && <div className="absolute inset-0 neural-bg opacity-10 pointer-events-none" />}
+                
+              {/* Chat header */}
+                <div className={cn(
+                  "flex items-center justify-between px-4 py-3 relative z-20",
+                  sidebarMode || isMobile
+                    ? isDark 
+                      ? "bg-black text-white" 
+                      : "bg-white"
+                    : isDark 
+                      ? "bg-gray-900/90" 
+                      : "bg-white/50",
+                  minimizedOnMobile && "minimized-header"
+                )}>
+                  {isMobile && minimizedOnMobile && (
+                    <div 
+                      className="absolute top-0 left-0 right-0 flex justify-center p-1 cursor-pointer"
+                      onClick={() => setMinimizedOnMobile(false)}
+                    >
+                      <div className="w-12 h-1 bg-gray-500 rounded-full opacity-50"></div>
                     </div>
-                    <div className="absolute -bottom-1 -right-1 h-2.5 w-2.5 rounded-full bg-green-500 border-2 border-white dark:border-white"></div>
-                  </div>
-                  <div>
-                    <h3 className={cn(
-                      "font-semibold text-base",
-                      isDark ? "text-white" : "text-black"
-                    )}>Giovanni's Personal AI Assistant</h3>
-                    <div className="flex items-center text-xs">
-                      <span className={cn(
-                        "inline-block h-1.5 w-1.5 rounded-full mr-1.5",
-                        isDark ? "bg-green-500" : "bg-green-500"
-                      )}></span>
-                      <span className={cn(
-                        isDark ? "text-gray-400" : "text-gray-600"
+                  )}
+                  <div className="flex items-center space-x-3">
+                    <div className="relative">
+                      <div className={cn(
+                        "flex h-9 w-9 items-center justify-center rounded-xl ai-pulse",
+                        isDark 
+                          ? "bg-primary text-white" 
+                          : "bg-black text-white"
                       )}>
-                        Online
-                      </span>
+                        <Image 
+                          src="/GV Fav.png" 
+                          alt="GV" 
+                          width={24} 
+                          height={24} 
+                          className="rounded-full"
+                        />
+                      </div>
+                      <div className="absolute -bottom-1 -right-1 h-2.5 w-2.5 rounded-full bg-green-500 border-2 border-white dark:border-gray-900"></div>
+                    </div>
+                    <div>
+                      <h3 className={cn(
+                        "font-semibold text-base",
+                        isDark ? "text-white" : "text-black"
+                      )}>Giovanni's Personal AI Assistant</h3>
+                      <div className="flex items-center text-xs">
+                        <span className={cn(
+                          "inline-block h-1.5 w-1.5 rounded-full mr-1.5",
+                          "bg-green-500"
+                        )}></span>
+                        <span className={cn(
+                          isDark ? "text-gray-300" : "text-gray-600"
+                        )}>Online</span>
+                      </div>
                     </div>
                   </div>
-                </div>
-                <div className="flex items-center space-x-1 relative z-30">
-                  {/* Toggle sidebar mode button */}
-                  <button
-                    onClick={toggleSidebarMode}
-                    className={cn(
-                      "p-1.5 rounded-lg transition-colors",
-                      isDark 
-                        ? "hover:bg-black/10 text-gray-600" 
-                        : "hover:bg-black/10 text-gray-600",
-                      sidebarMode && "bg-primary/20"
-                    )}
-                    aria-label={sidebarMode ? "Exit sidebar mode" : "Enter sidebar mode"}
-                  >
-                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                      <rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect>
-                      <line x1="9" y1="3" x2="9" y2="21"></line>
-                    </svg>
-                  </button>
                   
-                  {/* End chat button */}
+                  <div className="flex items-center space-x-1">
+                    {/* Sidebar mode toggle */}
+                    {!isMobile && (
                   <button
-                    onClick={() => {
-                      setMessages([]);
-                      setChatDimensions(defaultDimensions);
-                      setSidebarMode(false);
-                      setIsOpen(false);
-                      document.body.classList.remove('with-chat-sidebar');
-                    }}
+                        onClick={toggleSidebarMode}
                     className={cn(
                       "p-1.5 rounded-lg transition-colors",
                       isDark 
-                        ? "hover:bg-black/10 text-gray-600" 
-                        : "hover:bg-black/10 text-gray-600"
+                            ? "hover:bg-gray-800 text-gray-300" 
+                            : "hover:bg-black/10 text-gray-600"
+                        )}
+                        aria-label="Toggle sidebar mode"
+                      >
+                        {sidebarMode ? <PanelLeftClose className="h-4 w-4" /> : <PanelLeftOpen className="h-4 w-4" />}
+                      </button>
                     )}
-                    aria-label="End chat"
-                  >
-                    <Trash2 className="h-4 w-4" />
+                    
+                    {/* End chat button */}
+                    <button
+                      onClick={handleEndChat}
+                      className={cn(
+                        "p-1.5 rounded-lg transition-colors",
+                        isDark 
+                          ? "hover:bg-gray-800 text-gray-300" 
+                          : "hover:bg-black/10 text-gray-600"
+                      )}
+                      aria-label="End chat"
+                    >
+                      <Trash2 className="h-4 w-4" />
                   </button>
                   
                   {/* Close button */}
@@ -1886,8 +1788,8 @@ export function ModernChatBox() {
                     className={cn(
                       "p-1.5 rounded-lg transition-colors",
                       isDark 
-                        ? "hover:bg-black/10 text-gray-600" 
-                        : "hover:bg-black/10 text-gray-600"
+                          ? "hover:bg-gray-800 text-gray-300" 
+                          : "hover:bg-black/10 text-gray-600"
                     )}
                     aria-label="Close chat"
                   >
@@ -1897,301 +1799,318 @@ export function ModernChatBox() {
               </div>
               
               {/* Chat messages */}
-              <div 
-                ref={messagesContainerRef}
-                className={cn(
-                  "flex-1 overflow-y-auto p-4 space-y-4 relative z-10 chat-scrollbar",
-                  "flex flex-col",
-                  isDark ? "scrollbar-thumb-white/10 hover:scrollbar-thumb-white/20" : "scrollbar-thumb-black/10 hover:scrollbar-thumb-black/20"
-                )}
-                style={{ 
-                  background: sidebarMode || isMobile
-                    ? isDark 
-                      ? 'rgba(0, 0, 0, 0.95)' 
-                      : 'rgba(255, 255, 255, 0.95)'
-                    : isDark 
-                      ? 'transparent' 
-                      : 'transparent',
-                  height: isMobile ? 'calc(100vh - 180px)' : '300px',
-                  overflowY: 'auto',
-                  paddingBottom: '120px',
-                  flexGrow: 1,
-                  flexShrink: 1,
-                  position: 'relative'
-                }}
-                onWheel={(e) => {
-                  // Prevent the wheel event from propagating to the parent elements
-                  e.stopPropagation();
-                }}
-                onTouchMove={(e) => {
-                  // For touch devices
-                  e.stopPropagation();
-                }}
-              >
-                <div className="flex-1"></div>
-                <div className="space-y-4">
-                  {messages.map((message, index) => (
+                <div 
+                  ref={messagesContainerRef}
+                  className={cn(
+                    "flex-1 overflow-y-auto p-4 space-y-4 relative z-10 chat-scrollbar prevent-scroll-propagation",
+                    "flex flex-col",
+                    isMobile ? "justify-end" : "justify-start",
+                    isDark ? "scrollbar-thumb-white/10 hover:scrollbar-thumb-white/20" : "scrollbar-thumb-black/10 hover:scrollbar-thumb-black/20"
+                  )}
+                  style={{ 
+                    background: isDark 
+                      ? sidebarMode
+                        ? 'rgb(0, 0, 0)' // Pure black for sidebar mode (dark)
+                        : 'rgba(18, 18, 18, 0.7)' // Keep semi-transparent for normal mode (dark)
+                      : sidebarMode
+                        ? 'rgb(255, 255, 255)' // Pure white for sidebar mode (light)
+                        : 'transparent', // Keep transparent for normal mode (light)
+                    height: isMobile ? 'calc(100vh - 180px)' : 'calc(100% - 150px)', // Increase space for input area
+                    maxHeight: '100%',
+                    overflowY: 'auto',
+                    paddingBottom: '0px',
+                    flexGrow: 1,
+                    flexShrink: 1,
+                    position: 'relative',
+                    minHeight: isMobile ? 'auto' : '300px'
+                  }}
+                  onWheel={(e) => {
+                    // Prevent the wheel event from propagating to the parent elements
+                    e.stopPropagation();
+                  }}
+                  onTouchMove={(e) => {
+                    // For touch devices
+                    e.stopPropagation();
+                  }}
+                >
+                  {/* This div pushes content to the bottom on mobile only */}
+                  {isMobile && <div className="flex-1"></div>}
+                  <div className="space-y-4 pb-20"> {/* Increase bottom padding to ensure no overlap */}
+                    {messages.map((message, index) => (
                   <div
                     key={message.id}
                     className={cn(
-                        "max-w-[85%] message-animation",
+                          "max-w-[85%] message-animation",
                       message.role === "user" 
-                          ? "ml-auto" 
-                          : "mr-auto flex"
-                      )}
-                      style={{ 
-                        animationDelay: `${index * 0.1}s`
-                      }}
-                    >
-                      {message.role === "assistant" && (
-                        <div className={cn(
-                          "flex-shrink-0 h-8 w-8 rounded-xl flex items-center justify-center mr-2 mt-1",
-                          isDark 
-                            ? "bg-primary text-white" 
-                            : "bg-black text-white"
-                        )}>
-                          <Image 
-                            src="/GV Fav.png" 
-                            alt="GV" 
-                            width={20} 
-                            height={20} 
-                            className={cn(
-                              "rounded-full",
-                              isDark ? "brightness-0 invert" : ""
-                            )}
-                          />
-                        </div>
-                      )}
-                      <div
-                        className={cn(
-                          "p-3.5 shadow-sm transition-all duration-200",
-                          message.role === "user" 
-                            ? "rounded-2xl rounded-br-sm backdrop-blur-sm" 
-                            : "rounded-2xl rounded-bl-sm backdrop-blur-sm",
-                          message.role === "user"
-                            ? isDark 
-                              ? "bg-primary/10 border border-primary/20 text-white" 
-                              : "bg-black/10 border border-black/5 text-black"
-                            : isDark
-                              ? "bg-black/80 border border-white/10 text-white" 
-                              : "bg-white/50 border border-black/5 text-black"
+                            ? "ml-auto" 
+                            : "mr-auto flex"
                         )}
+                        style={{ 
+                          animationDelay: `${index * 0.1}s`
+                        }}
                       >
-                        {message.isTyping ? (
-                          <div className="flex space-x-1.5 items-center px-3 py-2">
-                            <span className={cn(
-                              "w-2 h-2 rounded-full typing-dot",
-                              isDark ? "bg-white/70" : "bg-black/70"
-                            )}></span>
-                            <span className={cn(
-                              "w-2 h-2 rounded-full typing-dot",
-                              isDark ? "bg-white/70" : "bg-black/70"
-                            )}></span>
-                            <span className={cn(
-                              "w-2 h-2 rounded-full typing-dot",
-                              isDark ? "bg-white/70" : "bg-black/70"
-                            )}></span>
-                          </div>
-                        ) : (
-                          <div className="text-sm leading-relaxed">
-                    {message.content}
+                        {message.role === "assistant" && (
+                          <div className={cn(
+                            "flex-shrink-0 h-8 w-8 rounded-xl flex items-center justify-center mr-2 mt-1",
+                            isDark 
+                              ? "bg-gray-900 text-white" 
+                              : "bg-black text-white"
+                          )}>
+                            <Image 
+                              src="/GV Fav.png" 
+                              alt="GV" 
+                              width={20} 
+                              height={20} 
+                              className="rounded-full"
+                            />
                           </div>
                         )}
-                      </div>
+                        <div
+                          className={cn(
+                            "p-3.5 shadow-sm transition-all duration-200",
+                            message.role === "user" 
+                              ? "rounded-2xl rounded-br-sm backdrop-blur-sm" 
+                              : "rounded-2xl rounded-bl-sm backdrop-blur-sm",
+                            message.role === "user"
+                              ? isDark 
+                                ? "bg-gray-900/80 border border-gray-800 text-white" 
+                                : "bg-black/10 border border-black/5 text-black"
+                              : isDark
+                                ? "bg-gray-800 border border-gray-700 text-white" 
+                                : "bg-white/50 border border-black/5 text-black"
+                          )}
+                        >
+                          {message.isTyping ? (
+                            <div className="flex space-x-1.5 items-center px-3 py-2">
+                              <span className={cn(
+                                "w-2 h-2 rounded-full typing-dot",
+                                isDark ? "bg-white/70" : "bg-black/70"
+                              )}></span>
+                              <span className={cn(
+                                "w-2 h-2 rounded-full typing-dot",
+                                isDark ? "bg-white/70" : "bg-black/70"
+                              )}></span>
+                              <span className={cn(
+                                "w-2 h-2 rounded-full typing-dot",
+                                isDark ? "bg-white/70" : "bg-black/70"
+                              )}></span>
+                            </div>
+                          ) : (
+                            <div className="text-sm leading-relaxed">
+                    {message.content}
+                            </div>
+                          )}
+                        </div>
                   </div>
                 ))}
                 
-                  {/* Scroll to bottom button - removed */}
-                  
-                  <div ref={messagesEndRef} style={{ height: '10px' }} />
+                    {/* Scroll to bottom button */}
+                    {showScrollButton && (
+                      <Button
+                        onClick={scrollToBottom}
+                        variant="outline"
+                        size="sm"
+                        className="fixed bottom-24 right-4 h-10 w-10 rounded-full opacity-90 shadow-md z-20 bg-white dark:bg-gray-800"
+                        aria-label="Scroll to bottom"
+                      >
+                        <ChevronDown className="h-5 w-5" />
+                      </Button>
+                    )}
+                    
+                    {/* Added proper spacing to ensure messages aren't cut off */}
+                    <div ref={messagesEndRef} className="h-20 w-full" />
                     </div>
                   </div>
-              
-              {/* User info form */}
-              {shouldShowUserForm ? (
-                <form 
-                  onSubmit={handleUserInfoSubmit}
-                  className={cn(
-                    "p-6 relative z-20 glass-effect",
-                    sidebarMode || isMobile
-                      ? isDark 
-                        ? "bg-black" 
-                        : "bg-white"
-                      : isDark 
-                        ? "bg-black/20" 
-                        : "bg-white/40"
-                  )}
-                >
-                  <div className="mb-5">
-                    <h4 className={cn(
-                      "text-base font-medium mb-4 text-center animate-fadeIn",
-                      isDark ? "text-white" : "text-black"
-                    )}>
-                      Please share your contact information
-                    </h4>
-                    
-                    <div className="space-y-4">
-                      <div className="animate-fadeIn" style={{ animationDelay: "100ms" }}>
-                        <input
-                          type="text"
-                          name="name"
-                          value={userInfo.name}
-                          onChange={handleUserInfoChange}
-                          placeholder="Your Name"
-                          className={`w-full p-2 rounded-md border ${
-                            isDark ? 'bg-gray-700 border-gray-600 text-white placeholder-gray-400'
-                              : 'bg-white border-gray-300 text-gray-900 placeholder-gray-500'
-                          } focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent text-base min-h-[44px] font-size-[16px]`}
-                          style={{ fontSize: '16px' }}
-                        />
-                        {validationErrors.name && (
-                          <div className="form-error mt-1">{validationErrors.name}</div>
-                        )}
+                
+                {/* User info form */}
+                {shouldShowUserForm ? (
+                  <form 
+                    onSubmit={handleUserInfoSubmit}
+                    className={cn(
+                      "p-6 relative z-20 glass-effect",
+                      sidebarMode || isMobile
+                        ? isDark 
+                          ? "bg-black" 
+                          : "bg-white"
+                        : isDark 
+                          ? "bg-black/20" 
+                          : "bg-white/40"
+                    )}
+                  >
+                    <div className="mb-5">
+                      <h4 className={cn(
+                        "text-base font-medium mb-4 text-center animate-fadeIn",
+                        isDark ? "text-white" : "text-black"
+                      )}>
+                        Please share your contact information
+                      </h4>
+                      
+                      <div className="space-y-4">
+                        <div className="animate-fadeIn" style={{ animationDelay: "100ms" }}>
+                          <input
+                            type="text"
+                            name="name"
+                            value={userInfo.name}
+                            onChange={handleUserInfoChange}
+                            placeholder="Your name"
+                            className={cn(
+                              "form-input w-full px-4 py-3 rounded-lg transition-all text-base",
+                              isDark 
+                                ? "bg-black/30 text-white border-white/20 focus:border-white/40" 
+                                : "bg-white/70 text-black border-black/10 focus:border-black/30"
+                            )}
+                            style={{ fontSize: '16px' }}
+                            disabled={isSubmittingInfo}
+                          />
+                          {validationErrors.name && (
+                            <p className="text-red-500 text-sm mt-1">{validationErrors.name}</p>
+                          )}
               </div>
               
-                      <div className="animate-fadeIn" style={{ animationDelay: "200ms" }}>
-                        <input
-                          type="tel"
-                          name="phoneNumber"
-                          value={userInfo.phoneNumber}
-                          onChange={handleUserInfoChange}
-                          placeholder="Your phone number"
-                          className={`w-full p-2 rounded-md border ${
-                            isDark ? 'bg-gray-700 border-gray-600 text-white placeholder-gray-400'
-                              : 'bg-white border-gray-300 text-gray-900 placeholder-gray-500'
-                          } focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent text-base min-h-[44px] font-size-[16px]`}
-                          style={{ fontSize: '16px' }}
-                        />
-                        {validationErrors.phoneNumber && (
-                          <div className="form-error mt-1">{validationErrors.phoneNumber}</div>
-                        )}
+                        <div className="animate-fadeIn" style={{ animationDelay: "200ms" }}>
+                          <input
+                            type="tel"
+                            name="phoneNumber"
+                            value={userInfo.phoneNumber}
+                            onChange={handleUserInfoChange}
+                            placeholder="Your phone number"
+                            className={cn(
+                              "form-input w-full px-4 py-3 rounded-lg transition-all text-base",
+                              isDark 
+                                ? "bg-black/30 text-white border-white/20 focus:border-white/40" 
+                                : "bg-white/70 text-black border-black/10 focus:border-black/30"
+                            )}
+                            style={{ fontSize: '16px' }}
+                            disabled={isSubmittingInfo}
+                          />
+                          {validationErrors.phoneNumber && (
+                            <p className="text-red-500 text-sm mt-1">{validationErrors.phoneNumber}</p>
+                          )}
+                        </div>
                       </div>
                     </div>
-                  </div>
-
-                  <button
-                    type="submit"
-                    disabled={isSubmittingInfo}
-                    className={cn(
-                      "w-full p-3 rounded-lg transition-all shadow-sm hover:shadow-md text-sm font-medium animate-fadeIn",
-                      isDark 
-                        ? "bg-white hover:bg-white/90 text-black" 
-                        : "bg-black hover:bg-black/90 text-white",
-                      isSubmittingInfo && "opacity-50 cursor-not-allowed"
+  
+                    <button
+                      type="submit"
+                      disabled={isSubmittingInfo}
+                      className={cn(
+                        "w-full p-3 rounded-lg transition-all shadow-sm hover:shadow-md text-sm font-medium animate-fadeIn",
+                        isDark 
+                          ? "bg-white hover:bg-white/90 text-black" 
+                          : "bg-black hover:bg-black/90 text-white",
+                        isSubmittingInfo && "opacity-50 cursor-not-allowed"
+                      )}
+                      style={{ animationDelay: "300ms" }}
+                    >
+                      {isSubmittingInfo ? "Submitting..." : "Continue Conversation"}
+                    </button>
+                    
+                    <p className={cn(
+                      "text-xs mt-4 text-center animate-fadeIn",
+                      isDark ? "text-gray-400" : "text-gray-600"
                     )}
-                    style={{ animationDelay: "300ms" }}
+                    style={{ animationDelay: "400ms" }}
+                    >
+                      Your information helps Giovanni connect with interested visitors.
+                    </p>
+                  </form>
+                ) : (
+                  /* Chat input */
+                  <form 
+                    onSubmit={handleSubmit}
+                    className={cn(
+                      "relative z-20",
+                      keyboardOpen && "keyboard-visible"
+                    )}
+                    style={{
+                      position: 'absolute', // Change from fixed to absolute
+                      bottom: 0,
+                      left: sidebarMode && !isMobile ? 'auto' : 0,
+                      right: 0,
+                      width: sidebarMode && !isMobile ? chatDimensions.width : '100%',
+                      padding: '8px 8px 10px 8px',
+                      borderTop: isDark ? '1px solid rgba(75, 75, 75, 0.3)' : '1px solid rgba(127, 127, 127, 0.1)',
+                      backgroundColor: isDark ? 'rgb(0, 0, 0)' : 'rgba(255, 255, 255, 0.95)',
+                      zIndex: 100,
+                      boxShadow: isDark ? '0 -2px 10px rgba(0, 0, 0, 0.2)' : '0 -2px 10px rgba(0, 0, 0, 0.05)',
+                      paddingBottom: 'calc(8px + env(safe-area-inset-bottom))'
+                    }}
                   >
-                    {isSubmittingInfo ? "Submitting..." : "Continue Conversation"}
-                  </button>
-                  
-                  <p className={cn(
-                    "text-xs mt-4 text-center animate-fadeIn",
-                    isDark ? "text-gray-400" : "text-gray-600"
-                  )}
-                  style={{ animationDelay: "400ms" }}
-                  >
-                    Your information helps Giovanni connect with interested visitors.
-                  </p>
-                </form>
-              ) : (
-                /* Chat input */
-                <form 
-                  onSubmit={handleSubmit}
-                  className={cn(
-                    "relative z-20",
-                    keyboardOpen && "keyboard-visible"
-                  )}
-                  style={{
-                    position: 'fixed',
-                    bottom: 0,
-                    left: sidebarMode && !isMobile ? 'auto' : 0,
-                    right: 0,
-                    width: sidebarMode && !isMobile ? chatDimensions.width : '100%',
-                    padding: '8px 8px 10px 8px',
-                    borderTop: '1px solid rgba(127, 127, 127, 0.1)',
-                    backgroundColor: isDark ? 'rgba(18, 18, 18, 0.95)' : 'rgba(255, 255, 255, 0.95)',
-                    zIndex: 100,
-                    boxShadow: '0 -2px 10px rgba(0, 0, 0, 0.05)',
-                    paddingBottom: 'calc(8px + env(safe-area-inset-bottom))'
-                  }}
-                >
-                  <div className={cn(
-                    "flex items-center space-x-2 rounded-xl p-1.5 relative z-20",
-                    isDark 
-                      ? "bg-gray-800/80 border border-gray-700/50" 
-                      : "bg-white/50 border border-black/10"
-                  )}
-                  style={{
-                    margin: '0 8px 4px 8px'
-                  }}
-                  >
+                    <div className={cn(
+                      "flex items-center space-x-2 rounded-xl p-1.5 relative z-20",
+                      isDark 
+                        ? "bg-black border border-gray-700" 
+                        : "bg-white/80 border border-black/5"
+                    )}>
                   <textarea
-                      ref={inputRef}
+                        ref={inputRef}
                     value={input}
                     onChange={handleInputChange}
-                    onKeyDown={handleKeyDown}
-                    placeholder="Ask me anything..."
+                      onKeyDown={handleKeyDown}
+                      placeholder="Ask me anything..."
                     className={cn(
-                      "flex-1 p-2.5 rounded-lg resize-none text-sm modern-input",
+                        "flex-1 p-2.5 rounded-lg resize-none text-sm modern-input",
                       isDark 
-                        ? "bg-transparent border-none focus:ring-0 placeholder-gray-400 text-white" 
-                        : "bg-transparent border-none focus:ring-0 placeholder-gray-500 text-black",
-                      "focus:outline-none",
-                      isMobile && "mobile-textarea"
-                    )}
-                    style={{ 
-                      height: textareaHeight, 
-                      maxHeight: isMobile ? '80px' : '200px',
-                      paddingRight: '40px',
-                      fontSize: '16px'
-                    }}
+                          ? "bg-transparent border-none focus:ring-0 placeholder-gray-400 text-white" 
+                          : "bg-transparent border-none focus:ring-0 placeholder-gray-500 text-black",
+                        "focus:outline-none",
+                        isMobile && "mobile-textarea"
+                      )}
+                      style={{ 
+                        height: textareaHeight, 
+                        maxHeight: isMobile ? '80px' : '200px',
+                        paddingRight: '40px',
+                        fontSize: '16px'
+                      }}
                   />
                   <button
                     type="submit"
                     disabled={isLoading || !input.trim()}
                     className={cn(
-                        "p-2.5 rounded-xl transition-all shadow-sm hover:shadow",
+                          "p-2.5 rounded-xl transition-all shadow-sm hover:shadow",
                       isDark 
-                          ? "bg-primary hover:bg-primary/90 text-white" 
-                          : "bg-black hover:bg-black/90 text-white",
+                            ? "bg-gray-900 hover:bg-gray-800 text-white" 
+                            : "bg-black hover:bg-black/90 text-white",
                       (isLoading || !input.trim()) && "opacity-50 cursor-not-allowed"
                     )}
                   >
-                      <Send className="h-4 w-4" />
+                        <Send className="h-4 w-4" />
                   </button>
-                </div>
-                  
-                  {/* AI capabilities hint */}
-                  <div className="mt-2 mb-2 flex justify-center">
-                    <div className="text-xs flex items-center space-x-4">
-                      <span className={cn(
-                        "flex items-center",
-                        isDark ? "text-gray-400" : "text-gray-600"
-                      )}>
+                  </div>
+                    
+                    {/* AI capabilities hint */}
+                    <div className="mt-2 mb-2 flex justify-center">
+                      <div className="text-xs flex items-center space-x-4">
                         <span className={cn(
-                          "inline-block h-1.5 w-1.5 rounded-full mr-1.5",
-                          isDark ? "bg-white/70" : "bg-black/70"
-                        )}></span>
-                        Ask about projects
-                      </span>
-                      <span className={cn(
-                        "flex items-center",
-                        isDark ? "text-gray-400" : "text-gray-600"
-                      )}>
+                          "flex items-center",
+                          isDark ? "text-gray-300" : "text-gray-600"
+                        )}>
+                          <span className={cn(
+                            "inline-block h-1.5 w-1.5 rounded-full mr-1.5",
+                            isDark ? "bg-gray-300" : "bg-black/70"
+                          )}></span>
+                          Ask about projects
+                        </span>
                         <span className={cn(
-                          "inline-block h-1.5 w-1.5 rounded-full mr-1.5",
-                          isDark ? "bg-white/50" : "bg-black/50"
-                        )}></span>
-                        Explore skills
-                      </span>
-                    </div>
+                          "flex items-center",
+                          isDark ? "text-gray-300" : "text-gray-600"
+                        )}>
+                          <span className={cn(
+                            "inline-block h-1.5 w-1.5 rounded-full mr-1.5",
+                            isDark ? "bg-gray-300" : "bg-black/70"
+                          )}></span>
+                          Explore skills
+                        </span>
+                      </div>
                 </div>
               </form>
-              )}
+                )}
             </ResizableBox>
+            </div>
           </motion.div>
         )}
       </AnimatePresence>
-    </>
+    </div>
   )
 }
+

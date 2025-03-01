@@ -263,7 +263,7 @@ export function About() {
                           alt={tech.name} 
                           className={cn(
                             "object-contain",
-                            isDark && (tech.name === "Next.js" || tech.name === "AWS" || tech.name === "Flask" || tech.name === "Unqork" || tech.name === "WordPress") && "filter brightness-0 invert"
+                            mounted && isDark && (tech.name === "Next.js" || tech.name === "AWS" || tech.name === "Flask" || tech.name === "Unqork" || tech.name === "WordPress") && "filter brightness-0 invert"
                           )}
                           width={24}
                           height={24}

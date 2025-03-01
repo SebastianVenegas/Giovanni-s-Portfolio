@@ -46,9 +46,11 @@ export default function RootLayout({
           defaultTheme="system"
           enableSystem
           disableTransitionOnChange
+          skipMountedCheck={false}
         >
           {children}
         </ThemeProvider>
+        <Analytics />
       </body>
     </html>
   );

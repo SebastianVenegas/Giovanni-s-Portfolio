@@ -38,6 +38,28 @@ export function TechStackBanner() {
   const containerRef = useRef<HTMLDivElement>(null)
   const mounted = useMounted()
   
+  // Function to get consistent class names regardless of mounted state
+  const getImageClassNames = (techName: string) => {
+    // Base classes that are always applied
+    const baseClasses = "h-10 w-auto object-contain"
+    
+    // Only apply theme-dependent classes if mounted
+    if (!mounted) return baseClasses
+    
+    // Apply special styling for specific logos in dark mode
+    if (isDark && (
+      techName === "Next.js" || 
+      techName === "AWS" || 
+      techName === "Flask" || 
+      techName === "Unqork" || 
+      techName === "WordPress"
+    )) {
+      return cn(baseClasses, "filter brightness-0 invert")
+    }
+    
+    return baseClasses
+  }
+  
   return (
     <div 
       ref={containerRef}
@@ -73,10 +95,7 @@ export function TechStackBanner() {
                         alt={`${tech.name} logo`}
                         width={48}
                         height={48}
-                        className={cn(
-                          "h-10 w-auto object-contain",
-                          isDark && (tech.name === "Next.js" || tech.name === "AWS" || tech.name === "Flask" || tech.name === "Unqork" || tech.name === "WordPress") && "filter brightness-0 invert"
-                        )}
+                        className={getImageClassNames(tech.name)}
                       />
                     </div>
                   </div>
@@ -96,10 +115,7 @@ export function TechStackBanner() {
                         alt={`${tech.name} logo`}
                         width={48}
                         height={48}
-                        className={cn(
-                          "h-10 w-auto object-contain",
-                          isDark && (tech.name === "Next.js" || tech.name === "AWS" || tech.name === "Flask" || tech.name === "Unqork" || tech.name === "WordPress") && "filter brightness-0 invert"
-                        )}
+                        className={getImageClassNames(tech.name)}
                       />
                     </div>
                   </div>

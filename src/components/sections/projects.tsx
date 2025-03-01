@@ -122,19 +122,34 @@ export default function Projects() {
   // Function to determine logo filter based on company and theme
   const getLogoFilter = (client: string) => {
     if (!mounted) return {}
-
-    // Special case for UBS - make it white in dark mode
-    if (client === "UBS") {
+    
+    // These clients need their logos to be white in dark mode
+    const needsInversionInDark = [
+      "UBS",
+      "AXIS Capital", 
+      "Nestlé",
+      "Chrysler", 
+      "Mopar", 
+      "K&N Filters",
+      "JAIC",
+      "unqork",
+      "Accenture",
+      "Born Group",
+      "Helm",
+      "MDX Health"
+    ]
+    
+    if (needsInversionInDark.includes(client)) {
       return {
-        filter: resolvedTheme === "dark" ? "brightness(0) invert(1)" : "none",
-        background: "transparent",
+        filter: resolvedTheme === "dark" 
+          ? "brightness(0) invert(1)" // White in dark mode
+          : "none" // Original in light mode
       }
     }
-
-    // All other logos keep original colors
+    
+    // All other logos should maintain their original colors
     return {
-      filter: "none",
-      background: "transparent",
+      filter: "none"
     }
   }
 

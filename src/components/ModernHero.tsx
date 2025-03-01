@@ -512,7 +512,7 @@ export default function ModernHero() {
                     fill 
                     className={cn(
                       "object-contain",
-                      resolvedTheme === "dark" && "filter brightness-0 invert"
+                      mounted && resolvedTheme === "dark" && "filter brightness-0 invert"
                     )}
                   />
                 </div>
@@ -580,7 +580,7 @@ export default function ModernHero() {
                     fill 
                     className={cn(
                       "object-contain",
-                      resolvedTheme === "dark" && "filter brightness-0 invert"
+                      mounted && resolvedTheme === "dark" && "filter brightness-0 invert"
                     )}
                   />
                 </div>
@@ -675,7 +675,7 @@ export default function ModernHero() {
                     fill 
                     className={cn(
                       "object-contain",
-                      resolvedTheme === "dark" && "filter brightness-0 invert"
+                      mounted && resolvedTheme === "dark" && "filter brightness-0 invert"
                     )}
                   />
                 </div>
@@ -691,7 +691,7 @@ export default function ModernHero() {
                     fill 
                     className={cn(
                       "object-contain",
-                      resolvedTheme === "dark" && "filter brightness-0 invert"
+                      mounted && resolvedTheme === "dark" && "filter brightness-0 invert"
                     )}
                   />
                 </div>
