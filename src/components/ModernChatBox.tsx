@@ -247,10 +247,14 @@ export function ModernChatBox() {
   const toggleExpanded = () => {
     // If closing the chat, reset dimensions to default and exit all modes
     if (isOpen) {
-      // Don't allow closing on mobile - minimize instead
+      // Close the chat on mobile instead of just minimizing it
       if (isMobile) {
-        // Toggle minimized state on mobile instead of closing
-        setMinimizedOnMobile(!minimizedOnMobile)
+        // Reset states
+        setChatDimensions(defaultDimensions)
+        setSidebarMode(false)
+        document.body.classList.remove('with-chat-sidebar')
+        setMinimizedOnMobile(false)
+        setIsOpen(false)
         return
       }
       
@@ -2114,4 +2118,3 @@ export function ModernChatBox() {
   )
 }
 
-// for push
