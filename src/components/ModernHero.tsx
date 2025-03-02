@@ -14,6 +14,7 @@ import {
   Award,
   Briefcase,
   Sparkles,
+  ArrowRight,
 } from "lucide-react"
 import { useTheme } from "next-themes"
 import { useMounted } from "./theme-provider"
@@ -836,25 +837,27 @@ export default function ModernHero() {
               initial={{ y: 20, opacity: 0 }}
               animate={{ y: 0, opacity: 1 }}
               transition={{ duration: 0.5, delay: 0.7 }}
-              className="md:hidden mt-4"
+              className="md:hidden mt-6 mb-2"
             >
               <Button
                 variant="outline"
                 size="lg"
                 className={cn(
-                  "w-full h-12 rounded-xl",
-                  "bg-black/5 dark:bg-white/5",
-                  "hover:bg-black/10 dark:hover:bg-white/10",
+                  "w-full max-w-[95vw] h-14 rounded-xl text-xs font-normal",
+                  "bg-white dark:bg-neutral-900",
+                  "hover:bg-neutral-100 dark:hover:bg-neutral-800",
                   "text-gray-900 dark:text-white",
-                  "border border-gray-200 dark:border-gray-800",
-                  "hover:border-gray-700 dark:hover:border-gray-600",
+                  "border-2 border-gray-300 dark:border-gray-700",
+                  "hover:border-gray-400 dark:hover:border-gray-600",
+                  "shadow-lg",
                   "transition-all duration-300",
+                  "px-8", // Added horizontal padding
                 )}
                 onClick={handleDownloadResume}
               >
-                <div className="flex items-center justify-center gap-3">
-                  <Download className="h-5 w-5" />
-                  <span className="font-medium">Download Resume</span>
+                <div className="flex items-center justify-center gap-4 mx-auto">
+                  <Download className="h-5 w-5 text-blue-500 dark:text-blue-400" />
+                  <span className="text-xs">Download Resume</span>
                 </div>
               </Button>
             </motion.div>
