@@ -1439,6 +1439,31 @@ export function ModernChatBox() {
     }
   }, [isOpen]);
 
+  // Grid background animation effect
+  useEffect(() => {
+    // Listen for custom event to open chat in sidebar mode
+    const handleOpenChat = (e: any) => {
+      if (!isOpen) {
+        setIsOpen(true);
+        
+        // If sidebar mode is requested, enable it after a short delay
+        if (e.detail?.sidebarMode) {
+          setTimeout(() => {
+            setSidebarMode(true);
+            setChatDimensions(sidebarDimensions);
+            document.body.classList.add('with-chat-sidebar');
+          }, 50);
+        }
+      }
+    };
+    
+    document.addEventListener('nextgio:openchat', handleOpenChat);
+    
+    return () => {
+      document.removeEventListener('nextgio:openchat', handleOpenChat);
+    };
+  }, [isOpen, sidebarDimensions]);
+
   return (
     <div className="chat-box-container prevent-scroll-propagation">
       {/* Set CSS variables for dynamic styling */}

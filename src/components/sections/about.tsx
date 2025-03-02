@@ -277,24 +277,61 @@ export function About() {
             </div>
 
             {/* Stats row */}
-            <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-              {[
-                { value: "13+", label: "Years Experience" },
-                { value: "50+", label: "Projects Completed" },
-                { value: "15+", label: "Enterprise Clients" },
-                { value: "24/7", label: "Support" },
-              ].map((stat, index) => (
-                <motion.div
-                  key={index}
-                  initial={{ opacity: 0, y: 20 }}
-                  animate={isInView ? { opacity: 1, y: 0 } : {}}
-                  transition={{ duration: 0.6, delay: 0.8 + index * 0.1 }}
-                  className="p-4 rounded-xl bg-white/80 dark:bg-black/20 shadow-lg backdrop-blur-sm border border-gray-200 dark:border-gray-800/40"
+            <div className="flex flex-col items-center">
+              <motion.div
+                initial={{ opacity: 0, y: 20 }}
+                animate={isInView ? { opacity: 1, y: 0 } : {}}
+                transition={{ duration: 0.6, delay: 0.7 }}
+                className="text-center mb-8 max-w-2xl"
+              >
+                <div className="inline-flex items-center justify-center mb-4">
+                  <div className="h-px w-8 bg-blue-500 dark:bg-blue-400 mr-4"></div>
+                  <h3 className="text-3xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-blue-600 to-blue-400 dark:from-blue-400 dark:to-blue-300">
+                    Meet NextGio AI
+                  </h3>
+                  <div className="h-px w-8 bg-blue-500 dark:bg-blue-400 ml-4"></div>
+                </div>
+                <p className="text-gray-700 dark:text-gray-300 text-lg leading-relaxed">
+                  My custom-trained AI assistant can answer questions about my experience, skills, and projects. 
+                  Try it out to learn more about my work and how I can help with your next project.
+                </p>
+              </motion.div>
+              
+              <motion.div 
+                className="w-full max-w-md relative"
+                initial={{ opacity: 0, y: 20 }}
+                animate={isInView ? { opacity: 1, y: 0 } : {}}
+                transition={{ duration: 0.6, delay: 0.8 }}
+                whileHover={{ scale: 1.03 }}
+                whileTap={{ scale: 0.97 }}
+              >
+                {/* Glow effect positioned around the button instead of behind it */}
+                <div className="absolute -inset-1 rounded-xl bg-gradient-to-r from-cyan-400 to-blue-500 opacity-30 blur-md animate-pulse -z-10" />
+                
+                <Button
+                  className={cn(
+                    "w-full h-16 rounded-xl text-lg font-medium group relative overflow-hidden z-10",
+                    "bg-white hover:bg-neutral-100 text-neutral-900 border border-neutral-200",
+                    "dark:bg-neutral-900 dark:hover:bg-neutral-800 dark:text-white dark:border-neutral-800",
+                    "shadow-lg",
+                    "transition-all duration-300",
+                  )}
+                  onClick={() => {
+                    // Create a custom event to open the chat in sidebar mode
+                    const event = new CustomEvent('nextgio:openchat', { 
+                      detail: { sidebarMode: true } 
+                    });
+                    document.dispatchEvent(event);
+                  }}
                 >
-                  <div className="text-2xl font-bold text-gray-900 dark:text-white">{stat.value}</div>
-                  <div className="text-sm text-gray-600 dark:text-gray-400">{stat.label}</div>
-                </motion.div>
-              ))}
+                  <span className="relative flex items-center justify-center">
+                    <Code className="mr-3 h-6 w-6 text-cyan-500 dark:text-cyan-400" />
+                    <span className="font-semibold">Chat with NextGio AI</span>
+                    <ArrowRight className="ml-3 h-5 w-5 transition-transform duration-300 
+                      group-hover:translate-x-1 text-cyan-500 dark:text-cyan-400" />
+                  </span>
+                </Button>
+              </motion.div>
             </div>
 
             {/* CTA Buttons with hover animations */}
