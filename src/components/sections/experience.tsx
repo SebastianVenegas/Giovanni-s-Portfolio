@@ -1091,7 +1091,7 @@ export function Experience() {
                               >
                                 <div className="h-16 flex items-center justify-center mb-4">
                                   <Image
-                                    src="/images/clients/fiat.png"
+                                    src="/images/clients/Fiat.png"
                                     alt="Fiat"
                                     width={120}
                                     height={60}
@@ -1181,7 +1181,7 @@ export function Experience() {
                               >
                                 <div className="h-16 flex items-center justify-center mb-4">
                                   <Image
-                                    src="/images/clients/kn.png"
+                                    src="/images/clients/K&n.png"
                                     alt="K&N Filters"
                                     width={120}
                                     height={60}
