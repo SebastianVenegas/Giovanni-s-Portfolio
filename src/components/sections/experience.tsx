@@ -14,6 +14,34 @@ import { useMounted } from "@/components/theme-provider"
 // Enhanced experience data with more details
 const experiences = [
   {
+    title: "Full Stack Developer",
+    company: "Metro Star",
+    logo: "/images/logos/MetroStar.png",
+    website: "https://www.metrostar.com",
+    period: "June 2023 – Present",
+    location: "Remote / Washington, D.C.",
+    description: "Developing scalable full-stack solutions for USDA Farmers.gov platform, delivering enhanced data visibility and user experiences for American farmers.",
+    achievements: [
+      "Built front-end features using React, Next.js, and TypeScript, ensuring responsive, accessible, and 508-compliant interfaces for high-impact USDA tools",
+      "Engineered robust back-end services using Node.js, Express, and PostgreSQL, integrating seamlessly with legacy USDA data pipelines",
+      "Played a key role in the Agile team, contributing to sprint planning, code reviews, and iterative feature development in alignment with USDA's modernization goals",
+      "Successfully launched multiple updates and tools across commodity reporting dashboards, disaster assistance applications, and farmer support workflows",
+      "Collaborated with designers, product owners, and federal stakeholders to ensure technical feasibility, compliance, and long-term maintainability",
+      "Actively contributed to MetroStar's mission to modernize government digital services through secure, efficient, and user-centered applications"
+    ],
+    technologies: ["React", "Next.js", "TypeScript", "Node.js", "Express", "PostgreSQL", "Agile", "Section 508", "REST API"],
+    keyProjects: [
+      {
+        name: "USDA Farmers.gov Platform",
+        description: "Modernized platform providing tools and resources for American farmers with enhanced data visibility"
+      },
+      {
+        name: "Commodity Reporting Dashboard",
+        description: "Interactive reporting system for agricultural commodity data with real-time analytics"
+      }
+    ]
+  },
+  {
     title: "Senior Full Stack Engineer & Solutions Architect",
     company: "Auxo Solutions",
     logo: "/images/logos/auxo.png",
@@ -49,34 +77,6 @@ const experiences = [
       {
         name: "AXIS Capital Insurance Underwriting",
         description: "Insurance underwriting platform with automated risk assessment"
-      }
-    ]
-  },
-  {
-    title: "Full Stack Developer",
-    company: "Metro Star",
-    logo: "/images/logos/MetroStar.png",
-    website: "https://www.metrostar.com",
-    period: "June 2023 – Present",
-    location: "Remote / Washington, D.C.",
-    description: "Developing scalable full-stack solutions for USDA Farmers.gov platform, delivering enhanced data visibility and user experiences for American farmers.",
-    achievements: [
-      "Built front-end features using React, Next.js, and TypeScript, ensuring responsive, accessible, and 508-compliant interfaces for high-impact USDA tools",
-      "Engineered robust back-end services using Node.js, Express, and PostgreSQL, integrating seamlessly with legacy USDA data pipelines",
-      "Played a key role in the Agile team, contributing to sprint planning, code reviews, and iterative feature development in alignment with USDA's modernization goals",
-      "Successfully launched multiple updates and tools across commodity reporting dashboards, disaster assistance applications, and farmer support workflows",
-      "Collaborated with designers, product owners, and federal stakeholders to ensure technical feasibility, compliance, and long-term maintainability",
-      "Actively contributed to MetroStar's mission to modernize government digital services through secure, efficient, and user-centered applications"
-    ],
-    technologies: ["React", "Next.js", "TypeScript", "Node.js", "Express", "PostgreSQL", "Agile", "Section 508", "REST API"],
-    keyProjects: [
-      {
-        name: "USDA Farmers.gov Platform",
-        description: "Modernized platform providing tools and resources for American farmers with enhanced data visibility"
-      },
-      {
-        name: "Commodity Reporting Dashboard",
-        description: "Interactive reporting system for agricultural commodity data with real-time analytics"
       }
     ]
   },
