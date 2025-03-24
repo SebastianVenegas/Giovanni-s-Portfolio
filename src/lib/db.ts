@@ -1,145 +1,189 @@
 import { Pool } from 'pg';
 
-// Create a connection configuration using the connection string from environment variables
+let pool: Pool | null = null;
 const connectionConfig = {
-  connectionString: process.env.DATABASE_URL,
+  connectionString: process.env.DATABASE_URL || process.env.POSTGRES_URL,
   ssl: process.env.NODE_ENV === 'production' 
-    ? { rejectUnauthorized: false } // Required for some Neon connections
+    ? { rejectUnauthorized: false } 
     : false
 };
 
-// Create a connection pool that can be reused across requests
-const pool = new Pool({
-  ...connectionConfig,
-  max: 20, // Maximum number of clients in the pool
-  idleTimeoutMillis: 30000, // How long a client is allowed to remain idle before being closed
-  connectionTimeoutMillis: 2000, // How long to wait for a connection to become available
-});
+// Initialize database connection pool
+export async function initializeDatabase() {
+  try {
+    if (pool) {
+      console.log('Database pool already exists, skipping initialization');
+      return pool;
+    }
 
-// Log pool errors
-pool.on('error', (err) => {
-  console.error('Unexpected error on idle client', err);
-});
+    // Create a new pool
+    pool = new Pool({
+      ...connectionConfig,
+      max: 20,
+      idleTimeoutMillis: 30000,
+      connectionTimeoutMillis: 3000,
+    });
+
+    // Add error handler to pool
+    pool.on('error', (err) => {
+      console.error('Unexpected error on idle client', err);
+    });
+
+    // Test the connection
+    const client = await pool.connect();
+    console.log('Database connected successfully');
+    
+    // Create necessary tables if they don't exist
+    await createTablesIfNotExist(client);
+    
+    client.release();
+    console.log('Database initialized successfully');
+    
+    return pool;
+  } catch (error) {
+    console.error('Database initialization error:', error);
+    throw error;
+  }
+}
+
+// Get pool client
+export async function getPoolClient() {
+  if (!pool) {
+    await initializeDatabase();
+  }
+  return pool;
+}
 
 // For serverless environments, create a new client for each request
 export async function getClient() {
   const { Client } = await import('pg');
-  const client = new Client(connectionConfig);
+  // Create client with proper type handling
+  const client = new Client({
+    connectionString: process.env.DATABASE_URL || process.env.POSTGRES_URL,
+    ssl: process.env.NODE_ENV === 'production' 
+      ? { rejectUnauthorized: false } 
+      : false
+  });
   await client.connect();
   return client;
 }
 
-// Get a client from the pool (much faster than creating a new connection)
-export async function getPoolClient() {
-  return await pool.connect();
-}
-
-// Initialize the database by creating the necessary tables if they don't exist
-export async function initializeDatabase() {
-  const client = await getClient();
+// Create necessary tables if they don't exist
+async function createTablesIfNotExist(client: any) {
   try {
-    // Create the contacts table if it doesn't exist
     await client.query(`
       CREATE TABLE IF NOT EXISTS contacts (
         id SERIAL PRIMARY KEY,
-        name VARCHAR(255) NOT NULL,
-        phone_number VARCHAR(50) NOT NULL,
-        created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
-        updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
-      )
+        name VARCHAR(100) NOT NULL,
+        phone_number VARCHAR(20) NOT NULL,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+      );
     `);
-
-    // Create the chat_logs table if it doesn't exist
+    
     await client.query(`
       CREATE TABLE IF NOT EXISTS chat_logs (
         id SERIAL PRIMARY KEY,
         contact_id INTEGER REFERENCES contacts(id),
-        session_id VARCHAR(100) NOT NULL,
+        session_id VARCHAR(100),
         role VARCHAR(20) NOT NULL,
         content TEXT NOT NULL,
-        created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
-      )
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+      );
     `);
     
-    console.log('Database initialized successfully');
+    console.log('Database tables created or already exist');
   } catch (error) {
-    console.error('Error initializing database:', error);
-  } finally {
-    await client.end();
+    console.error('Error creating tables:', error);
+    throw error;
   }
 }
 
-// Save contact information to the database
+// Save contact information
 export async function saveContact(name: string, phoneNumber: string) {
-  const client = await getPoolClient();
   try {
-    const result = await client.query(
+    if (!pool) {
+      await initializeDatabase();
+    }
+    
+    const result = await pool!.query(
       'INSERT INTO contacts (name, phone_number) VALUES ($1, $2) RETURNING id',
       [name, phoneNumber]
     );
-    return result.rows[0];
+    
+    console.log('Contact saved successfully with ID:', result.rows[0].id);
+    return { id: result.rows[0].id };
   } catch (error) {
     console.error('Error saving contact:', error);
     throw error;
-  } finally {
-    client.release(); // Release client back to pool instead of ending connection
   }
 }
 
-// Save a chat message to the database
-export async function saveChatMessage(contactId: number, sessionId: string, role: string, content: string) {
-  const client = await getPoolClient();
+// Save individual chat message
+export async function saveChatMessage(
+  contactId: number,
+  sessionId: string | undefined,
+  role: string,
+  content: string
+) {
   try {
-    const result = await client.query(
+    console.log(`Saving message: contactId=${contactId}, sessionId=${sessionId}, role=${role}, content length=${content.length}`);
+    
+    if (!pool) {
+      await initializeDatabase();
+    }
+    
+    // Make sure we have a valid sessionId (use UUID if none provided)
+    const finalSessionId = sessionId || `session-${Date.now()}`;
+    
+    const result = await pool!.query(
       'INSERT INTO chat_logs (contact_id, session_id, role, content) VALUES ($1, $2, $3, $4) RETURNING id',
-      [contactId, sessionId, role, content]
+      [contactId, finalSessionId, role, content]
     );
-    return result.rows[0];
+    
+    console.log('Chat message saved successfully with ID:', result.rows[0].id);
+    return { id: result.rows[0].id };
   } catch (error) {
     console.error('Error saving chat message:', error);
+    console.error('Message details:', { contactId, sessionId, role, contentLength: content?.length });
     throw error;
-  } finally {
-    client.release(); // Release client back to pool instead of ending connection
   }
 }
 
 // Save multiple chat messages in a batch
-export async function saveChatMessages(messages: { contactId: number, sessionId: string, role: string, content: string }[]) {
-  if (!messages.length) return [];
-  
-  const client = await getPoolClient();
+export async function saveChatMessages(messages: any[]) {
   try {
-    // Create a batch insert query
-    const values = messages.map((_, i) => 
-      `($${i * 4 + 1}, $${i * 4 + 2}, $${i * 4 + 3}, $${i * 4 + 4})`
-    ).join(', ');
+    if (!pool) {
+      await initializeDatabase();
+    }
     
-    const params = messages.flatMap(m => [m.contactId, m.sessionId, m.role, m.content]);
+    // Use Promise.all to run multiple inserts in parallel
+    const results = await Promise.all(
+      messages.map(msg => 
+        pool!.query(
+          'INSERT INTO chat_logs (contact_id, session_id, role, content) VALUES ($1, $2, $3, $4) RETURNING id',
+          [msg.contactId, msg.sessionId || `session-${Date.now()}`, msg.role, msg.content]
+        )
+      )
+    );
     
-    const query = `
-      INSERT INTO chat_logs (contact_id, session_id, role, content) 
-      VALUES ${values}
-      RETURNING id
-    `;
-    
-    const result = await client.query(query, params);
-    return result.rows;
+    console.log(`Saved ${results.length} chat messages`);
+    return results.map(result => ({ id: result.rows[0].id }));
   } catch (error) {
-    console.error('Error saving chat messages:', error);
+    console.error('Error saving chat messages batch:', error);
     throw error;
-  } finally {
-    client.release(); // Release client back to pool instead of ending connection
   }
 }
 
-// Get chat history for a specific contact and session
-export async function getChatHistory(contactId: number, sessionId: string | null) {
-  const client = await getPoolClient();
+// Get all messages for a specific contact and session
+export async function getChatMessages(contactId: number, sessionId?: string) {
   try {
+    if (!pool) {
+      await initializeDatabase();
+    }
+    
     let query = 'SELECT * FROM chat_logs WHERE contact_id = $1';
     const params: (number | string)[] = [contactId];
     
-    // If sessionId is provided, filter by it
     if (sessionId) {
       query += ' AND session_id = $2';
       params.push(sessionId);
@@ -147,28 +191,50 @@ export async function getChatHistory(contactId: number, sessionId: string | null
     
     query += ' ORDER BY created_at ASC';
     
-    const result = await client.query(query, params);
+    const result = await pool!.query(query, params);
     return result.rows;
   } catch (error) {
-    console.error('Error getting chat history:', error);
+    console.error('Error retrieving chat messages:', error);
     throw error;
-  } finally {
-    client.release(); // Release client back to pool instead of ending connection
   }
 }
 
-// Get all contacts from the database
-export async function getContacts() {
-  const client = await getPoolClient();
+// Get chat history for a specific contact and session
+export async function getChatHistory(contactId: number, sessionId: string | null) {
   try {
-    const result = await client.query(
-      'SELECT * FROM contacts ORDER BY created_at DESC'
-    );
+    if (!pool) {
+      await initializeDatabase();
+    }
+    
+    let query = 'SELECT * FROM chat_logs WHERE contact_id = $1';
+    const params: (number | string)[] = [contactId];
+    
+    if (sessionId) {
+      query += ' AND session_id = $2';
+      params.push(sessionId);
+    }
+    
+    query += ' ORDER BY created_at ASC';
+    
+    const result = await pool!.query(query, params);
     return result.rows;
   } catch (error) {
-    console.error('Error getting contacts:', error);
+    console.error('Error retrieving chat history:', error);
     throw error;
-  } finally {
-    client.release(); // Release client back to pool instead of ending connection
+  }
+}
+
+// Get all contacts
+export async function getContacts() {
+  try {
+    if (!pool) {
+      await initializeDatabase();
+    }
+    
+    const result = await pool!.query('SELECT * FROM contacts ORDER BY created_at DESC');
+    return result.rows;
+  } catch (error) {
+    console.error('Error retrieving contacts:', error);
+    throw error;
   }
 } 

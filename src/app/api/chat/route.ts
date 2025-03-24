@@ -16,6 +16,21 @@ interface UserInfo {
   sessionId?: string;
 }
 
+// Initialize database connection
+import { initializeDatabase, getPoolClient } from '@/lib/db';
+
+// Initialize database on app startup
+try {
+  console.log('Initializing database connection pool...');
+  initializeDatabase().then(() => {
+    console.log('Database connection pool initialized successfully');
+  }).catch(err => {
+    console.error('Failed to initialize database connection pool:', err);
+  });
+} catch (error) {
+  console.error('Error during database initialization:', error);
+}
+
 // Create an OpenAI API client with better error handling
 let openai: OpenAI;
 try {
@@ -177,10 +192,24 @@ Always be professional, helpful, and represent Giovanni's expertise accurately.`
 
 export async function POST(req: Request) {
   try {
-    const { message, userInfo } = await req.json();
+    const body = await req.json();
+    const { message, messages, userInfo } = body;
+    
+    // Support both message and messages formats
+    const userMessage = message || (messages && messages.length > 0 ? messages[messages.length - 1].content : '');
+    
+    // Log the request details for debugging
+    console.log('Chat API request details:', { 
+      hasMessage: !!message, 
+      hasMessages: !!messages, 
+      hasUserInfo: !!userInfo,
+      userInfoSubmitted: userInfo?.submitted,
+      contactId: userInfo?.contactId,
+      sessionId: userInfo?.sessionId
+    });
     
     // Validate the message
-    if (!message) {
+    if (!userMessage) {
       return new Response(
         JSON.stringify({ error: 'Message is required' }),
         { status: 400 }
@@ -188,7 +217,7 @@ export async function POST(req: Request) {
     }
     
     // Convert to lowercase for easier pattern matching
-    const userMessageContent = message.toLowerCase();
+    const userMessageContent = userMessage.toLowerCase();
     
     // Quick response for simple greetings and common questions to avoid OpenAI API call
     if (userMessageContent.includes('hey') || 
@@ -217,7 +246,7 @@ export async function POST(req: Request) {
               userInfo.contactId,
               userInfo.sessionId,
               'user',
-              message
+              userMessage
             );
             
             await saveChatMessage(
@@ -255,7 +284,7 @@ export async function POST(req: Request) {
 
     // Determine which model to use based on message complexity
     // Use a faster model for shorter conversations
-    const isSimpleQuery = message.length <= 3 || userMessageContent.length < 50;
+    const isSimpleQuery = userMessage.length <= 3 || userMessageContent.length < 50;
     const modelToUse = isSimpleQuery ? 'gpt-3.5-turbo' : 'gpt-3.5-turbo';
 
     // Check for specific section queries to ensure proper scrolling
@@ -377,14 +406,14 @@ export async function POST(req: Request) {
     };
 
     // Prepare the messages for OpenAI
-    const messages: { role: 'system' | 'user' | 'assistant'; content: string }[] = [
+    const apiMessages: { role: 'system' | 'user' | 'assistant'; content: string }[] = [
       { role: "system", content: modifiedSystemMessage.content },
-      { role: "user", content: message }
+      { role: "user", content: userMessage }
     ];
 
     // Log the request for debugging
     console.log('Sending request to OpenAI with messages:', 
-      messages.map(m => ({ role: m.role, content: m.content.substring(0, 50) + '...' }))
+      apiMessages.map((m: any) => ({ role: m.role, content: m.content.substring(0, 50) + '...' }))
     );
 
     // Set a timeout for the API call to prevent long-running requests
@@ -396,7 +425,7 @@ export async function POST(req: Request) {
       // Create a non-streaming response with timeout
       const completionPromise = openai.chat.completions.create({
         model: modelToUse,
-        messages: messages,
+        messages: apiMessages,
         temperature: 0.7,
         max_tokens: 500,
       });
@@ -438,35 +467,73 @@ export async function POST(req: Request) {
       }
       
       // Save messages to database if user info with contactId is provided
-      if (userInfo && userInfo.submitted && userInfo.contactId && userInfo.sessionId) {
+      if (userInfo && userInfo.submitted && userInfo.contactId) {
         try {
-          // Save the user's message
-          const lastUserMessage = messages[messages.length - 1];
+          console.log('Attempting to save chat messages to database...');
+          console.log('User info details:', { 
+            hasUserInfo: !!userInfo, 
+            isSubmitted: userInfo.submitted, 
+            contactId: userInfo.contactId,
+            sessionId: userInfo.sessionId || `session-${Date.now()}`
+          });
+          
+          // Verify database connection is active before saving
+          const pool = await getPoolClient();
+          if (!pool) {
+            throw new Error('Failed to get database connection pool');
+          }
+          
+          // Make sure we have a valid sessionId
+          const sessionId = userInfo.sessionId || `session-${Date.now()}`;
+          
+          // Convert contactId to number if it's a string
+          const contactId = typeof userInfo.contactId === 'string' 
+            ? parseInt(userInfo.contactId, 10) 
+            : userInfo.contactId;
+          
+          if (isNaN(contactId)) {
+            throw new Error(`Invalid contactId: ${userInfo.contactId}`);
+          }
+          
+          // Save the user's message to chat_logs table
+          const lastUserMessage = apiMessages[apiMessages.length - 1];
           if (lastUserMessage && lastUserMessage.role === 'user') {
-            await saveChatMessage(
-              userInfo.contactId,
-              userInfo.sessionId,
-              lastUserMessage.role,
-              lastUserMessage.content || '' // Add fallback for null content
+            console.log(`Saving user message for contact ID: ${contactId}, session ID: ${sessionId}`);
+            
+            // Use direct query to save to chat_logs table
+            await pool.query(
+              'INSERT INTO chat_logs (contact_id, session_id, role, content) VALUES ($1, $2, $3, $4) RETURNING id',
+              [contactId, sessionId, lastUserMessage.role, lastUserMessage.content || '']
             );
           }
           
-          // Save the assistant's response
-          await saveChatMessage(
-            userInfo.contactId,
-            userInfo.sessionId,
-            'assistant',
-            cleanedResponse
+          // Save the assistant's response to chat_logs table
+          console.log(`Saving assistant response for contact ID: ${contactId}, session ID: ${sessionId}`);
+          
+          // Use direct query to save to chat_logs table
+          await pool.query(
+            'INSERT INTO chat_logs (contact_id, session_id, role, content) VALUES ($1, $2, $3, $4) RETURNING id',
+            [contactId, sessionId, 'assistant', cleanedResponse]
           );
           
-          console.log('Chat messages saved to database');
+          console.log('Chat messages saved to database successfully');
         } catch (error) {
           // Log the error but don't fail the request
           console.error('Error saving chat messages to database:', error);
+          console.error('Database connection details:', {
+            DATABASE_URL: process.env.DATABASE_URL ? 'Set' : 'Not set',
+            POSTGRES_URL: process.env.POSTGRES_URL ? 'Set' : 'Not set'
+          });
           // Continue with the response even if saving fails
         }
       } else {
         console.log('Skipping database save - missing user info or not submitted');
+        console.log('User info details:', { 
+          hasUserInfo: !!userInfo, 
+          isSubmitted: userInfo?.submitted, 
+          contactId: userInfo?.contactId,
+          sessionId: userInfo?.sessionId
+        });
       }
 
       // Log the response being returned

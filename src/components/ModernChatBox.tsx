@@ -142,8 +142,8 @@ export function ModernChatBox() {
     }
   }, []);
   
-  // Add state to control when to show the user form
-  const [shouldShowUserForm, setShouldShowUserForm] = useState(false)
+  // Add state to control when to show the user form - true by default to collect user info first
+  const [shouldShowUserForm, setShouldShowUserForm] = useState(true)
   
   // Add validation state
   const [validationErrors, setValidationErrors] = useState({
@@ -307,16 +307,26 @@ export function ModernChatBox() {
   useEffect(() => {
     // Only add welcome message if there are no messages and the chat is open
     if (isOpen && messages.length === 0) {
-      // Set a single welcome message regardless of user status
-      setMessages([
-        {
-          id: "welcome-1",
-          role: "assistant",
-          content: "👋 Hello! I'm NextGio AI, Giovanni's custom-trained AI assistant. Welcome to his portfolio website!"
-        }
-      ]);
+      // Set different welcome messages based on whether user info is submitted
+      if (userInfo.submitted) {
+        setMessages([
+          {
+            id: "welcome",
+            role: "assistant",
+            content: "👋 Hello! I'm NextGio AI, Giovanni's custom-trained AI assistant. Welcome to his portfolio website!"
+          }
+        ]);
+      } else {
+        setMessages([
+          {
+            id: "welcome",
+            role: "assistant",
+            content: "👋 Hello! I'm NextGio AI, Giovanni's custom-trained AI assistant. To get started, please provide your contact information so Giovanni can follow up with you if needed."
+          }
+        ]);
+      }
     }
-  }, [isOpen, messages.length])
+  }, [isOpen, messages.length, userInfo.submitted])
   
   // Scroll to bottom when messages change
   useEffect(() => {
@@ -1005,6 +1015,12 @@ export function ModernChatBox() {
     
     if (!input.trim()) return;
     
+    // Check if user info is submitted, if not, show the form
+    if (!userInfo.submitted) {
+      setShouldShowUserForm(true);
+      return;
+    }
+    
     // Add user message to chat
     const userMessage: ChatMessage = {
       role: 'user',
@@ -1015,6 +1031,7 @@ export function ModernChatBox() {
     
     setMessages((prev) => [...prev, userMessage]);
     setInput('');
+    setIsLoading(true);
     
     // Check if this is a contact request when not already in contact form flow
     if (contactFormStep === 0 && isContactRequest(input)) {
@@ -1035,19 +1052,21 @@ export function ModernChatBox() {
       setContactFormStep(1);
       
       // Scroll to contact section
-        setTimeout(() => {
+      setTimeout(() => {
         console.log("Scrolling to contact section for contact request");
         scrollToSection('contact');
       }, 500);
       
       // Scroll to bottom
       setTimeout(scrollToBottom, 100);
+      setIsLoading(false);
       return;
     }
     
     // Process contact form input if already in contact form flow
     if (contactFormStep > 0) {
       handleContactFormInput(input);
+      setIsLoading(false);
       return;
     }
     
@@ -1062,6 +1081,26 @@ export function ModernChatBox() {
     setMessages((prev) => [...prev, typingIndicator]);
     
     try {
+      // Debug log to see user info being sent
+      console.log("Sending message with userInfo:", {
+        submitted: userInfo.submitted,
+        contactId: userInfo.contactId,
+        sessionId: userInfo.sessionId
+      });
+      
+      // Prepare userInfo object for API
+      let apiUserInfo = null;
+      
+      if (userInfo.submitted && userInfo.contactId) {
+        apiUserInfo = {
+          name: userInfo.name,
+          phoneNumber: userInfo.phoneNumber,
+          contactId: userInfo.contactId,
+          sessionId: userInfo.sessionId,
+          submitted: userInfo.submitted
+        };
+      }
+      
       // Send message to API
       const response = await fetch('/api/chat', {
         method: 'POST',
@@ -1070,12 +1109,13 @@ export function ModernChatBox() {
         },
         body: JSON.stringify({
           message: input,
-          userInfo: contactFormStep > 0 && userInfo.name ? userInfo : null,
+          userInfo: apiUserInfo
         }),
       });
       
       if (!response.ok) {
-        throw new Error('Failed to send message');
+        const errorData = await response.json();
+        throw new Error(errorData.error || 'Failed to send message');
       }
       
       const data = await response.json();
@@ -1091,7 +1131,7 @@ export function ModernChatBox() {
           console.log(`Found scroll tag in handleSubmit: ${data.scrollTag}, section: ${section}`);
           
           // Scroll to the section after a short delay to ensure the DOM is updated
-      setTimeout(() => {
+          setTimeout(() => {
             console.log(`Executing scrollToSection for: ${section}`);
             scrollToSection(section);
           }, 1000);
@@ -1123,7 +1163,7 @@ export function ModernChatBox() {
           messagesContainerRef.current.scrollTop = messagesContainerRef.current.scrollHeight;
         }
       }, 100);
-    } catch (error) {
+    } catch (error: any) {
       console.error('Error sending message:', error);
       
       // Remove typing indicator
@@ -1134,7 +1174,7 @@ export function ModernChatBox() {
         ...prev,
         {
           role: 'assistant',
-          content: 'Sorry, I encountered an error. Please try again.',
+          content: error.message || 'Sorry, I encountered an error. Please try again.',
           id: Date.now().toString(),
           isTyping: false
         },
@@ -1237,6 +1277,11 @@ export function ModernChatBox() {
     }]);
     
     try {
+      // Generate a new sessionId if one doesn't exist
+      const currentSessionId = userInfo.sessionId || `session-${Date.now()}-${Math.random().toString(36).substring(2, 10)}`;
+      
+      console.log('Submitting user info with sessionId:', currentSessionId);
+      
       // Send user info to API - using the new endpoint
       const response = await fetch('/api/chat/user', {
         method: 'POST',
@@ -1244,9 +1289,9 @@ export function ModernChatBox() {
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
-          name: userInfo.name,
-          phoneNumber: userInfo.phoneNumber,
-          sessionId: userInfo.sessionId
+          name: userInfo.name.trim(),
+          phoneNumber: userInfo.phoneNumber.trim(),
+          sessionId: currentSessionId
         }),
       });
       
@@ -1256,14 +1301,27 @@ export function ModernChatBox() {
       }
       
       const data = await response.json();
+      console.log('User info submission successful, response:', data);
+      
+      // Convert contactId to number if it's a string
+      let contactId = data.contactId;
+      if (typeof contactId === 'string') {
+        contactId = parseInt(contactId, 10);
+        if (isNaN(contactId)) {
+          console.error(`Invalid contactId received: ${data.contactId}`);
+          contactId = null;
+        }
+      }
       
       // Update user info with contact ID and submitted status
       const updatedUserInfo = {
         ...userInfo,
         submitted: true,
-        contactId: data.contactId || data.id
+        contactId: contactId,
+        sessionId: data.sessionId || currentSessionId
       };
       
+      console.log('Updated user info:', updatedUserInfo);
       setUserInfo(updatedUserInfo);
       
       // Save user info to localStorage
@@ -1304,7 +1362,7 @@ export function ModernChatBox() {
       // Process the user's first question if it exists
       if (userFirstMessage) {
         // Add a small delay before processing the first question
-              setTimeout(() => {
+        setTimeout(() => {
           // Call handleSubmit programmatically with the first question
           const fakeEvent = { preventDefault: () => {} } as React.FormEvent<HTMLFormElement>;
           setInput(userFirstMessage.content);

@@ -53,6 +53,34 @@ const experiences = [
     ]
   },
   {
+    title: "Full Stack Developer",
+    company: "Metro Star",
+    logo: "/images/logos/MetroStar.png",
+    website: "https://www.metrostar.com",
+    period: "June 2023 – Present",
+    location: "Remote / Washington, D.C.",
+    description: "Developing scalable full-stack solutions for USDA Farmers.gov platform, delivering enhanced data visibility and user experiences for American farmers.",
+    achievements: [
+      "Built front-end features using React, Next.js, and TypeScript, ensuring responsive, accessible, and 508-compliant interfaces for high-impact USDA tools",
+      "Engineered robust back-end services using Node.js, Express, and PostgreSQL, integrating seamlessly with legacy USDA data pipelines",
+      "Played a key role in the Agile team, contributing to sprint planning, code reviews, and iterative feature development in alignment with USDA's modernization goals",
+      "Successfully launched multiple updates and tools across commodity reporting dashboards, disaster assistance applications, and farmer support workflows",
+      "Collaborated with designers, product owners, and federal stakeholders to ensure technical feasibility, compliance, and long-term maintainability",
+      "Actively contributed to MetroStar's mission to modernize government digital services through secure, efficient, and user-centered applications"
+    ],
+    technologies: ["React", "Next.js", "TypeScript", "Node.js", "Express", "PostgreSQL", "Agile", "Section 508", "REST API"],
+    keyProjects: [
+      {
+        name: "USDA Farmers.gov Platform",
+        description: "Modernized platform providing tools and resources for American farmers with enhanced data visibility"
+      },
+      {
+        name: "Commodity Reporting Dashboard",
+        description: "Interactive reporting system for agricultural commodity data with real-time analytics"
+      }
+    ]
+  },
+  {
     title: "Senior Software Developer",
     company: "Accenture Federal",
     logo: "/images/logos/accenture.png",
@@ -61,7 +89,7 @@ const experiences = [
     location: "Washington, D.C. (Hybrid)",
     description: "Developing secure, compliant applications for federal agencies with focus on modernization and AI integration.",
     achievements: [
-      "Designed secure Next.js applications for TSA, IRS, USDA, DeCA, JAIC, NIC, DOS, USAID, USCIS",
+      "Designed secure Next.js applications for TSA, IRS, DeCA, JAIC, NIC, DOS, USAID, USCIS",
       "Modernized Drupal (v7 → v11) with Next.js headless architecture, improving performance by 65%",
       "Led federal-level AI integration for document processing and fraud detection",
       "Implemented Section 508 compliance across 12+ government platforms",
@@ -265,7 +293,8 @@ export function Experience() {
       "Accenture Federal",
       "The Born Group",
       "HELM",
-      "MDX Health"
+      "MDX Health",
+      "Metro Star"
     ]
     
     if (needsInversionInDark.includes(company)) {
@@ -310,7 +339,8 @@ export function Experience() {
       "Accenture",
       "Born Group",
       "Helm",
-      "MDX Health"
+      "MDX Health",
+      "Metro Star"
     ]
     
     // Apply dark mode filter only when mounted and only for clients that need it
@@ -657,6 +687,82 @@ export function Experience() {
                         </div>
                       )}
 
+                      {/* Client Showcase - Always visible for Metro Star */}
+                      {exp.company === "Metro Star" && (
+                        <div className="space-y-4 mt-6">
+                          <h4 className="text-xl font-semibold text-gray-900 dark:text-white flex items-center md:justify-start justify-center">
+                            <Building2 className="h-6 w-6 mr-2 text-gray-500 dark:text-gray-400" />
+                            Client Solutions
+                          </h4>
+                          
+                          <p className="text-gray-600 dark:text-gray-300 text-lg">
+                            Developed scalable full-stack solutions for USDA platform:
+                          </p>
+                          
+                          <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mt-4">
+                            {/* USDA */}
+                            <motion.div
+                              initial={{ opacity: 0, y: 10 }}
+                              animate={hasBeenViewed ? { opacity: 1, y: 0 } : {}}
+                              transition={{ duration: 0.3, delay: 0.1 }}
+                              className="p-6 rounded-xl bg-white dark:bg-black/40 border border-black/10 dark:border-black/20 transition-colors"
+                            >
+                              <a 
+                                href="https://www.usda.gov" 
+                                target="_blank" 
+                                rel="noopener noreferrer"
+                                className="block h-full hover:opacity-90 transition-opacity"
+                              >
+                                <div className="h-16 flex items-center justify-center mb-4">
+                                  <Image
+                                    src="/images/clients/usda.png"
+                                    alt="USDA"
+                                    width={120}
+                                    height={60}
+                                    className="object-contain h-14"
+                                    style={getImageStyle("USDA")}
+                                  />
+                                </div>
+                                <h5 className="font-semibold text-lg text-gray-900 dark:text-white text-center">U.S. Department of Agriculture</h5>
+                                <p className="text-gray-600 dark:text-gray-300 mt-2 text-center">
+                                  Modernization programs for agricultural data management systems
+                                </p>
+                              </a>
+                            </motion.div>
+                            
+                            {/* Farmers.gov */}
+                            <motion.div
+                              initial={{ opacity: 0, y: 10 }}
+                              animate={hasBeenViewed ? { opacity: 1, y: 0 } : {}}
+                              transition={{ duration: 0.3, delay: 0.2 }}
+                              className="p-6 rounded-xl bg-white dark:bg-black/40 border border-black/10 dark:border-black/20 transition-colors"
+                            >
+                              <a 
+                                href="https://www.farmers.gov" 
+                                target="_blank" 
+                                rel="noopener noreferrer"
+                                className="block h-full hover:opacity-90 transition-opacity"
+                              >
+                                <div className="h-16 flex items-center justify-center mb-4">
+                                  <Image
+                                    src="/images/logos/Farmers.png"
+                                    alt="Farmers.gov"
+                                    width={120}
+                                    height={60}
+                                    className="object-contain h-14"
+                                    style={getImageStyle("Farmers.gov")}
+                                  />
+                                </div>
+                                <h5 className="font-semibold text-lg text-gray-900 dark:text-white text-center">Farmers.gov</h5>
+                                <p className="text-gray-600 dark:text-gray-300 mt-2 text-center">
+                                  Platform providing tools and resources for American farmers with enhanced data visibility
+                                </p>
+                              </a>
+                            </motion.div>
+                          </div>
+                        </div>
+                      )}
+
                       {/* Client Showcase - Always visible for Accenture Federal */}
                       {exp.company === "Accenture Federal" && (
                         <div className="space-y-4 mt-6">
@@ -730,41 +836,11 @@ export function Experience() {
                               </a>
                             </motion.div>
                             
-                            {/* USDA */}
-                            <motion.div
-                              initial={{ opacity: 0, y: 10 }}
-                              animate={hasBeenViewed ? { opacity: 1, y: 0 } : {}}
-                              transition={{ duration: 0.3, delay: 0.3 }}
-                              className="p-6 rounded-xl bg-white dark:bg-black/40 border border-black/10 dark:border-black/20 transition-colors"
-                            >
-                              <a 
-                                href="https://www.usda.gov" 
-                                target="_blank" 
-                                rel="noopener noreferrer"
-                                className="block h-full hover:opacity-90 transition-opacity"
-                              >
-                                <div className="h-16 flex items-center justify-center mb-4">
-                                  <Image
-                                    src="/images/clients/usda.png"
-                                    alt="USDA"
-                                    width={120}
-                                    height={60}
-                                    className="object-contain h-12"
-                                    style={getImageStyle("USDA")}
-                                  />
-                                </div>
-                                <h5 className="font-semibold text-lg text-gray-900 dark:text-white text-center">U.S. Department of Agriculture</h5>
-                                <p className="text-gray-600 dark:text-gray-300 mt-2 text-center">
-                                  Agricultural data analysis platform with ML predictions
-                                </p>
-                              </a>
-                            </motion.div>
-                            
                             {/* DeCA */}
                             <motion.div
                               initial={{ opacity: 0, y: 10 }}
                               animate={hasBeenViewed ? { opacity: 1, y: 0 } : {}}
-                              transition={{ duration: 0.3, delay: 0.4 }}
+                              transition={{ duration: 0.3, delay: 0.3 }}
                               className="p-6 rounded-xl bg-white dark:bg-black/40 border border-black/10 dark:border-black/20 transition-colors"
                             >
                               <a 
@@ -794,7 +870,7 @@ export function Experience() {
                             <motion.div
                               initial={{ opacity: 0, y: 10 }}
                               animate={hasBeenViewed ? { opacity: 1, y: 0 } : {}}
-                              transition={{ duration: 0.3, delay: 0.5 }}
+                              transition={{ duration: 0.3, delay: 0.4 }}
                               className="p-6 rounded-xl bg-white dark:bg-black/40 border border-black/10 dark:border-black/20 transition-colors"
                             >
                               <a 
@@ -824,7 +900,7 @@ export function Experience() {
                             <motion.div
                               initial={{ opacity: 0, y: 10 }}
                               animate={hasBeenViewed ? { opacity: 1, y: 0 } : {}}
-                              transition={{ duration: 0.3, delay: 0.6 }}
+                              transition={{ duration: 0.3, delay: 0.5 }}
                               className="p-6 rounded-xl bg-white dark:bg-black/40 border border-black/10 dark:border-black/20 transition-colors"
                             >
                               <a 
@@ -854,7 +930,7 @@ export function Experience() {
                             <motion.div
                               initial={{ opacity: 0, y: 10 }}
                               animate={hasBeenViewed ? { opacity: 1, y: 0 } : {}}
-                              transition={{ duration: 0.3, delay: 0.7 }}
+                              transition={{ duration: 0.3, delay: 0.6 }}
                               className="p-6 rounded-xl bg-white dark:bg-black/40 border border-black/10 dark:border-black/20 transition-colors"
                             >
                               <a 
@@ -884,7 +960,7 @@ export function Experience() {
                             <motion.div
                               initial={{ opacity: 0, y: 10 }}
                               animate={hasBeenViewed ? { opacity: 1, y: 0 } : {}}
-                              transition={{ duration: 0.3, delay: 0.8 }}
+                              transition={{ duration: 0.3, delay: 0.7 }}
                               className="p-6 rounded-xl bg-white dark:bg-black/40 border border-black/10 dark:border-black/20 transition-colors"
                             >
                               <a 
@@ -914,7 +990,7 @@ export function Experience() {
                             <motion.div
                               initial={{ opacity: 0, y: 10 }}
                               animate={hasBeenViewed ? { opacity: 1, y: 0 } : {}}
-                              transition={{ duration: 0.3, delay: 0.9 }}
+                              transition={{ duration: 0.3, delay: 0.8 }}
                               className="p-6 rounded-xl bg-white dark:bg-black/40 border border-black/10 dark:border-black/20 transition-colors"
                             >
                               <a 

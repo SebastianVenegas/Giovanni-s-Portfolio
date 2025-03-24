@@ -20,6 +20,8 @@ interface UserInfo {
   name: string;
   phoneNumber: string;
   submitted: boolean;
+  contactId?: string;
+  sessionId?: string;
 }
 
 // Custom hook for mounted state
@@ -311,6 +313,13 @@ export function ChatBox() {
     setIsLoading(true);
     
     try {
+      // Debug log to see user info being sent
+      console.log("Sending message with userInfo:", {
+        submitted: userInfo.submitted,
+        contactId: userInfo.contactId,
+        sessionId: userInfo.sessionId
+      });
+      
       // Check which section the user is asking about
       const sectionToScrollTo = checkForSectionQuery(userMessage.content);
       
@@ -332,7 +341,14 @@ export function ChatBox() {
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
-          messages: messages.concat(userMessage),
+          message: userMessage.content,
+          userInfo: userInfo.submitted ? {
+            name: userInfo.name,
+            phoneNumber: userInfo.phoneNumber,
+            contactId: userInfo.contactId,
+            sessionId: userInfo.sessionId,
+            submitted: true
+          } : null
         }),
       });
       
@@ -363,7 +379,7 @@ export function ChatBox() {
         ...prev,
         {
           role: 'assistant',
-          content: 'Sorry, there was an error processing your request. Please try again.',
+          content: "I'm sorry, I'm having trouble connecting. Please try again in a moment.",
           id: Date.now().toString()
         }
       ]);
@@ -432,77 +448,74 @@ export function ChatBox() {
   const handleUserInfoSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     
-    // Reset validation errors
-    setValidationErrors({
+    // Validate form
+    let isValid = true;
+    const errors = {
       name: '',
       phoneNumber: ''
-    });
-    
-    // Validate inputs
-    let hasErrors = false;
+    };
     
     if (!userInfo.name.trim()) {
-      setValidationErrors(prev => ({
-        ...prev,
-        name: 'Name is required'
-      }));
-      hasErrors = true;
+      errors.name = 'Name is required';
+      isValid = false;
     }
     
     if (!userInfo.phoneNumber.trim()) {
-      setValidationErrors(prev => ({
-        ...prev,
-        phoneNumber: 'Phone number is required'
-      }));
-      hasErrors = true;
-    } else {
-      // Basic phone number validation
-      const phoneRegex = /^[\d\+\-\(\) ]{7,20}$/;
-      if (!phoneRegex.test(userInfo.phoneNumber)) {
-        setValidationErrors(prev => ({
-          ...prev,
-          phoneNumber: 'Please enter a valid phone number'
-        }));
-        hasErrors = true;
-      }
+      errors.phoneNumber = 'Phone number is required';
+      isValid = false;
+    } else if (!/^[\d\+\-\(\) ]{7,20}$/.test(userInfo.phoneNumber.trim())) {
+      errors.phoneNumber = 'Please enter a valid phone number';
+      isValid = false;
     }
     
-    if (hasErrors) {
-      return;
-    }
+    setValidationErrors(errors);
     
-    // Set loading state
+    if (!isValid) return;
+    
+    // Submit form
     setIsSubmittingInfo(true);
     
     try {
-      // Save user info to the database
-      const response = await fetch('/api/contact', {
+      const response = await fetch('/api/chat/user', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
-          name: userInfo.name,
-          phoneNumber: userInfo.phoneNumber
+          name: userInfo.name.trim(),
+          phoneNumber: userInfo.phoneNumber.trim(),
+          sessionId: userInfo.sessionId || `session-${Date.now()}`
         }),
       });
       
       if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.error || 'Failed to save contact information');
+        throw new Error('Failed to submit user info');
       }
       
-      // Mark the user info as submitted
-      setUserInfo(prev => ({ ...prev, submitted: true }))
-    } catch (error) {
-      console.error("Error submitting user info:", error)
+      const data = await response.json();
       
-      // Add an error message to the chat
-      setMessages(prev => [...prev, {
-        id: Math.random().toString(36).substring(2, 15),
-        role: "assistant",
-        content: "I'm sorry, but I'm having trouble connecting right now. Please try again later."
-      }])
+      // Update user info with contactId and mark as submitted
+      setUserInfo(prev => ({
+        ...prev,
+        contactId: data.contactId,
+        sessionId: data.sessionId,
+        submitted: true
+      }));
+      
+      // Focus input after submission
+      setTimeout(() => {
+        if (inputRef.current) {
+          inputRef.current.focus();
+        }
+      }, 100);
+      
+    } catch (error) {
+      console.error('Failed to submit user info:', error);
+      // Show error message to user
+      setValidationErrors({
+        ...errors,
+        phoneNumber: 'An error occurred. Please try again.'
+      });
     } finally {
       setIsSubmittingInfo(false);
     }
