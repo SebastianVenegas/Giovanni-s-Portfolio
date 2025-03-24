@@ -98,6 +98,15 @@ February 2024 – Present | Remote
 ● Deployed serverless functions on Vercel's edge runtime, implementing robust RBAC (JWT authentication) to ensure security and scalability.
 ● Led a cross-functional developer team, aligning solutions with client goals via Jira task management.
 
+Metro Star – Full Stack Developer
+June 2023 – Present | Remote / Washington, D.C.
+● Developed scalable full-stack solutions for USDA Farmers.gov platform, delivering enhanced data visibility and user experiences for American farmers.
+● Built front-end features using React, Next.js, and TypeScript, ensuring responsive, accessible, and 508-compliant interfaces for high-impact USDA tools.
+● Engineered robust back-end services using Node.js, Express, and PostgreSQL, integrating seamlessly with legacy USDA data pipelines.
+● Played a key role in the Agile team, contributing to sprint planning, code reviews, and iterative feature development in alignment with USDA's modernization goals.
+● Successfully launched multiple updates and tools across commodity reporting dashboards, disaster assistance applications, and farmer support workflows.
+● Collaborated with designers, product owners, and federal stakeholders to ensure technical feasibility, compliance, and long-term maintainability.
+
 Accenture Federal – Senior Software Developer / Integration Engineer
 June 2019 – Present | Los Angeles, CA
 ● Built secure Next.js/React applications for agencies like TSA, IRS, USDA, NIC, JAIC, DeCA, and DOS, under top security clearances.
