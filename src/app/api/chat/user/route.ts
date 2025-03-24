@@ -18,10 +18,13 @@ export async function POST(req: NextRequest) {
   try {
     // Parse request body
     const body = await req.json();
+    console.log('Request body:', JSON.stringify(body, null, 2));
+    
     const { name, phoneNumber, sessionId: existingSessionId } = body;
     
     // Validate required fields
     if (!name || !phoneNumber) {
+      console.log('Validation failed: missing name or phone number');
       return NextResponse.json(
         { error: 'Name and phone number are required' },
         { status: 400 }
@@ -31,6 +34,7 @@ export async function POST(req: NextRequest) {
     // Basic phone validation
     const phoneRegex = /^[\d\+\-\(\) ]{7,20}$/;
     if (!phoneRegex.test(phoneNumber)) {
+      console.log('Validation failed: invalid phone number format');
       return NextResponse.json(
         { error: 'Please enter a valid phone number' },
         { status: 400 }
@@ -39,6 +43,7 @@ export async function POST(req: NextRequest) {
     
     // Use existing session ID or create a new one
     const sessionId = existingSessionId || `session-${Date.now()}-${Math.random().toString(36).substring(2, 10)}`;
+    console.log('Using session ID:', sessionId);
     
     // Verify database connection is active
     console.log('Verifying database connection...');
@@ -53,24 +58,40 @@ export async function POST(req: NextRequest) {
     
     // Store contact in database
     console.log('Saving contact information to database...');
-    const contactResult = await saveContact(name, phoneNumber);
-    console.log('Contact saved successfully:', contactResult);
+    console.log('Contact data:', { name, phoneNumber });
     
-    const endTime = Date.now();
-    console.log(`User info submission completed in ${endTime - startTime}ms`);
-    
-    return NextResponse.json(
-      { 
+    try {
+      const contactResult = await saveContact(name, phoneNumber);
+      console.log('Contact saved successfully:', contactResult);
+      
+      const endTime = Date.now();
+      console.log(`User info submission completed in ${endTime - startTime}ms`);
+      
+      const response = {
         success: true, 
         message: 'User information saved successfully',
         contactId: contactResult.id,
         sessionId: sessionId
-      },
-      { status: 200 }
-    );
+      };
+      
+      console.log('Sending response:', response);
+      
+      return NextResponse.json(response, { status: 200 });
+    } catch (dbError: any) {
+      console.error('Database error when saving contact:', dbError);
+      console.error('Error details:', dbError.message);
+      console.error('Error stack:', dbError.stack);
+      
+      return NextResponse.json(
+        { error: 'Database error', details: dbError.message },
+        { status: 500 }
+      );
+    }
   } catch (error: any) {
     const endTime = Date.now();
     console.error(`API route error (${endTime - startTime}ms):`, error);
+    console.error('Error message:', error.message);
+    console.error('Error stack:', error.stack);
     console.error('Database connection details:', {
       DATABASE_URL: process.env.DATABASE_URL ? 'Set' : 'Not set',
       POSTGRES_URL: process.env.POSTGRES_URL ? 'Set' : 'Not set'

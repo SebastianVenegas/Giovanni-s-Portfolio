@@ -2012,29 +2012,20 @@ export function ModernChatBox() {
                 
                 {/* User info form */}
                 {shouldShowUserForm ? (
-                  <form 
-                    onSubmit={handleUserInfoSubmit}
-                    className={cn(
-                      "p-6 relative z-20 glass-effect",
-                      sidebarMode || isMobile
-                        ? isDark 
-                          ? "bg-black" 
-                          : "bg-white"
-                        : isDark 
-                          ? "bg-black/20" 
-                          : "bg-white/40"
-                    )}
-                  >
-                    <div className="mb-5">
-                      <h4 className={cn(
-                        "text-base font-medium mb-4 text-center animate-fadeIn",
+                  <div className="absolute inset-0 flex items-center justify-center z-30 bg-white/10 dark:bg-black/10 backdrop-blur-md">
+                    <div className="w-11/12 max-w-md p-6 bg-white/90 dark:bg-black/90 rounded-lg shadow-xl border border-black/5 dark:border-white/10">
+                      <h3 className={cn(
+                        "text-xl font-semibold mb-4 text-center animate-fadeIn",
                         isDark ? "text-white" : "text-black"
                       )}>
-                        Please share your contact information
-                      </h4>
+                        Please share your contact info
+                      </h3>
                       
-                      <div className="space-y-4">
-                        <div className="animate-fadeIn" style={{ animationDelay: "100ms" }}>
+                      <form 
+                        onSubmit={handleUserInfoSubmit}
+                        className="space-y-4 animate-fadeIn"
+                      >
+                        <div>
                           <input
                             type="text"
                             name="name"
@@ -2042,20 +2033,21 @@ export function ModernChatBox() {
                             onChange={handleUserInfoChange}
                             placeholder="Your name"
                             className={cn(
-                              "form-input w-full px-4 py-3 rounded-lg transition-all text-base",
+                              "w-full px-4 py-3 rounded-lg border text-base",
                               isDark 
-                                ? "bg-black/30 text-white border-white/20 focus:border-white/40" 
-                                : "bg-white/70 text-black border-black/10 focus:border-black/30"
+                                ? "bg-gray-800 border-gray-700 text-white" 
+                                : "bg-white border-gray-300 text-black",
+                              validationErrors.name && "border-red-500"
                             )}
                             style={{ fontSize: '16px' }}
                             disabled={isSubmittingInfo}
                           />
                           {validationErrors.name && (
-                            <p className="text-red-500 text-sm mt-1">{validationErrors.name}</p>
+                            <p className="mt-1 text-xs text-red-500">{validationErrors.name}</p>
                           )}
-              </div>
-              
-                        <div className="animate-fadeIn" style={{ animationDelay: "200ms" }}>
+                        </div>
+                        
+                        <div>
                           <input
                             type="tel"
                             name="phoneNumber"
@@ -2063,45 +2055,43 @@ export function ModernChatBox() {
                             onChange={handleUserInfoChange}
                             placeholder="Your phone number"
                             className={cn(
-                              "form-input w-full px-4 py-3 rounded-lg transition-all text-base",
+                              "w-full px-4 py-3 rounded-lg border text-base",
                               isDark 
-                                ? "bg-black/30 text-white border-white/20 focus:border-white/40" 
-                                : "bg-white/70 text-black border-black/10 focus:border-black/30"
+                                ? "bg-gray-800 border-gray-700 text-white" 
+                                : "bg-white border-gray-300 text-black",
+                              validationErrors.phoneNumber && "border-red-500"
                             )}
                             style={{ fontSize: '16px' }}
                             disabled={isSubmittingInfo}
                           />
                           {validationErrors.phoneNumber && (
-                            <p className="text-red-500 text-sm mt-1">{validationErrors.phoneNumber}</p>
+                            <p className="mt-1 text-xs text-red-500">{validationErrors.phoneNumber}</p>
                           )}
                         </div>
-                      </div>
+                        
+                        <button
+                          type="submit"
+                          className={cn(
+                            "w-full p-3 rounded-lg shadow-md mt-2 text-lg",
+                            isDark 
+                              ? "bg-white text-black hover:bg-gray-200" 
+                              : "bg-black text-white hover:bg-gray-800",
+                            isSubmittingInfo && "opacity-50 cursor-not-allowed"
+                          )}
+                          disabled={isSubmittingInfo}
+                        >
+                          {isSubmittingInfo ? "Submitting..." : "Start Chatting"}
+                        </button>
+                        
+                        <p className={cn(
+                          "text-xs text-center mt-3",
+                          isDark ? "text-gray-400" : "text-gray-500"
+                        )}>
+                          Your information helps Giovanni connect with interested visitors
+                        </p>
+                      </form>
                     </div>
-  
-                    <button
-                      type="submit"
-                      disabled={isSubmittingInfo}
-                      className={cn(
-                        "w-full p-3 rounded-lg transition-all shadow-sm hover:shadow-md text-sm font-medium animate-fadeIn",
-                        isDark 
-                          ? "bg-white hover:bg-white/90 text-black" 
-                          : "bg-black hover:bg-black/90 text-white",
-                        isSubmittingInfo && "opacity-50 cursor-not-allowed"
-                      )}
-                      style={{ animationDelay: "300ms" }}
-                    >
-                      {isSubmittingInfo ? "Submitting..." : "Continue Conversation"}
-                    </button>
-                    
-                    <p className={cn(
-                      "text-xs mt-4 text-center animate-fadeIn",
-                      isDark ? "text-gray-400" : "text-gray-600"
-                    )}
-                    style={{ animationDelay: "400ms" }}
-                    >
-                      Your information helps Giovanni connect with interested visitors.
-                    </p>
-                  </form>
+                  </div>
                 ) : (
                   /* Chat input */
                   <form 
@@ -2130,41 +2120,41 @@ export function ModernChatBox() {
                         ? "bg-black border border-gray-700" 
                         : "bg-white/80 border border-black/5"
                     )}>
-                  <textarea
+                      <textarea
                         ref={inputRef}
-                    value={input}
-                    onChange={handleInputChange}
-                      onKeyDown={handleKeyDown}
-                      placeholder="Ask me anything..."
-                    className={cn(
-                        "flex-1 p-2.5 rounded-lg resize-none text-sm modern-input",
-                      isDark 
-                          ? "bg-transparent border-none focus:ring-0 placeholder-gray-400 text-white" 
-                          : "bg-transparent border-none focus:ring-0 placeholder-gray-500 text-black",
-                        "focus:outline-none",
-                        isMobile && "mobile-textarea"
-                      )}
-                      style={{ 
-                        height: textareaHeight, 
-                        maxHeight: isMobile ? '80px' : '200px',
-                        paddingRight: '40px',
-                        fontSize: '16px'
-                      }}
-                  />
-                  <button
-                    type="submit"
-                    disabled={isLoading || !input.trim()}
-                    className={cn(
+                        value={input}
+                        onChange={handleInputChange}
+                        onKeyDown={handleKeyDown}
+                        placeholder="Ask me anything..."
+                        className={cn(
+                          "flex-1 p-2.5 rounded-lg resize-none text-sm modern-input",
+                          isDark 
+                            ? "bg-transparent border-none focus:ring-0 placeholder-gray-400 text-white" 
+                            : "bg-transparent border-none focus:ring-0 placeholder-gray-500 text-black",
+                          "focus:outline-none",
+                          isMobile && "mobile-textarea"
+                        )}
+                        style={{ 
+                          height: textareaHeight, 
+                          maxHeight: isMobile ? '80px' : '200px',
+                          paddingRight: '40px',
+                          fontSize: '16px'
+                        }}
+                      />
+                      <button
+                        type="submit"
+                        disabled={isLoading || !input.trim()}
+                        className={cn(
                           "p-2.5 rounded-xl transition-all shadow-sm hover:shadow",
-                      isDark 
+                          isDark 
                             ? "bg-gray-900 hover:bg-gray-800 text-white" 
                             : "bg-black hover:bg-black/90 text-white",
-                      (isLoading || !input.trim()) && "opacity-50 cursor-not-allowed"
-                    )}
-                  >
+                          (isLoading || !input.trim()) && "opacity-50 cursor-not-allowed"
+                        )}
+                      >
                         <Send className="h-4 w-4" />
-                  </button>
-                  </div>
+                      </button>
+                    </div>
                     
                     {/* AI capabilities hint */}
                     <div className="mt-2 mb-2 flex justify-center">
@@ -2190,8 +2180,8 @@ export function ModernChatBox() {
                           Explore skills
                         </span>
                       </div>
-                </div>
-              </form>
+                    </div>
+                  </form>
                 )}
             </ResizableBox>
             </div>
