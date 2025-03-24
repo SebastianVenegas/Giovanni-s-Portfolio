@@ -204,9 +204,16 @@ export async function POST(req: Request) {
       hasMessages: !!messages, 
       hasUserInfo: !!userInfo,
       userInfoSubmitted: userInfo?.submitted,
+      userInfoSubmittedType: typeof userInfo?.submitted,
       contactId: userInfo?.contactId,
+      contactIdType: typeof userInfo?.contactId,
       sessionId: userInfo?.sessionId
     });
+
+    // More verbose user info debug
+    if (userInfo) {
+      console.log('Complete userInfo object:', JSON.stringify(userInfo, null, 2));
+    }
     
     // Validate the message
     if (!userMessage) {
