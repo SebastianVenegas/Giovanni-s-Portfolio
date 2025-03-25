@@ -8,15 +8,38 @@ export function middleware(request: NextRequest) {
   
   // Check if the path is for the admin page (but not admin-access)
   if (path === '/admin' || path.startsWith('/admin/')) {
-    // For security, we'll redirect to the admin-access page if accessed directly
-    // The actual authentication happens client-side in the admin page
-    const url = request.nextUrl.clone()
-    url.pathname = '/admin-access'
+    // Get the referer to check if user is coming from admin-access page
+    const referer = request.headers.get('referer') || '';
+    const isFromAdminAccess = referer.includes('/admin-access');
     
     // Only redirect if this is a direct browser request (not an API call)
-    const isApiRequest = request.headers.get('accept')?.includes('application/json')
-    if (!isApiRequest) {
-      return NextResponse.redirect(url)
+    // AND not coming from the admin-access page
+    const isApiRequest = request.headers.get('accept')?.includes('application/json');
+    
+    // Add a check for a potential cookie we can set to verify authentication
+    const hasAuthCookie = request.cookies.has('admin_authenticated');
+    
+    console.log(`Admin access attempt: Path=${path}, FromAdminAccess=${isFromAdminAccess}, HasAuthCookie=${hasAuthCookie}`);
+    
+    if (!isApiRequest && !isFromAdminAccess && !hasAuthCookie) {
+      // For security, we'll redirect to the admin-access page if accessed directly
+      const url = request.nextUrl.clone();
+      url.pathname = '/admin-access';
+      
+      return NextResponse.redirect(url);
+    }
+    
+    // If coming from admin-access, set a cookie to maintain auth state
+    if (isFromAdminAccess && !hasAuthCookie) {
+      const response = NextResponse.next();
+      // Set a simple cookie to maintain authenticated state
+      response.cookies.set('admin_authenticated', 'true', {
+        maxAge: 3600, // 1 hour
+        path: '/',
+        httpOnly: true,
+        sameSite: 'strict',
+      });
+      return response;
     }
   }
   

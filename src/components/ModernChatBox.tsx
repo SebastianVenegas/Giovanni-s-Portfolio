@@ -1,3 +1,4 @@
+
 "use client"
 
 import { useEffect, useRef, useState, useLayoutEffect } from "react"
@@ -14,10 +15,13 @@ import "@/styles/chat.css"
 
 // Define the ChatMessage interface
 interface ChatMessage {
-  id: string
-  role: 'user' | 'assistant'
-  content: string
-  isTyping?: boolean
+  id: string;
+  role: 'user' | 'assistant';
+  content: string;
+  created_at: string;
+  isTyping?: boolean;
+  name?: string;
+  isWelcome?: boolean;
 }
 
 // Add new interface for user information
@@ -78,18 +82,30 @@ Textarea.displayName = "Textarea"
 
 // Section keywords for navigation
 const sectionKeywords = {
-  "about": ["about", "who is giovanni", "background", "bio", "biography"],
-  "experience": ["experience", "work history", "job history", "career", "professional background", "work experience", "expireance", "expirience", "experiance"],
-  "skills": ["skills", "technologies", "tech stack", "programming", "languages", "frameworks"],
-  "projects": ["projects", "portfolio", "work", "applications", "apps", "websites"],
-  "contact": ["contact", "email", "reach out", "message", "get in touch", "hire"],
-  "certificates": ["certificate", "certification", "credentials", "qualifications"]
+  "about": ["about", "who is giovanni", "background", "bio", "biography", "who is he", "tell me about"],
+  "experience": ["experience", "work history", "job history", "career", "professional background", "work experience", "expireance", "expirience", "experiance", "worked", "working"],
+  "skills": ["skills", "technologies", "tech stack", "programming", "languages", "frameworks", "tools", "expertise", "capable", "can do"],
+  "projects": ["projects", "portfolio", "work", "applications", "apps", "websites", "built", "created", "developed", "made"],
+  "contact": ["contact", "email", "reach out", "message", "get in touch", "hire", "connect", "talk"],
+  "certifications": ["certificates", "certification", "credentials", "qualifications", "certified"]
 }
+
+// Function to detect section from message
+const detectSection = (message: string): string | null => {
+  const lowercaseMessage = message.toLowerCase();
+  
+  for (const [section, keywords] of Object.entries(sectionKeywords)) {
+    if (keywords.some(keyword => lowercaseMessage.includes(keyword))) {
+      return section;
+    }
+  }
+  
+  return null;
+};
 
 export function ModernChatBox() {
   const [isOpen, setIsOpen] = useState(false)
   const [hasNewMessages, setHasNewMessages] = useState(false)
-  const [showScrollButton, setShowScrollButton] = useState(false)
   const [textareaHeight, setTextareaHeight] = useState(36) // Default height
   const [sidebarMode, setSidebarMode] = useState(false) // Add state for sidebar mode
   const messagesEndRef = useRef<HTMLDivElement>(null)
@@ -103,12 +119,12 @@ export function ModernChatBox() {
   const defaultDimensions = { width: 380, height: 500 }
   
   // Sidebar dimensions - initialize with default values to avoid window not defined error
-  const [sidebarDimensions, setSidebarDimensions] = useState({ width: 350, height: 600 })
+  const [sidebarDimensions, setSidebarDimensions] = useState({ width: 320, height: 600 })
   
   // Update sidebar dimensions when component mounts
   useEffect(() => {
     if (typeof window !== 'undefined') {
-      setSidebarDimensions({ width: 350, height: window.innerHeight })
+      setSidebarDimensions({ width: 320, height: window.innerHeight })
     }
   }, [])
   
@@ -119,30 +135,11 @@ export function ModernChatBox() {
   const [userInfo, setUserInfo] = useState<UserInfo>({
     name: '',
     phoneNumber: '',
-    submitted: false, // Changed to false so we require user info
-    sessionId: `session_${Date.now()}_${Math.random().toString(36).substring(2, 9)}` // Add unique session ID
+    submitted: false,
+    sessionId: `session_${Date.now()}_${Math.random().toString(36).substring(2, 9)}`
   })
   
-  // Load user info from localStorage when component mounts
-  useEffect(() => {
-    if (typeof window !== 'undefined') {
-      const savedUserInfo = localStorage.getItem('chatUserInfo');
-      if (savedUserInfo) {
-        try {
-          const parsedUserInfo = JSON.parse(savedUserInfo);
-          // Create a new session ID for this chat session
-          setUserInfo({
-            ...parsedUserInfo,
-            sessionId: `session_${Date.now()}_${Math.random().toString(36).substring(2, 9)}`
-          });
-        } catch (error) {
-          console.error('Error parsing saved user info:', error);
-        }
-      }
-    }
-  }, []);
-  
-  // Add state to control when to show the user form - true by default to collect user info first
+  // Add state to control when to show the user form - true by default
   const [shouldShowUserForm, setShouldShowUserForm] = useState(true)
   
   // Add validation state
@@ -303,30 +300,56 @@ export function ModernChatBox() {
     }
   }, [isOpen, sidebarMode])
 
-  // Add initial welcome message when component mounts
+  // Load user info from localStorage when component mounts
   useEffect(() => {
-    // Only add welcome message if there are no messages and the chat is open
-    if (isOpen && messages.length === 0) {
-      // Set different welcome messages based on whether user info is submitted
-      if (userInfo.submitted) {
-        setMessages([
-          {
-            id: "welcome",
-            role: "assistant",
-            content: "👋 Hello! I'm NextGio AI, Giovanni's custom-trained AI assistant. Welcome to his portfolio website!"
-          }
-        ]);
+    if (typeof window !== 'undefined') {
+      const savedUserInfo = localStorage.getItem('chatUserInfo');
+      if (savedUserInfo) {
+        try {
+          const parsedUserInfo = JSON.parse(savedUserInfo);
+          // Only set as submitted if we have both name and phone number
+          const isComplete = parsedUserInfo.name && parsedUserInfo.phoneNumber;
+          setUserInfo({
+            ...parsedUserInfo,
+            submitted: isComplete,
+            sessionId: `session_${Date.now()}_${Math.random().toString(36).substring(2, 9)}`
+          });
+          setShouldShowUserForm(!isComplete);
+        } catch (error) {
+          console.error('Error parsing saved user info:', error);
+          setShouldShowUserForm(true);
+        }
       } else {
-        setMessages([
-          {
+        // No saved user info, show the form
+        setShouldShowUserForm(true);
+        // Add initial greeting message
+        if (messages.length === 0) {
+          setMessages([{
             id: "welcome",
             role: "assistant",
-            content: "👋 Hello! I'm NextGio AI, Giovanni's custom-trained AI assistant. To get started, please provide your contact information so Giovanni can follow up with you if needed."
-          }
-        ]);
+            content: "👋 Hi! I'm NextGio, your AI assistant. To get started, I'll need your name and contact information.",
+            created_at: new Date().toISOString(),
+            isWelcome: true
+          }]);
+        }
       }
     }
-  }, [isOpen, messages.length, userInfo.submitted])
+  }, []);
+
+  // Add default greeting when chat opens
+  useEffect(() => {
+    if (isOpen && messages.length === 0) {
+      setMessages([{
+        id: "welcome",
+        role: "assistant",
+        content: "👋 Hi! I'm NextGio, your AI assistant. To get started, I'll need your name and contact information.",
+        created_at: new Date().toISOString(),
+        isWelcome: true
+      }]);
+      // Ensure form is shown
+      setShouldShowUserForm(true);
+    }
+  }, [isOpen]);
   
   // Scroll to bottom when messages change
   useEffect(() => {
@@ -334,25 +357,6 @@ export function ModernChatBox() {
       scrollToBottom();
     }
   }, [messages]);
-
-  // Check if scroll button should be shown
-  useEffect(() => {
-    const checkScroll = () => {
-      if (messagesContainerRef.current) {
-        const { scrollTop, scrollHeight, clientHeight } = messagesContainerRef.current;
-        const isScrollable = scrollHeight > clientHeight;
-        const isScrolledUp = scrollHeight - scrollTop - clientHeight > 100;
-        
-        setShowScrollButton(isScrollable && isScrolledUp);
-      }
-    };
-
-    const container = messagesContainerRef.current;
-    if (container) {
-      container.addEventListener('scroll', checkScroll);
-      return () => container.removeEventListener('scroll', checkScroll);
-    }
-  }, [isOpen]);
 
   // Focus input when chat opens
   useEffect(() => {
@@ -388,9 +392,9 @@ export function ModernChatBox() {
   // Auto-resize textarea based on content
   const handleTextareaResize = () => {
     if (inputRef.current) {
-      inputRef.current.style.height = 'auto';
+      inputRef.current.style.height = '36px'; // Reset to initial height
       const scrollHeight = inputRef.current.scrollHeight;
-      const newHeight = Math.min(scrollHeight, 120); // Max height of 120px
+      const newHeight = Math.min(scrollHeight, isMobile ? 80 : 120); // Max height based on device
       setTextareaHeight(newHeight);
       inputRef.current.style.height = `${newHeight}px`;
     }
@@ -684,7 +688,8 @@ export function ModernChatBox() {
       setMessages(prev => [...prev, {
         role: 'assistant',
         content: "I'll need your email address to proceed. Could you please provide it?",
-        id: Date.now().toString()
+        id: Date.now().toString(),
+        created_at: new Date().toISOString()
       }]);
       return;
     }
@@ -695,7 +700,8 @@ export function ModernChatBox() {
       setMessages(prev => [...prev, {
         role: 'assistant',
         content: "That email address doesn't look valid. Could you please provide a valid email?",
-      id: Date.now().toString()
+        id: Date.now().toString(),
+        created_at: new Date().toISOString()
       }]);
       return;
     }
@@ -741,7 +747,8 @@ export function ModernChatBox() {
     setMessages(prev => [...prev, { 
         role: 'assistant',
         content: "Great! I've sent your contact information to Giovanni. He'll get back to you as soon as possible. Is there anything else you'd like to know about his work or experience?",
-        id: Date.now().toString()
+        id: Date.now().toString(),
+        created_at: new Date().toISOString()
       }]);
         
       } catch (error) {
@@ -751,7 +758,8 @@ export function ModernChatBox() {
       setMessages(prev => [...prev, {
         role: 'assistant',
         content: "I'm having trouble sending your contact information. Please try again or use the contact form at the bottom of the page.",
-        id: Date.now().toString()
+        id: Date.now().toString(),
+        created_at: new Date().toISOString()
       }]);
     } finally {
       setIsSubmittingInfo(false);
@@ -860,6 +868,7 @@ export function ModernChatBox() {
           id: Date.now().toString(),
       role: 'assistant', 
       content: '', 
+      created_at: new Date().toISOString(),
       isTyping: true 
     }]);
     
@@ -893,7 +902,8 @@ export function ModernChatBox() {
             setMessages(prev => [...prev, {
               id: Date.now().toString(),
               role: 'assistant',
-              content: cleanedContent
+              content: cleanedContent,
+              created_at: new Date().toISOString()
             }]);
             
             // If there's a scroll tag, scroll to that section
@@ -916,7 +926,8 @@ export function ModernChatBox() {
             setMessages(prev => [...prev, {
               id: Date.now().toString(),
               role: 'assistant',
-              content: "I'm having trouble processing your question right now. Let's try something else."
+              content: "I'm having trouble processing your question right now. Let's try something else.",
+              created_at: new Date().toISOString()
             }]);
             
             // Scroll to bottom
@@ -931,7 +942,8 @@ export function ModernChatBox() {
       setMessages(prev => [...prev, {
         role: 'assistant',
         content: "No problem at all! I'm happy to talk about something else. Would you like to know about Giovanni's work experience, tech skills, projects, or certifications? Feel free to ask about any aspect of his professional background.",
-        id: Date.now().toString()
+        id: Date.now().toString(),
+        created_at: new Date().toISOString()
       }]);
       
       setTimeout(scrollToBottom, 100);
@@ -961,14 +973,16 @@ export function ModernChatBox() {
           setMessages(prev => [...prev, {
             role: 'assistant',
             content: `Thanks for your email (${email}). What service are you interested in? (Web Development, Mobile App, Consulting, etc.)`,
-            id: Date.now().toString()
+            id: Date.now().toString(),
+            created_at: new Date().toISOString()
           }]);
         } else {
           // Invalid email
           setMessages(prev => [...prev, {
             role: 'assistant',
             content: "I didn't recognize a valid email address. Please provide a valid email so Giovanni can contact you, or type 'cancel' if you'd like to talk about something else.",
-            id: Date.now().toString()
+            id: Date.now().toString(),
+            created_at: new Date().toISOString()
           }]);
         }
         break;
@@ -987,7 +1001,8 @@ export function ModernChatBox() {
         setMessages(prev => [...prev, {
           role: 'assistant',
           content: "Great! Finally, please provide a brief message about your project or inquiry.",
-          id: Date.now().toString()
+          id: Date.now().toString(),
+          created_at: new Date().toISOString()
         }]);
         break;
         
@@ -1009,178 +1024,95 @@ export function ModernChatBox() {
     setTimeout(scrollToBottom, 100);
   };
 
-  // Update handleSubmit to handle contact requests
-  const handleSubmit = async (e: React.FormEvent) => {
+  // Update handleSubmit to include previous messages
+  const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     
     if (!input.trim()) return;
     
-    // Check if user info is submitted, if not, show the form
-    if (!userInfo.submitted) {
-      setShouldShowUserForm(true);
-      return;
-    }
-    
-    // Add user message to chat
+    // Create user message
     const userMessage: ChatMessage = {
-      role: 'user',
-      content: input,
       id: Date.now().toString(),
-      isTyping: false
+      role: 'user',
+      content: input.trim(),
+      created_at: new Date().toISOString(),
+      name: userInfo.name // Add user's name to the message
     };
     
-    setMessages((prev) => [...prev, userMessage]);
+    // Add user message to chat
+    setMessages(prev => [...prev, userMessage]);
+    
+    // Clear input
     setInput('');
-    setIsLoading(true);
     
-    // Check if this is a contact request when not already in contact form flow
-    if (contactFormStep === 0 && isContactRequest(input)) {
-      console.log("Contact request detected:", input);
-      
-      // Add assistant response about contact form
-      setMessages((prev) => [
-        ...prev.filter(msg => !msg.isTyping),
-        {
-          role: 'assistant', 
-          content: "I'd be happy to help you get in touch with Giovanni. Could you please provide your email address so he can contact you?",
-          id: Date.now().toString(),
-          isTyping: false
-        }
-      ]);
-      
-      // Start contact form flow
-      setContactFormStep(1);
-      
-      // Scroll to contact section
-      setTimeout(() => {
-        console.log("Scrolling to contact section for contact request");
-        scrollToSection('contact');
-      }, 500);
-      
-      // Scroll to bottom
-      setTimeout(scrollToBottom, 100);
-      setIsLoading(false);
-      return;
-    }
-    
-    // Process contact form input if already in contact form flow
-    if (contactFormStep > 0) {
-      handleContactFormInput(input);
-      setIsLoading(false);
-      return;
-    }
-    
-    // Show typing indicator
-    const typingIndicator: ChatMessage = {
+    // Create typing indicator
+    const typingMessage: ChatMessage = {
+      id: (Date.now() + 1).toString(),
       role: 'assistant',
       content: '',
-      id: (Date.now() + 1).toString(),
+      created_at: new Date().toISOString(),
       isTyping: true
     };
     
-    setMessages((prev) => [...prev, typingIndicator]);
+    // Add typing indicator
+    setMessages(prev => [...prev, typingMessage]);
     
     try {
-      // Debug log to see user info being sent
-      console.log("Sending message with userInfo:", {
-        submitted: userInfo.submitted,
-        contactId: userInfo.contactId,
-        sessionId: userInfo.sessionId
-      });
-      
-      // Prepare userInfo object for API
-      let apiUserInfo = null;
-      
-      if (userInfo.submitted && userInfo.contactId) {
-        apiUserInfo = {
-          name: userInfo.name,
-          phoneNumber: userInfo.phoneNumber,
-          contactId: userInfo.contactId,
-          sessionId: userInfo.sessionId,
-          submitted: userInfo.submitted
-        };
-      }
-      
-      // Send message to API
+      // Get previous messages, excluding the typing indicator
+      const previousMessages = messages.filter(msg => !msg.isTyping).map(msg => ({
+        role: msg.role,
+        content: msg.content,
+        name: msg.role === 'user' ? userInfo.name : undefined // Add name to previous user messages
+      }));
+
+      // Send message to API with context
       const response = await fetch('/api/chat', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
-          message: input,
-          userInfo: apiUserInfo
+          message: userMessage.content,
+          contactId: userInfo?.contactId,
+          sessionId: userInfo?.sessionId,
+          name: userInfo?.name, // Include user's name in the request
+          previousMessages: previousMessages // Include previous messages for context
         }),
       });
       
       if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.error || 'Failed to send message');
+        throw new Error('Failed to send message');
       }
       
       const data = await response.json();
       
-      // Remove typing indicator
-      setMessages((prev) => prev.filter(msg => !msg.isTyping));
-      
-      // Handle scroll tag if present
-      if (data.scrollTag) {
-        const sectionMatch = data.scrollTag.match(/\[SCROLL_TO:([a-z]+)\]/);
-        if (sectionMatch && sectionMatch[1]) {
-          const section = sectionMatch[1];
-          console.log(`Found scroll tag in handleSubmit: ${data.scrollTag}, section: ${section}`);
-          
-          // Scroll to the section after a short delay to ensure the DOM is updated
-          setTimeout(() => {
-            console.log(`Executing scrollToSection for: ${section}`);
-            scrollToSection(section);
-          }, 1000);
-        }
-      }
-      
-      // Add assistant's response to chat with required properties
-      // Only add the response if it's not a quick response that might be duplicated
-      if (!data.isQuickResponse || (data.isQuickResponse && !messages.some(msg => 
-        msg.role === 'assistant' && msg.content === data.content
-      ))) {
-        // Clean the content to remove any remaining scroll tags
-        const cleanedContent = data.content.replace(/\[SCROLL_TO:[a-z]+\]/g, '').trim();
-        
-        setMessages((prev) => [
-          ...prev,
-          { 
+      // Remove typing indicator and add AI response
+      setMessages(prev => {
+        const withoutTyping = prev.filter(msg => !msg.isTyping);
+        return [...withoutTyping, {
+          id: data.id || Date.now().toString(),
             role: 'assistant',
-            content: cleanedContent,
-            id: Date.now().toString(),
-            isTyping: false
-          },
-        ]);
-      }
+          content: data.content,
+          created_at: data.created_at || new Date().toISOString()
+        }];
+      });
       
       // Scroll to bottom of chat
-      setTimeout(() => {
-        if (messagesContainerRef.current) {
-          messagesContainerRef.current.scrollTop = messagesContainerRef.current.scrollHeight;
-        }
-      }, 100);
-    } catch (error: any) {
-      console.error('Error sending message:', error);
+      setTimeout(scrollToBottom, 100);
       
-      // Remove typing indicator
-      setMessages((prev) => prev.filter(msg => !msg.isTyping));
+    } catch (error) {
+      console.error('Error:', error);
       
-      // Add error message
-      setMessages((prev) => [
-        ...prev,
-        {
-          role: 'assistant',
-          content: error.message || 'Sorry, I encountered an error. Please try again.',
+      // Remove typing indicator and add error message
+      setMessages(prev => {
+        const withoutTyping = prev.filter(msg => !msg.isTyping);
+        return [...withoutTyping, {
           id: Date.now().toString(),
-          isTyping: false
-        },
-      ]);
-    } finally {
-      setIsLoading(false);
+          role: 'assistant',
+          content: 'Sorry, there was an error. Please try again.',
+          created_at: new Date().toISOString()
+        }];
+      });
     }
   };
 
@@ -1192,29 +1124,56 @@ export function ModernChatBox() {
     }
   }
 
+  // Update the scrollToBottom function for more reliable scrolling
   const scrollToBottom = () => {
-    // Use a more reliable approach with multiple attempts
     if (messagesContainerRef.current) {
       const container = messagesContainerRef.current;
       
-      // Immediate scroll attempt
+      // Immediate scroll
+      requestAnimationFrame(() => {
       container.scrollTop = container.scrollHeight;
       
-      // Follow-up attempts with increasing delays to ensure scrolling works
+        // Double-check scroll position after a short delay
       setTimeout(() => {
+          if (container.scrollTop + container.clientHeight < container.scrollHeight) {
         container.scrollTop = container.scrollHeight;
+          }
       }, 50);
-      
-      setTimeout(() => {
-        container.scrollTop = container.scrollHeight;
-      }, 150);
-    }
-    
-    // Also try the scrollIntoView approach as backup
-    if (messagesEndRef.current) {
-      messagesEndRef.current.scrollIntoView({ behavior: "auto", block: "end" });
+      });
     }
   };
+
+  // Add scroll effect for new messages
+  useEffect(() => {
+    if (messages.length > 0) {
+      scrollToBottom();
+    }
+  }, [messages]);
+
+  // Add scroll effect when chat opens
+  useEffect(() => {
+    if (isOpen) {
+      scrollToBottom();
+    }
+  }, [isOpen]);
+
+  // Add effect to handle new message scrolling
+  useEffect(() => {
+    const container = messagesContainerRef.current;
+    if (!container) return;
+
+    const observer = new MutationObserver(() => {
+      // Check if user is near bottom before auto-scrolling
+      const isNearBottom = container.scrollHeight - container.scrollTop - container.clientHeight < 100;
+      if (isNearBottom) {
+        scrollToBottom();
+      }
+    });
+
+    observer.observe(container, { childList: true, subtree: true });
+
+    return () => observer.disconnect();
+  }, []);
 
   // Function to end chat - clear messages and close window
   const handleEndChat = () => {
@@ -1230,7 +1189,7 @@ export function ModernChatBox() {
     setHasNewMessages(false);
   }
 
-  // Handle user info submission
+  // Update handleUserInfoSubmit to use dynamic messages
   const handleUserInfoSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     
@@ -1268,63 +1227,38 @@ export function ModernChatBox() {
       return;
     }
     
-    // Add a temporary message to show submission is in progress
-    const submittingMessageId = Date.now().toString();
-    setMessages(prev => [...prev, {
-      role: 'assistant',
-      content: 'Submitting your information...',
-      id: submittingMessageId
-    }]);
-    
     try {
-      // Generate a new sessionId if one doesn't exist
-      const currentSessionId = userInfo.sessionId || `session-${Date.now()}-${Math.random().toString(36).substring(2, 10)}`;
-      
-      console.log('Submitting user info with sessionId:', currentSessionId);
-      
-      // Send user info to API - using the new endpoint
+      // Send user info to API
       const response = await fetch('/api/chat/user', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
-          name: userInfo.name.trim(),
-          phoneNumber: userInfo.phoneNumber.trim(),
-          sessionId: currentSessionId
+          name: userInfo.name,
+          phoneNumber: userInfo.phoneNumber,
+          sessionId: userInfo.sessionId
         }),
       });
       
       if (!response.ok) {
         const errorData = await response.json();
-        throw new Error(errorData.error || 'Failed to submit contact information');
+        throw new Error(errorData.error || 'Failed to submit user info');
       }
       
       const data = await response.json();
-      console.log('User info submission successful, response:', data);
-      
-      // Convert contactId to number if it's a string
-      let contactId = data.contactId;
-      if (typeof contactId === 'string') {
-        contactId = parseInt(contactId, 10);
-        if (isNaN(contactId)) {
-          console.error(`Invalid contactId received: ${data.contactId}`);
-          contactId = null;
-        }
-      }
       
       // Update user info with contact ID and submitted status
       const updatedUserInfo = {
         ...userInfo,
+        contactId: data.contactId,
         submitted: true,
-        contactId: contactId,
-        sessionId: data.sessionId || currentSessionId
+        sessionId: data.sessionId || userInfo.sessionId
       };
       
-      console.log('Updated user info:', updatedUserInfo);
       setUserInfo(updatedUserInfo);
       
-      // Save user info to localStorage
+      // Store in localStorage
       if (typeof window !== 'undefined') {
         localStorage.setItem('chatUserInfo', JSON.stringify(updatedUserInfo));
       }
@@ -1332,56 +1266,16 @@ export function ModernChatBox() {
       // Hide the form
       setShouldShowUserForm(false);
       
-      // Find the welcome message and user's first message
-      const welcomeMessage = messages.find(msg => msg.id === "welcome");
-      const userFirstMessage = messages.find(msg => msg.role === "user");
-      
-      // Create a new messages array with the welcome message and thank you message
-      const newMessages: ChatMessage[] = [];
-      
-      // Keep the welcome message
-      if (welcomeMessage) {
-        newMessages.push(welcomeMessage);
-      }
-      
-      // Keep the user's first message if it exists
-      if (userFirstMessage) {
-        newMessages.push(userFirstMessage);
-      }
-      
-      // Add the thank you message
-      newMessages.push({
-        role: 'assistant' as const,
-        content: `Thanks ${userInfo.name}! Now, how can I help you learn more about Giovanni's experience and skills?`,
-        id: Date.now().toString()
-      });
-      
-      // Update messages
-      setMessages(newMessages);
-      
-      // Process the user's first question if it exists
-      if (userFirstMessage) {
-        // Add a small delay before processing the first question
-        setTimeout(() => {
-          // Call handleSubmit programmatically with the first question
-          const fakeEvent = { preventDefault: () => {} } as React.FormEvent<HTMLFormElement>;
-          setInput(userFirstMessage.content);
-          handleSubmit(fakeEvent);
-        }, 1000);
-      }
+      // Add welcome message after form submission
+      setMessages([{
+        id: Date.now().toString(),
+        role: 'assistant',
+        content: `Hi ${userInfo.name}! 👋 I'm NextGio, Giovanni's AI assistant. I can help you learn about Giovanni's experience, projects, and skills. What would you like to know?`,
+        created_at: new Date().toISOString()
+      }]);
       
     } catch (error) {
       console.error('Error submitting user info:', error);
-      
-      // Remove the submitting message
-      setMessages(prev => prev.filter(msg => msg.id !== submittingMessageId));
-      
-      // Add error message
-      setMessages(prev => [...prev, {
-        role: 'assistant',
-        content: 'Sorry, there was an error submitting your information. Please try again.',
-        id: Date.now().toString()
-      }]);
       
       // Show validation error if any
       if (error instanceof Error) {
@@ -1528,10 +1422,21 @@ export function ModernChatBox() {
       <style jsx global>{`
         :root {
           --chat-bg-color: rgba(255, 255, 255, 0.95);
+          --logo-filter: brightness(0);
         }
         
         .dark {
           --chat-bg-color: rgb(0, 0, 0);
+          --logo-filter: none;
+        }
+
+        .chat-logo {
+          border-radius: 9999px;
+          filter: var(--logo-filter);
+        }
+
+        .chat-logo-original {
+          border-radius: 9999px;
         }
       `}</style>
       
@@ -1540,14 +1445,14 @@ export function ModernChatBox() {
         /* Sidebar mode styles */
         body.with-chat-sidebar {
           transition: padding-right 0.3s ease;
-          padding-right: 350px;
+          padding-right: 320px;
           position: relative;
         }
         
         /* Adjust navbar to stay centered with content when sidebar is active */
         body.with-chat-sidebar .fixed.top-0.left-0.right-0.z-\[100\] {
           transition: padding-right 0.3s ease;
-          padding-right: 350px;
+          padding-right: 320px;
         }
         
         /* Adjust navbar's inner container to maintain proper width */
@@ -1654,7 +1559,7 @@ export function ModernChatBox() {
         }
       `}</style>
 
-      {/* Chat button */}
+      {/* Chat button - keep black in light mode */}
       <Button
         onClick={toggleExpanded}
         className={cn(
@@ -1682,7 +1587,7 @@ export function ModernChatBox() {
                 height={32} 
                 className={cn(
                   "rounded-full",
-                  isDark ? "brightness-0" : ""
+                  isDark ? "brightness-0" : "brightness-100"
                 )}
               />
             </div>
@@ -1710,18 +1615,20 @@ export function ModernChatBox() {
                 ? "top-0 left-0 right-0 bottom-0 w-full h-full"
                 : sidebarMode 
                   ? "top-0 bottom-0 right-0 h-full" 
-                  : "bottom-20 right-4"
+                  : "bottom-4 right-2" // Move closer to the right edge
             )}
             style={{
               zIndex: isMobile || sidebarMode ? 1100 : 50,
-              pointerEvents: "auto"
+              pointerEvents: "auto",
+              maxWidth: isMobile ? '100%' : sidebarMode ? '320px' : '380px', // Slightly smaller max width
+              width: isMobile ? '100%' : '100%',
+              transform: !isMobile && !sidebarMode ? 'none' : undefined,
+              margin: !isMobile && !sidebarMode ? '0' : undefined
             }}
             onWheel={(e) => {
-              // Prevent the wheel event from propagating to the parent elements
               e.stopPropagation();
             }}
             onTouchMove={(e) => {
-              // For touch devices
               e.stopPropagation();
             }}
           >
@@ -1739,13 +1646,13 @@ export function ModernChatBox() {
             <ResizableBox
                 width={isMobile ? window.innerWidth : chatDimensions.width}
                 height={isMobile ? viewportHeight : (sidebarMode ? window.innerHeight : chatDimensions.height)}
-                minConstraints={isMobile ? [window.innerWidth, 400] : [300, 400]}
+                minConstraints={isMobile ? [window.innerWidth, 400] : [280, 400]}
                 maxConstraints={
                   isMobile 
                     ? [window.innerWidth, viewportHeight]
                     : (sidebarMode 
-                      ? [350, window.innerHeight] 
-                      : [600, 800])
+                      ? [320, window.innerHeight] 
+                      : [500, 800])
                 }
                 resizeHandles={isMobile || sidebarMode ? [] : ['nw']}
               onResize={handleResize}
@@ -1783,16 +1690,16 @@ export function ModernChatBox() {
                 {/* Neural network background pattern */}
                 {!sidebarMode && <div className="absolute inset-0 neural-bg opacity-10 pointer-events-none" />}
                 
-              {/* Chat header */}
+              {/* Chat header - original color */}
                 <div className={cn(
-                  "flex items-center justify-between px-4 py-3 relative z-20",
+                  "flex items-center justify-between px-4 py-2.5 relative z-20",
                   sidebarMode || isMobile
                     ? isDark 
-                      ? "bg-black text-white" 
-                      : "bg-white"
+                      ? "bg-black border-b border-gray-800" 
+                      : "bg-white border-b border-gray-200"
                     : isDark 
-                      ? "bg-gray-900/90" 
-                      : "bg-white/50",
+                      ? "bg-gray-900/95 backdrop-blur-xl" 
+                      : "bg-white/95 backdrop-blur-xl",
                   minimizedOnMobile && "minimized-header"
                 )}>
                   {isMobile && minimizedOnMobile && (
@@ -1803,42 +1710,53 @@ export function ModernChatBox() {
                       <div className="w-12 h-1 bg-gray-500 rounded-full opacity-50"></div>
                     </div>
                   )}
-                  <div className="flex items-center space-x-3">
-                    <div className="relative">
+                  <div className="flex items-center gap-2.5">
+                    <div className="relative flex-shrink-0">
                       <div className={cn(
-                        "flex h-9 w-9 items-center justify-center rounded-xl ai-pulse",
+                        "flex h-9 w-9 items-center justify-center rounded-lg overflow-hidden",
                         isDark 
-                          ? "bg-primary text-white" 
-                          : "bg-black text-white"
+                          ? "bg-white" 
+                          : "bg-black"
                       )}>
                         <Image 
                           src="/GV Fav.png" 
-                          alt="GV" 
+                          alt="AI" 
                           width={24} 
                           height={24} 
-                          className="rounded-full"
+                          className={cn(
+                            "w-6 h-6 object-contain transform hover:scale-110 transition-transform duration-200",
+                            isDark ? "brightness-0" : "brightness-100"
+                          )}
                         />
                       </div>
-                      <div className="absolute -bottom-1 -right-1 h-2.5 w-2.5 rounded-full bg-green-500 border-2 border-white dark:border-gray-900"></div>
+                      <div className="absolute -bottom-0.5 -right-0.5 h-2.5 w-2.5 rounded-full bg-emerald-500 border-[1.5px] border-white dark:border-black"></div>
                     </div>
                     <div>
                       <h3 className={cn(
-                        "font-semibold text-base",
+                        "font-medium text-sm flex items-center gap-2",
                         isDark ? "text-white" : "text-black"
-                      )}>Giovanni's Personal AI Assistant</h3>
-                      <div className="flex items-center text-xs">
+                      )}>
+                        NextGio
                         <span className={cn(
-                          "inline-block h-1.5 w-1.5 rounded-full mr-1.5",
-                          "bg-green-500"
+                          "px-1.5 py-0.5 rounded-md text-[10px] font-medium",
+                          isDark ? "bg-white/10 text-white" : "bg-black/10 text-black"
+                        )}>
+                          AI
+                        </span>
+                      </h3>
+                      <div className="flex items-center text-[10px] mt-0.5">
+                        <span className={cn(
+                          "inline-block h-1.5 w-1.5 rounded-full mr-1.5 animate-pulse",
+                          "bg-emerald-500"
                         )}></span>
                         <span className={cn(
-                          isDark ? "text-gray-300" : "text-gray-600"
-                        )}>Online</span>
+                          isDark ? "text-gray-400" : "text-gray-600"
+                        )}>Online • Ready to assist</span>
                       </div>
                     </div>
                   </div>
                   
-                  <div className="flex items-center space-x-1">
+                  <div className="flex items-center gap-0.5">
                     {/* Sidebar mode toggle */}
                     {!isMobile && (
                   <button
@@ -1846,8 +1764,8 @@ export function ModernChatBox() {
                     className={cn(
                       "p-1.5 rounded-lg transition-colors",
                       isDark 
-                            ? "hover:bg-gray-800 text-gray-300" 
-                            : "hover:bg-black/10 text-gray-600"
+                            ? "hover:bg-gray-800 text-gray-400" 
+                            : "hover:bg-black/5 text-gray-500"
                         )}
                         aria-label="Toggle sidebar mode"
                       >
@@ -1861,8 +1779,8 @@ export function ModernChatBox() {
                       className={cn(
                         "p-1.5 rounded-lg transition-colors",
                         isDark 
-                          ? "hover:bg-gray-800 text-gray-300" 
-                          : "hover:bg-black/10 text-gray-600"
+                          ? "hover:bg-gray-800 text-gray-400" 
+                          : "hover:bg-black/5 text-gray-500"
                       )}
                       aria-label="End chat"
                     >
@@ -1875,147 +1793,22 @@ export function ModernChatBox() {
                     className={cn(
                       "p-1.5 rounded-lg transition-colors",
                       isDark 
-                          ? "hover:bg-gray-800 text-gray-300" 
-                          : "hover:bg-black/10 text-gray-600",
-                      isMobile && "p-2.5" // Larger touch target on mobile
+                          ? "hover:bg-gray-800 text-gray-400" 
+                          : "hover:bg-black/5 text-gray-500"
                     )}
                     aria-label="Close chat"
                   >
-                    <X className={cn("h-4 w-4", isMobile && "h-5 w-5")} />
+                      <X className="h-4 w-4" />
                   </button>
                 </div>
               </div>
               
-              {/* Chat messages */}
-                <div 
-                  ref={messagesContainerRef}
-                  className={cn(
-                    "flex-1 overflow-y-auto p-4 space-y-4 relative z-10 chat-scrollbar prevent-scroll-propagation",
-                    "flex flex-col",
-                    isMobile ? "justify-end" : "justify-start",
-                    isDark ? "scrollbar-thumb-white/10 hover:scrollbar-thumb-white/20" : "scrollbar-thumb-black/10 hover:scrollbar-thumb-black/20"
-                  )}
-                  style={{ 
-                    background: isDark 
-                      ? sidebarMode
-                        ? 'rgb(0, 0, 0)' // Pure black for sidebar mode (dark)
-                        : 'rgba(18, 18, 18, 0.7)' // Keep semi-transparent for normal mode (dark)
-                      : sidebarMode
-                        ? 'rgb(255, 255, 255)' // Pure white for sidebar mode (light)
-                        : 'transparent', // Keep transparent for normal mode (light)
-                    height: isMobile ? 'calc(100vh - 180px)' : 'calc(100% - 150px)', // Increase space for input area
-                    maxHeight: '100%',
-                    overflowY: 'auto',
-                    paddingBottom: '0px',
-                    flexGrow: 1,
-                    flexShrink: 1,
-                    position: 'relative',
-                    minHeight: isMobile ? 'auto' : '300px'
-                  }}
-                  onWheel={(e) => {
-                    // Prevent the wheel event from propagating to the parent elements
-                    e.stopPropagation();
-                  }}
-                  onTouchMove={(e) => {
-                    // For touch devices
-                    e.stopPropagation();
-                  }}
-                >
-                  {/* This div pushes content to the bottom on mobile only */}
-                  {isMobile && <div className="flex-1"></div>}
-                  <div className="space-y-4 pb-20"> {/* Increase bottom padding to ensure no overlap */}
-                    {messages.map((message, index) => (
-                  <div
-                    key={message.id}
-                    className={cn(
-                          "max-w-[85%] message-animation",
-                      message.role === "user" 
-                            ? "ml-auto" 
-                            : "mr-auto flex"
-                        )}
-                        style={{ 
-                          animationDelay: `${index * 0.1}s`
-                        }}
-                      >
-                        {message.role === "assistant" && (
-                          <div className={cn(
-                            "flex-shrink-0 h-8 w-8 rounded-xl flex items-center justify-center mr-2 mt-1",
-                            isDark 
-                              ? "bg-gray-900 text-white" 
-                              : "bg-black text-white"
-                          )}>
-                            <Image 
-                              src="/GV Fav.png" 
-                              alt="GV" 
-                              width={20} 
-                              height={20} 
-                              className="rounded-full"
-                            />
-                          </div>
-                        )}
-                        <div
-                          className={cn(
-                            "p-3.5 shadow-sm transition-all duration-200",
-                            message.role === "user" 
-                              ? "rounded-2xl rounded-br-sm backdrop-blur-sm" 
-                              : "rounded-2xl rounded-bl-sm backdrop-blur-sm",
-                            message.role === "user"
-                              ? isDark 
-                                ? "bg-gray-900/80 border border-gray-800 text-white" 
-                                : "bg-black/10 border border-black/5 text-black"
-                              : isDark
-                                ? "bg-gray-800 border border-gray-700 text-white" 
-                                : "bg-white/50 border border-black/5 text-black"
-                          )}
-                        >
-                          {message.isTyping ? (
-                            <div className="flex space-x-1.5 items-center px-3 py-2">
-                              <span className={cn(
-                                "w-2 h-2 rounded-full typing-dot",
-                                isDark ? "bg-white/70" : "bg-black/70"
-                              )}></span>
-                              <span className={cn(
-                                "w-2 h-2 rounded-full typing-dot",
-                                isDark ? "bg-white/70" : "bg-black/70"
-                              )}></span>
-                              <span className={cn(
-                                "w-2 h-2 rounded-full typing-dot",
-                                isDark ? "bg-white/70" : "bg-black/70"
-                              )}></span>
-                            </div>
-                          ) : (
-                            <div className="text-sm leading-relaxed">
-                    {message.content}
-                            </div>
-                          )}
-                        </div>
-                  </div>
-                ))}
-                
-                    {/* Scroll to bottom button */}
-                    {showScrollButton && (
-                      <Button
-                        onClick={scrollToBottom}
-                        variant="outline"
-                        size="sm"
-                        className="fixed bottom-24 right-4 h-10 w-10 rounded-full opacity-90 shadow-md z-20 bg-white dark:bg-gray-800"
-                        aria-label="Scroll to bottom"
-                      >
-                        <ChevronDown className="h-5 w-5" />
-                      </Button>
-                    )}
-                    
-                    {/* Added proper spacing to ensure messages aren't cut off */}
-                    <div ref={messagesEndRef} className="h-20 w-full" />
-                    </div>
-                  </div>
-                
-                {/* User info form */}
+                {/* Show user form or chat messages */}
                 {shouldShowUserForm ? (
-                  <div className="absolute inset-0 flex items-center justify-center z-30 bg-white/10 dark:bg-black/10 backdrop-blur-md">
-                    <div className="w-11/12 max-w-md p-6 bg-white/90 dark:bg-black/90 rounded-lg shadow-xl border border-black/5 dark:border-white/10">
+                  <div className="flex-1 flex items-center justify-center bg-white/10 dark:bg-black/10 backdrop-blur-md">
+                    <div className="w-11/12 max-w-md p-6 bg-white/90 dark:bg-black/90 rounded-2xl shadow-xl border border-black/5 dark:border-white/10">
                       <h3 className={cn(
-                        "text-xl font-semibold mb-4 text-center animate-fadeIn",
+                        "text-xl font-semibold mb-6 text-center",
                         isDark ? "text-white" : "text-black"
                       )}>
                         Please share your contact info
@@ -2023,7 +1816,7 @@ export function ModernChatBox() {
                       
                       <form 
                         onSubmit={handleUserInfoSubmit}
-                        className="space-y-4 animate-fadeIn"
+                        className="space-y-5"
                       >
                         <div>
                           <input
@@ -2033,17 +1826,23 @@ export function ModernChatBox() {
                             onChange={handleUserInfoChange}
                             placeholder="Your name"
                             className={cn(
-                              "w-full px-4 py-3 rounded-lg border text-base",
+                              "w-full px-4 py-3 rounded-lg text-base transition-all duration-200",
                               isDark 
-                                ? "bg-gray-800 border-gray-700 text-white" 
-                                : "bg-white border-gray-300 text-black",
-                              validationErrors.name && "border-red-500"
+                                ? "bg-gray-800/50 text-white placeholder-gray-400 focus:bg-gray-800" 
+                                : "bg-gray-50 text-black placeholder-gray-500 focus:bg-white",
+                              "border-2",
+                              validationErrors.name 
+                                ? "border-red-500" 
+                                : isDark 
+                                  ? "border-gray-700 focus:border-blue-500" 
+                                  : "border-gray-200 focus:border-blue-500",
+                              "outline-none focus:ring-2 focus:ring-blue-500/20"
                             )}
-                            style={{ fontSize: '16px' }}
+                            style={{ fontSize: '15px' }}
                             disabled={isSubmittingInfo}
                           />
                           {validationErrors.name && (
-                            <p className="mt-1 text-xs text-red-500">{validationErrors.name}</p>
+                            <p className="mt-2 text-sm text-red-500">{validationErrors.name}</p>
                           )}
                         </div>
                         
@@ -2055,37 +1854,51 @@ export function ModernChatBox() {
                             onChange={handleUserInfoChange}
                             placeholder="Your phone number"
                             className={cn(
-                              "w-full px-4 py-3 rounded-lg border text-base",
+                              "w-full px-4 py-3 rounded-lg text-base transition-all duration-200",
                               isDark 
-                                ? "bg-gray-800 border-gray-700 text-white" 
-                                : "bg-white border-gray-300 text-black",
-                              validationErrors.phoneNumber && "border-red-500"
+                                ? "bg-gray-800/50 text-white placeholder-gray-400 focus:bg-gray-800" 
+                                : "bg-gray-50 text-black placeholder-gray-500 focus:bg-white",
+                              "border-2",
+                              validationErrors.phoneNumber 
+                                ? "border-red-500" 
+                                : isDark 
+                                  ? "border-gray-700 focus:border-blue-500" 
+                                  : "border-gray-200 focus:border-blue-500",
+                              "outline-none focus:ring-2 focus:ring-blue-500/20"
                             )}
-                            style={{ fontSize: '16px' }}
+                            style={{ fontSize: '15px' }}
                             disabled={isSubmittingInfo}
                           />
                           {validationErrors.phoneNumber && (
-                            <p className="mt-1 text-xs text-red-500">{validationErrors.phoneNumber}</p>
+                            <p className="mt-2 text-sm text-red-500">{validationErrors.phoneNumber}</p>
                           )}
                         </div>
                         
                         <button
                           type="submit"
+                          disabled={isSubmittingInfo}
                           className={cn(
-                            "w-full p-3 rounded-lg shadow-md mt-2 text-lg",
+                            "w-full py-3 px-4 rounded-lg font-medium transition-all duration-200",
                             isDark 
                               ? "bg-white text-black hover:bg-gray-200" 
-                              : "bg-black text-white hover:bg-gray-800",
+                              : "bg-black text-white hover:bg-gray-900",
+                            "transform hover:translate-y-[-1px] active:translate-y-[1px]",
                             isSubmittingInfo && "opacity-50 cursor-not-allowed"
                           )}
-                          disabled={isSubmittingInfo}
                         >
-                          {isSubmittingInfo ? "Submitting..." : "Start Chatting"}
+                          {isSubmittingInfo ? (
+                            <div className="flex items-center justify-center space-x-2">
+                              <div className="w-5 h-5 border-2 border-current border-t-transparent rounded-full animate-spin" />
+                              <span>Submitting...</span>
+                            </div>
+                          ) : (
+                            "Start Chatting"
+                          )}
                         </button>
                         
                         <p className={cn(
-                          "text-xs text-center mt-3",
-                          isDark ? "text-gray-400" : "text-gray-500"
+                          "text-sm text-center mt-4",
+                          isDark ? "text-gray-400" : "text-gray-600"
                         )}>
                           Your information helps Giovanni connect with interested visitors
                         </p>
@@ -2093,95 +1906,200 @@ export function ModernChatBox() {
                     </div>
                   </div>
                 ) : (
-                  /* Chat input */
-                  <form 
-                    onSubmit={handleSubmit}
+                  <div className="flex-1 flex flex-col">
+                    {/* Chat messages */}
+                    <div 
+                      ref={messagesContainerRef}
                     className={cn(
-                      "relative z-20",
-                      keyboardOpen && "keyboard-visible"
+                        "flex-1 overflow-y-auto p-4 space-y-4 relative z-10",
+                        "flex flex-col",
+                        "scrollbar-thin",
+                        isDark 
+                          ? "scrollbar-thumb-white/10 hover:scrollbar-thumb-white/20" 
+                          : "scrollbar-thumb-black/10 hover:scrollbar-thumb-black/20",
+                        "scrollbar-track-transparent",
+                        "isolate" // Prevent scroll propagation
                     )}
                     style={{
-                      position: 'absolute', // Change from fixed to absolute
-                      bottom: 0,
-                      left: sidebarMode && !isMobile ? 'auto' : 0,
-                      right: 0,
-                      width: sidebarMode && !isMobile ? chatDimensions.width : '100%',
-                      padding: '8px 8px 10px 8px',
-                      borderTop: isDark ? '1px solid rgba(75, 75, 75, 0.3)' : '1px solid rgba(127, 127, 127, 0.1)',
-                      backgroundColor: isDark ? 'rgb(0, 0, 0)' : 'rgba(255, 255, 255, 0.95)',
-                      zIndex: 100,
-                      boxShadow: isDark ? '0 -2px 10px rgba(0, 0, 0, 0.2)' : '0 -2px 10px rgba(0, 0, 0, 0.05)',
-                      paddingBottom: 'calc(8px + env(safe-area-inset-bottom))'
-                    }}
-                  >
+                        background: isDark 
+                          ? sidebarMode
+                            ? 'rgb(0, 0, 0)' 
+                            : 'rgba(18, 18, 18, 0.7)' 
+                          : sidebarMode
+                            ? 'rgb(255, 255, 255)' 
+                            : 'transparent',
+                        height: 'calc(100% - 60px)', // Reduce height to account for smaller header
+                        maxHeight: 'calc(100% - 60px)',
+                        overflowY: 'auto',
+                        overflowX: 'hidden',
+                        scrollBehavior: 'smooth',
+                        WebkitOverflowScrolling: 'touch',
+                        msOverflowStyle: '-ms-autohiding-scrollbar',
+                        willChange: 'scroll-position', // Optimize scrolling performance
+                        contain: 'strict' // Improve scroll performance
+                      }}
+                      onWheel={(e) => {
+                        e.stopPropagation();
+                      }}
+                      onTouchMove={(e) => {
+                        e.stopPropagation();
+                      }}
+                    >
+                      {messages.map((message, index) => (
+                        <div
+                          key={message.id || index}
+                          className={cn(
+                            "flex w-full",
+                            message.role === "user" ? "justify-end" : "justify-start",
+                            "items-end gap-2",
+                            "transform-gpu",
+                            message.isWelcome && "mb-6"
+                          )}
+                          style={{
+                            minHeight: message.isTyping ? '40px' : 'auto',
+                            opacity: message.isTyping ? 0.7 : 1
+                          }}
+                        >
+                          {message.role === "assistant" && (
+                            <div className="flex-shrink-0 w-8 h-8">
+                              <div className="w-8 h-8 rounded-full overflow-hidden">
+                                <Image 
+                                  src="/GV Fav.png" 
+                                  alt="AI" 
+                                  width={32} 
+                                  height={32}
+                                  className={cn(
+                                    "w-full h-full object-cover",
+                                    !isDark && "brightness-0"
+                                  )}
+                                />
+                              </div>
+                            </div>
+                          )}
+                          <div
+                            className={cn(
+                              "max-w-[80%] rounded-2xl px-4 py-2.5 text-sm leading-relaxed",
+                              message.role === "user" 
+                                ? "bg-black text-white ml-auto rounded-br-sm" 
+                                : isDark
+                                  ? "bg-gray-800 text-gray-100 rounded-bl-sm"
+                                  : "bg-gray-100 text-gray-900 rounded-bl-sm",
+                              message.isTyping && "min-w-[60px]",
+                              "transform-gpu"
+                            )}
+                            style={{
+                              minHeight: message.isTyping ? '32px' : 'auto'
+                            }}
+                          >
+                            {message.isTyping ? (
+                              <div className="flex items-center justify-center h-[20px]">
+                                <motion.div
+                                  className={cn(
+                                    "w-1.5 h-1.5 rounded-full",
+                                    isDark ? "bg-gray-400" : "bg-gray-500"
+                                  )}
+                                  animate={{ scale: [1, 1.2, 1] }}
+                                  transition={{ duration: 0.6, repeat: Infinity }}
+                                />
+                                <motion.div
+                                  className={cn(
+                                    "w-1.5 h-1.5 rounded-full mx-1",
+                                    isDark ? "bg-gray-400" : "bg-gray-500"
+                                  )}
+                                  animate={{ scale: [1, 1.2, 1] }}
+                                  transition={{ duration: 0.6, delay: 0.2, repeat: Infinity }}
+                                />
+                                <motion.div
+                                  className={cn(
+                                    "w-1.5 h-1.5 rounded-full",
+                                    isDark ? "bg-gray-400" : "bg-gray-500"
+                                  )}
+                                  animate={{ scale: [1, 1.2, 1] }}
+                                  transition={{ duration: 0.6, delay: 0.4, repeat: Infinity }}
+                                />
+                              </div>
+                            ) : (
+                              <p className="whitespace-pre-wrap break-words">{message.content}</p>
+                            )}
+                          </div>
+                          {message.role === "user" && (
+                            <div className="flex-shrink-0 w-8 h-8">
                     <div className={cn(
-                      "flex items-center space-x-2 rounded-xl p-1.5 relative z-20",
+                                "w-8 h-8 rounded-full bg-black flex items-center justify-center text-white text-sm font-medium"
+                              )}>
+                                {userInfo.name ? userInfo.name.charAt(0).toUpperCase() : 'U'}
+                              </div>
+                            </div>
+                          )}
+                        </div>
+                      ))}
+                    </div>
+
+                    {/* Chat input */}
+                    <div 
+                      className={cn(
+                        "relative z-20 bg-transparent",
+                        "sticky bottom-0 left-0 right-0",
+                        "border-t",
+                        isDark ? "border-gray-800" : "border-gray-200"
+                      )}
+                      style={{
+                        backgroundColor: isDark ? 'rgba(0, 0, 0, 0.8)' : 'rgba(255, 255, 255, 0.9)',
+                        backdropFilter: 'blur(10px)',
+                        paddingBottom: '0' // Remove the extra padding
+                      }}
+                    >
+                      <form onSubmit={handleSubmit} className={cn(
+                        "flex items-center space-x-2 relative z-20 backdrop-blur-lg p-1.5", // Reduce padding
                       isDark 
-                        ? "bg-black border border-gray-700" 
-                        : "bg-white/80 border border-black/5"
+                          ? "bg-gray-900/50" 
+                          : "bg-white/50"
                     )}>
                       <textarea
                         ref={inputRef}
                         value={input}
                         onChange={handleInputChange}
                         onKeyDown={handleKeyDown}
-                        placeholder="Ask me anything..."
+                          placeholder="Message Giovanni's AI..."
                         className={cn(
-                          "flex-1 p-2.5 rounded-lg resize-none text-sm modern-input",
+                            "flex-1 px-2.5 py-1.5 resize-none text-sm bg-transparent",
                           isDark 
-                            ? "bg-transparent border-none focus:ring-0 placeholder-gray-400 text-white" 
-                            : "bg-transparent border-none focus:ring-0 placeholder-gray-500 text-black",
-                          "focus:outline-none",
+                              ? "text-white placeholder-gray-400" 
+                              : "text-gray-900 placeholder-gray-500",
+                            "focus:outline-none focus:ring-0 border-none",
                           isMobile && "mobile-textarea"
                         )}
                         style={{ 
-                          height: textareaHeight, 
-                          maxHeight: isMobile ? '80px' : '200px',
-                          paddingRight: '40px',
-                          fontSize: '16px'
-                        }}
+                            height: '32px',
+                            minHeight: '32px',
+                            maxHeight: isMobile ? '60px' : '80px',
+                            fontSize: '13px',
+                            lineHeight: '1.3'
+                          }}
+                          rows={1}
                       />
                       <button
                         type="submit"
                         disabled={isLoading || !input.trim()}
                         className={cn(
-                          "p-2.5 rounded-xl transition-all shadow-sm hover:shadow",
+                            "p-2 rounded-lg transition-all duration-200 flex items-center justify-center",
                           isDark 
-                            ? "bg-gray-900 hover:bg-gray-800 text-white" 
-                            : "bg-black hover:bg-black/90 text-white",
-                          (isLoading || !input.trim()) && "opacity-50 cursor-not-allowed"
-                        )}
-                      >
-                        <Send className="h-4 w-4" />
+                              ? "bg-white text-black hover:bg-gray-200" 
+                              : "bg-black text-white hover:bg-gray-900",
+                            "mr-0.5", // Reduce margin
+                            (isLoading || !input.trim()) && "opacity-50 cursor-not-allowed",
+                            "hover:scale-105 active:scale-95"
+                          )}
+                          style={{
+                            width: '30px', // Slightly smaller button
+                            height: '30px'
+                          }}
+                        >
+                          <Send className="h-4 w-4 transform rotate-45 translate-x-px -translate-y-px" />
                       </button>
+                      </form>
                     </div>
-                    
-                    {/* AI capabilities hint */}
-                    <div className="mt-2 mb-2 flex justify-center">
-                      <div className="text-xs flex items-center space-x-4">
-                        <span className={cn(
-                          "flex items-center",
-                          isDark ? "text-gray-300" : "text-gray-600"
-                        )}>
-                          <span className={cn(
-                            "inline-block h-1.5 w-1.5 rounded-full mr-1.5",
-                            isDark ? "bg-gray-300" : "bg-black/70"
-                          )}></span>
-                          Ask about projects
-                        </span>
-                        <span className={cn(
-                          "flex items-center",
-                          isDark ? "text-gray-300" : "text-gray-600"
-                        )}>
-                          <span className={cn(
-                            "inline-block h-1.5 w-1.5 rounded-full mr-1.5",
-                            isDark ? "bg-gray-300" : "bg-black/70"
-                          )}></span>
-                          Explore skills
-                        </span>
                       </div>
-                    </div>
-                  </form>
                 )}
             </ResizableBox>
             </div>
@@ -2191,4 +2109,3 @@ export function ModernChatBox() {
     </div>
   )
 }
-

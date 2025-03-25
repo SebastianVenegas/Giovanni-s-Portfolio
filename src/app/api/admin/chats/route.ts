@@ -1,26 +1,115 @@
 import { NextResponse } from 'next/server';
-import { getChatHistory, getContacts } from '@/lib/db';
+import { NextRequest } from 'next/server';
+import { getChatHistory, getContacts, getPoolClient } from '@/lib/db';
 
 // Simple API key authentication
-const validateApiKey = (request: Request) => {
+function validateApiKey(request: NextRequest): boolean {
+  // For development testing
   const apiKey = request.headers.get('x-api-key');
-  const validApiKey = process.env.ADMIN_API_KEY;
   
-  if (!apiKey || apiKey !== validApiKey) {
+  // Get the valid API key from environment variables with fallback
+  const validApiKey = process.env.ADMIN_API_KEY || 'admin_access_key_a987zyx654';
+  
+  // Special development case - allow a hardcoded key for testing
+  // IMPORTANT: This is for development only and would be removed in production
+  const hardcodedKey = 'Aaron3209';
+  
+  console.log(`API Key validation: 
+    - API key present: ${apiKey ? 'Yes' : 'No'}
+    - API key length: ${apiKey?.length || 0}
+    - Environment variable set: ${process.env.ADMIN_API_KEY ? 'Yes' : 'No'}
+    - Using fallback: ${!process.env.ADMIN_API_KEY ? 'Yes' : 'No'}
+    - Key matches .env: ${apiKey === process.env.ADMIN_API_KEY ? 'Yes' : 'No'}
+    - Key matches hardcoded: ${apiKey === hardcodedKey ? 'Yes' : 'No'}`);
+
+  if (!apiKey) {
+    console.log('API Key validation failed: No API key provided');
     return false;
   }
-  
-  return true;
-};
 
-export async function GET(request: Request) {
+  // Check against all valid options
+  const isValidEnvKey = apiKey === validApiKey;
+  const isValidHardcodedKey = apiKey === hardcodedKey;
+  
+  if (isValidEnvKey || isValidHardcodedKey) {
+    if (isValidHardcodedKey && !isValidEnvKey) {
+      console.log('API Key validation: Using hardcoded development key');
+    }
+    return true;
+  }
+  
+  console.log('API Key validation failed: Invalid API key');
+  return false;
+}
+
+// Helper to get quick statistics
+export async function getStats() {
   try {
-    // Validate API key for security
+    const pool = await getPoolClient();
+    if (!pool) {
+      throw new Error('Failed to connect to database');
+    }
+    
+    // Get total users
+    const usersResult = await pool.query('SELECT COUNT(*) as total FROM contacts');
+    const totalUsers = parseInt(usersResult.rows[0].total, 10);
+    
+    // Get total chat messages
+    const messagesResult = await pool.query('SELECT COUNT(*) as total FROM chat_logs');
+    const totalMessages = parseInt(messagesResult.rows[0].total, 10);
+    
+    // Get count of unique session IDs
+    const sessionsResult = await pool.query('SELECT COUNT(DISTINCT session_id) as total FROM chat_logs');
+    const totalSessions = parseInt(sessionsResult.rows[0].total, 10);
+    
+    // Get count of users active today
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    const todayFormatted = today.toISOString();
+    
+    const activeTodayResult = await pool.query(
+      'SELECT COUNT(DISTINCT contact_id) as total FROM chat_logs WHERE created_at >= $1',
+      [todayFormatted]
+    );
+    const activeToday = parseInt(activeTodayResult.rows[0].total, 10);
+    
+    // Get most recent activity
+    const lastActivityResult = await pool.query(
+      'SELECT created_at FROM chat_logs ORDER BY created_at DESC LIMIT 1'
+    );
+    const lastActivity = lastActivityResult.rows[0]?.created_at || null;
+    
+    return {
+      totalUsers,
+      totalMessages,
+      totalSessions,
+      activeToday,
+      lastActivity
+    };
+  } catch (error) {
+    console.error('Error getting stats:', error);
+    return null;
+  }
+}
+
+// GET request handler
+export async function GET(request: NextRequest) {
+  try {
+    // Check API key
     if (!validateApiKey(request)) {
-      return NextResponse.json(
-        { error: 'Unauthorized' },
-        { status: 401 }
-      );
+      console.log('Invalid API key for admin API')
+      return NextResponse.json({ message: 'Unauthorized' }, { status: 401 })
+    }
+    
+    const url = new URL(request.url);
+    
+    // Check if this is a stats-only request
+    if (url.searchParams.get('stats') === 'true') {
+      const stats = await getStats();
+      if (!stats) {
+        throw new Error('Failed to get statistics');
+      }
+      return NextResponse.json({ stats });
     }
     
     // Get all contacts
@@ -31,7 +120,6 @@ export async function GET(request: Request) {
     
     for (const contact of contacts) {
       // Get all sessions for this contact
-      const url = new URL(request.url);
       const sessionId = url.searchParams.get('sessionId');
       
       // If sessionId is provided, only get that specific session
@@ -78,7 +166,10 @@ export async function GET(request: Request) {
       }
     }
     
-    return NextResponse.json({ chats });
+    // Calculate statistics as well
+    const stats = await getStats();
+    
+    return NextResponse.json({ chats, stats });
   } catch (error) {
     console.error('Error fetching chat logs:', error);
     return NextResponse.json(
