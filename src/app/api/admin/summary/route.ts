@@ -1,9 +1,6 @@
 import { NextResponse } from 'next/server';
 import { OpenAI } from 'openai';
-import { PrismaClient } from '@prisma/client';
-
-// Create a raw connection to the database
-const prisma = new PrismaClient();
+import { prisma } from '@/lib/prisma';
 
 // Define types for our data based on the actual SQL schema
 interface ChatLog {
@@ -269,8 +266,5 @@ export async function GET(request: Request) {
       sentimentAnalysis: { positive: 0, neutral: 0, negative: 0 },
       recentHighlights: []
     }, { status: 500 });
-  } finally {
-    // Always ensure we disconnect from prisma, as raw queries can leave connections open
-    await prisma.$disconnect();
   }
 } 
