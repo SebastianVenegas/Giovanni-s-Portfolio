@@ -43,7 +43,7 @@ function validateApiKey(request: NextRequest): boolean {
 }
 
 // Helper to get quick statistics
-export async function getStats() {
+async function getStats() {
   try {
     const pool = await getPoolClient();
     if (!pool) {
