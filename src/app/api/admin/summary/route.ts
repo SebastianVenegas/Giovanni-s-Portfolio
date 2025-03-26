@@ -40,9 +40,9 @@ export async function GET(request: Request) {
     const apiKey = request.headers.get('x-api-key');
     
     console.log('API Key provided:', apiKey ? 'Yes' : 'No');
-    console.log('ENV API Key:', process.env.ADMIN_API_KEY ? 'Available' : 'Not available');
+    console.log('ENV API Key:', process.env.OPENAI_API_KEY ? 'Available' : 'Not available');
 
-    if (apiKey !== process.env.ADMIN_API_KEY) {
+    if (apiKey !== process.env.OPENAI_API_KEY) {
       console.log('Authentication failed: API key mismatch');
       return NextResponse.json({ 
         error: 'Unauthorized',
