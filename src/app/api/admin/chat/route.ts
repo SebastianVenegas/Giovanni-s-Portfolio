@@ -1,15 +1,17 @@
 import { NextRequest, NextResponse } from 'next/server';
-// Remove the database import for Edge runtime
-// import { createClient } from '@vercel/postgres'; 
+// Restore the database import for non-Edge runtime
+import { createClient } from '@vercel/postgres'; 
 import { streamText } from 'ai';
 import { openai } from '@ai-sdk/openai';
 import { ContactStats, ChatSession } from './types';
 import OpenAI from 'openai';
-// import { createAdminChatTables } from './create-tables';
+// Restore table creation import
+import { createAdminChatTables } from './create-tables';
 import { setCorsHeaders, createApiError, createApiResponse, validateApiKey, handleOptionsRequest } from '@/lib/api';
 
-export const runtime = 'edge';
-export const preferredRegion = 'auto';
+// Change from Edge runtime to Node.js
+// export const runtime = 'edge';
+// export const preferredRegion = 'auto';
 
 // Initialize OpenAI with the API key
 const openaiClient = new OpenAI({
@@ -25,24 +27,104 @@ if (!process.env.OPENAI_API_KEY) {
   console.log(`[Admin Chat] OPENAI_API_KEY is configured (${masked})`);
 }
 
-// Initialize tables on startup - skip in Edge runtime
-console.log('[Admin Chat] Database initialization skipped - storage disabled');
+// Initialize tables on startup
+console.log('[Admin Chat] Initializing database tables...');
+createAdminChatTables().then(result => {
+  console.log(`[Admin Chat] Table initialization result: ${result}`);
+}).catch(err => {
+  console.error('[Admin Chat] Database initialization error:', err);
+});
 
-// Helper function to save a chat message - no database in Edge
-function saveAdminChatMessageAsync(sessionId: string, role: string, content: string, updateTitle: boolean = false) {
-  console.log(`[Admin Chat] Message saving skipped (storage disabled): sessionId=${sessionId}, role=${role}, content length=${content.length}`);
-  // Skip database operations in Edge runtime
+// Helper function to save a chat message
+async function saveAdminChatMessageAsync(sessionId: string, role: string, content: string, updateTitle: boolean = false) {
+  console.log(`[Admin Chat] Message saving skipped (read-only access): sessionId=${sessionId}, role=${role}, content length=${content.length}`);
+  // Skip database operations - read-only access to existing data
 }
 
-// Function to get minimal essential context for fast responses - no database in Edge
+// Function to get minimal essential context for fast responses
 async function getMinimalContext() {
-  // Skip database query and use static context
-  return `
-CHAT STATISTICS (STATIC - DB STORAGE DISABLED):
-- Total unique users: 0
-- Total chat sessions: 0
-- Total messages exchanged: 0
+  console.log('[Admin Chat] Starting getMinimalContext');
+  try {
+    const db = createClient();
+    console.log('[Admin Chat] Database client created, connecting...');
+    await db.connect();
+    console.log('[Admin Chat] Database connected successfully');
+    
+    // Get basic stats for all chats and contacts
+    console.log('[Admin Chat] Querying for chat and contact statistics...');
+    const stats = await db.sql<ContactStats>`
+      SELECT
+        COUNT(DISTINCT session_id) AS total_sessions,
+        COUNT(*) AS total_messages
+      FROM chat_logs
+    `;
+    
+    const contactStats = await db.sql`
+      SELECT COUNT(*) AS total_contacts
+      FROM contacts
+    `;
+    
+    console.log(`[Admin Chat] Stats query result: sessions=${stats.rows[0]?.total_sessions || 0}, messages=${stats.rows[0]?.total_messages || 0}, contacts=${contactStats.rows[0]?.total_contacts || 0}`);
+    
+    // Get recent contacts
+    const recentContacts = await db.sql`
+      SELECT id, name, phone_number, created_at
+      FROM contacts
+      ORDER BY created_at DESC
+      LIMIT 5
+    `;
+    console.log(`[Admin Chat] Recent contacts query returned ${recentContacts.rows.length} rows`);
+    
+    // Get most recent sessions with more details
+    console.log('[Admin Chat] Querying for recent sessions...');
+    const recentSessions = await db.sql<ChatSession>`
+      SELECT 
+        cl.session_id as id, 
+        c.name as title, 
+        c.phone_number as phone,
+        MIN(cl.created_at) as created_at,
+        (SELECT content FROM chat_logs 
+         WHERE session_id = cl.session_id AND role = 'user' 
+         ORDER BY created_at ASC LIMIT 1) as first_message
+      FROM chat_logs cl
+      JOIN contacts c ON cl.contact_id = c.id
+      GROUP BY cl.session_id, c.name, c.phone_number
+      ORDER BY MIN(cl.created_at) DESC
+      LIMIT 5
+    `;
+    console.log(`[Admin Chat] Recent sessions query returned ${recentSessions.rows.length} rows`);
+    
+    await db.end();
+    console.log('[Admin Chat] Database connection closed');
+    
+    const hasChats = stats.rows[0]?.total_sessions > 0;
+    const hasContacts = (contactStats.rows[0]?.total_contacts || 0) > 0;
+    console.log(`[Admin Chat] Has chats: ${hasChats}, Has contacts: ${hasContacts}`);
+    
+    const contextString = `
+CHAT STATISTICS:
+- Total contacts: ${contactStats.rows[0]?.total_contacts || 0}
+- Total chat sessions: ${stats.rows[0]?.total_sessions || 0}
+- Total messages exchanged: ${stats.rows[0]?.total_messages || 0}
+- Has recent chats: ${hasChats ? 'YES' : 'NO'}
+- Has contacts: ${hasContacts ? 'YES' : 'NO'}
+
+${hasContacts ? `RECENT CONTACTS:
+${recentContacts.rows.map(c => `- ${new Date(c.created_at).toLocaleString()}: ${c.name} (${c.phone_number})`).join('\n')}` : 'NO CONTACTS FOUND.'}
+
+${hasChats ? `RECENT CONVERSATIONS:
+${recentSessions.rows.map(s => `- ${new Date(s.created_at).toLocaleString()}: ${s.title || 'Unknown User'} (${s.phone || 'No phone'})
+  First message: "${s.first_message?.substring(0, 50) ?? ''}${(s.first_message?.length ?? 0) > 50 ? '...' : ''}"`)
+.join('\n')}` : 'NO RECENT CONVERSATIONS FOUND.'}
 `;
+    console.log('[Admin Chat] Returning context:', contextString);
+    return contextString;
+  } catch (error) {
+    console.error('[Admin Chat] Error getting context:', error);
+    // Return a more informative error message
+    return `Error retrieving context data: ${error instanceof Error ? error.message : 'Unknown error'}
+Debug: There might be a problem with the database connection. Please check that the tables exist and the Postgres connection is working.`;
+  }
 }
 
 // Handle preflight requests
@@ -81,21 +163,15 @@ export async function POST(req: NextRequest) {
     // Save the user's message to the database and update title if it's a new conversation
     const lastMessage = messages[messages.length - 1];
     if (lastMessage.role === 'user') {
-      // Skip database storage
-      console.log(`[Admin Chat] User message received (storage disabled): ${lastMessage.content.substring(0, 30)}...`);
+      const isNewSession = !sessionId;
+      await saveAdminChatMessageAsync(chatSessionId, 'user', lastMessage.content, isNewSession);
     }
     
     // Get minimal context - faster than loading full user data
     console.log('[Admin Chat] Getting minimal context');
     let minimalContext;
     try {
-      // Skip database query and use static context
-      minimalContext = `
-CHAT STATISTICS (STATIC - DB STORAGE DISABLED):
-- Total unique users: 0
-- Total chat sessions: 0
-- Total messages exchanged: 0
-`;
+      minimalContext = await getMinimalContext();
     } catch (ctxError) {
       console.error('[Admin Chat] Error getting context:', ctxError);
       minimalContext = 'Error retrieving context data';
@@ -113,7 +189,7 @@ CHAT STATISTICS (STATIC - DB STORAGE DISABLED):
                 ${minimalContext}
                 
                 CRITICAL INSTRUCTIONS:
-                1. You have direct access to the database that stores ALL chat logs from Giovanni's portfolio website.
+                1. You have direct access to the database that stores ALL chat logs and contacts from Giovanni's portfolio website.
                 2. The visitor-facing chatbot (public NextGio) automatically responds to website visitors, NOT Giovanni himself.
                 3. When Giovanni asks about visitors or messages, show him conversations that were already automatically handled by the public NextGio chatbot.
                 4. You are Giovanni's PERSONAL ASSISTANT first and foremost - you can help with any task, question, or request he has.
@@ -121,6 +197,18 @@ CHAT STATISTICS (STATIC - DB STORAGE DISABLED):
                 6. IMPORTANT: You DO have real-time weather data access. When asked about weather, respond with accurate weather information that will be displayed in a weather card component. DO NOT claim you don't have access to weather data.
                 7. When showing visitor messages, clarify that these interactions were already handled by the public NextGio chatbot.
                 8. Respond quickly and concisely, keeping your responses brief and to the point.
+                9. IMPORTANT: When asked about new chats or conversations:
+                   - DO NOT say you are "checking" or "looking"
+                   - LOOK DIRECTLY at the DATABASE CONTEXT section above
+                   - If it shows "Has recent chats: YES", then report the chats listed under RECENT CONVERSATIONS
+                   - If it shows "Has recent chats: NO", say "There are no chat sessions available."
+                   - If it shows an error message, say "I'm having trouble connecting to the chat database. [Insert error details]"
+                10. NEVER say "There are no recent chats" unless the context SPECIFICALLY says "Has recent chats: NO" or shows 0 total sessions.
+                11. When asked about contacts:
+                   - Look at the "Has contacts" value in the DATABASE CONTEXT
+                   - If it shows "Has contacts: YES", then list the contacts from RECENT CONTACTS
+                   - If it shows "Has contacts: NO", say "There are no contacts in the database."
+                12. You can ONLY read data from the database, NEVER attempt to add or modify contacts or chat logs.
                 
                 WHEN ASKED ABOUT WEATHER:
                 - Respond as if you have real-time weather data
@@ -299,9 +387,8 @@ CHAT STATISTICS (STATIC - DB STORAGE DISABLED):
         
         // Save the full response
         if (fullContent) {
-          console.log(`[Admin Chat] AI response completed (storage disabled), length: ${fullContent.length}`);
-          // Skip database storage
-          // saveAdminChatMessageAsync(chatSessionId, 'assistant', fullContent);
+          console.log(`[Admin Chat] AI response completed, length: ${fullContent.length}`);
+          saveAdminChatMessageAsync(chatSessionId, 'assistant', fullContent);
         }
       } catch (error: any) {
         console.error('[Admin Chat] Error processing stream:', error);
@@ -362,14 +449,41 @@ export async function GET(req: NextRequest) {
       return createApiError('Missing sessionId parameter', 400);
     }
     
-    // Skip database query and return empty history
-    console.log(`[Admin Chat] Session history requested (storage disabled): ${sessionId}`);
+    console.log(`[Admin Chat] Session history requested: ${sessionId}`);
     
-    // Return empty message array
+    // Retrieve chat history from database
+    const db = createClient();
+    await db.connect();
+    
+    // Get contact info for this session
+    const contactResult = await db.sql`
+      SELECT c.id, c.name
+      FROM contacts c
+      JOIN chat_logs cl ON c.id = cl.contact_id
+      WHERE cl.session_id = ${sessionId}
+      LIMIT 1
+    `;
+    
+    const contact = contactResult.rows[0];
+    
+    // Get messages
+    const messagesResult = await db.sql`
+      SELECT role, content, created_at
+      FROM chat_logs
+      WHERE session_id = ${sessionId}
+      ORDER BY created_at ASC
+    `;
+    
+    await db.end();
+    
+    // Return chat history
     return createApiResponse({ 
       sessionId,
-      title: "New Conversation",
-      messages: [] 
+      title: contact?.name || "Unknown User",
+      messages: messagesResult.rows.map(msg => ({
+        role: msg.role,
+        content: msg.content
+      }))
     });
   } catch (error) {
     console.error('Error retrieving chat history:', error);
@@ -384,8 +498,8 @@ function createFallbackResponse(sessionId: string, userMessage: string) {
 
 If you need immediate assistance, please contact Giovanni directly.`;
   
-  // Save the fallback message to the database - skip in Edge runtime
-  // saveAdminChatMessageAsync(sessionId, 'assistant', fallbackMessage);
+  // Save the fallback message to the database
+  saveAdminChatMessageAsync(sessionId, 'assistant', fallbackMessage);
   
   // Create a JSON response (non-streaming)
   return createApiResponse({

@@ -134,25 +134,50 @@ export async function saveChatMessage(
   content: string
 ) {
   try {
-    console.log(`Saving message: contactId=${contactId}, sessionId=${sessionId}, role=${role}, content length=${content.length}`);
+    console.log(`DB: Saving message: contactId=${contactId}, sessionId=${sessionId}, role=${role}, content length=${content.length}`);
     
     if (!pool) {
+      console.log('DB: No pool exists, initializing database...');
       await initializeDatabase();
+      console.log('DB: Database initialized successfully');
     }
     
     // Make sure we have a valid sessionId (use UUID if none provided)
     const finalSessionId = sessionId || `session-${Date.now()}`;
+    
+    console.log('DB: Executing INSERT query...');
+    console.log('DB: Connection details:', {
+      poolSize: pool?.totalCount,
+      idleCount: pool?.idleCount,
+      waitingCount: pool?.waitingCount
+    });
     
     const result = await pool!.query(
       'INSERT INTO chat_logs (contact_id, session_id, role, content) VALUES ($1, $2, $3, $4) RETURNING id',
       [contactId, finalSessionId, role, content]
     );
     
-    console.log('Chat message saved successfully with ID:', result.rows[0].id);
+    console.log('DB: Chat message saved successfully with ID:', result.rows[0].id);
     return { id: result.rows[0].id };
   } catch (error) {
-    console.error('Error saving chat message:', error);
-    console.error('Message details:', { contactId, sessionId, role, contentLength: content?.length });
+    console.error('DB ERROR: Error saving chat message:', error);
+    console.error('DB ERROR: Message details:', { contactId, sessionId, role, contentLength: content?.length });
+    console.error('DB ERROR: Stack trace:', new Error().stack);
+    
+    // Try to get database status
+    try {
+      console.error('DB ERROR: Database pool status:', {
+        poolExists: !!pool,
+        poolSize: pool?.totalCount,
+        idleCount: pool?.idleCount,
+        waitingCount: pool?.waitingCount,
+        DATABASE_URL: process.env.DATABASE_URL ? 'Set' : 'Not set',
+        POSTGRES_URL: process.env.POSTGRES_URL ? 'Set' : 'Not set'
+      });
+    } catch (statusError) {
+      console.error('DB ERROR: Could not get pool status:', statusError);
+    }
+    
     throw error;
   }
 }

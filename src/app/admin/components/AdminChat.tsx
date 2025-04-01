@@ -396,21 +396,39 @@ const WeatherTimeWidget = ({ isDark }: { isDark?: boolean }) => {
   // Weather icon based on conditions with animations
   const getWeatherIcon = () => {
     const conditionsLower = weatherData.conditions.toLowerCase();
+    const isNightTime = new Date().getHours() >= 19 || new Date().getHours() < 6;
     
     if (conditionsLower.includes('sun') || conditionsLower.includes('clear')) {
-      return (
-        <motion.div
-          initial={{ rotate: 0 }}
-          animate={{ rotate: 360 }}
-          transition={{ 
-            duration: 20, 
-            repeat: Infinity, 
-            ease: "linear" 
-          }}
-        >
-          <SunIcon className={`h-7 w-7 ${isDark ? "text-amber-400" : "text-amber-500"}`} />
-        </motion.div>
-      );
+      // Show moon at night, sun during day
+      if (isNightTime) {
+        return (
+          <motion.div
+            initial={{ rotate: 0 }}
+            animate={{ rotate: 360 }}
+            transition={{ 
+              duration: 40, 
+              repeat: Infinity, 
+              ease: "linear" 
+            }}
+          >
+            <MoonIcon className={`h-7 w-7 ${isDark ? "text-zinc-300" : "text-zinc-500"}`} />
+          </motion.div>
+        );
+      } else {
+        return (
+          <motion.div
+            initial={{ rotate: 0 }}
+            animate={{ rotate: 360 }}
+            transition={{ 
+              duration: 20, 
+              repeat: Infinity, 
+              ease: "linear" 
+            }}
+          >
+            <SunIcon className={`h-7 w-7 ${isDark ? "text-amber-400" : "text-amber-500"}`} />
+          </motion.div>
+        );
+      }
     } else if (conditionsLower.includes('cloud') && conditionsLower.includes('broken')) {
       return (
         <motion.div

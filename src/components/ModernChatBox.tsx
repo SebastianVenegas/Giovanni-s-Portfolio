@@ -82,12 +82,16 @@ Textarea.displayName = "Textarea"
 
 // Section keywords for navigation
 const sectionKeywords = {
-  "about": ["about", "who is giovanni", "background", "bio", "biography", "who is he", "tell me about"],
-  "experience": ["experience", "work history", "job history", "career", "professional background", "work experience", "expireance", "expirience", "experiance", "worked", "working"],
-  "skills": ["skills", "technologies", "tech stack", "programming", "languages", "frameworks", "tools", "expertise", "capable", "can do"],
-  "projects": ["projects", "portfolio", "work", "applications", "apps", "websites", "built", "created", "developed", "made"],
-  "contact": ["contact", "email", "reach out", "message", "get in touch", "hire", "connect", "talk"],
-  "certifications": ["certificates", "certification", "credentials", "qualifications", "certified"]
+  "home": ["overview", "intro", "introduction", "summary", "home", "homepage", "main", "landing", "welcome", "start", "beginning", "front page"],
+  "about": ["about", "bio", "biography", "background", "who is", "who am i", "personal", "profile", "history", "information", "description", "journey", "story", "introduction", "myself", "who is giovanni", "about giovanni", "background info"],
+  "experience": ["experience", "work", "job", "career", "professional", "employment", "history", "resume", "cv", "curriculum vitae", "work history", "professional experience", "job history", "past roles", "positions", "occupations", "employment history", "career path"],
+  "projects": ["projects", "portfolio", "work", "creations", "showcase", "apps", "applications", "software", "websites", "platforms", "developments", "products", "solutions", "case studies", "examples", "project portfolio", "creations", "works", "implementations"],
+  "certifications": ["certifications", "certificates", "qualifications", "credentials", "achievements", "education", "degrees", "diplomas", "awards", "recognitions", "accreditations", "training", "skills", "licenses", "professional development", "knowledge"],
+  "contact": ["contact", "email", "reach out", "message", "get in touch", "hire", "connect", "talk", "communicate", "phone", "call", "chat", "meet", "appointment", "consultation", "inquire", "inquiry", "request", "availability", "schedule", "booking", "engagement", "services", "opportunity", "project request", "collaboration", "let's talk", "let's connect", "send message", "contact me", "contact giovanni", "reach giovanni", "mail", "send email", "contact info", "contact information", "phone number", "telephone", "text", "sms", "whatsapp", "messenger", "dm", "direct message", "get in contact", "drop a line", "touch base", "connect with", "send a message", "send an email", "lets talk", "lets connect", "lets chat", "email giovanni", "message giovanni", "call giovanni"],
+  "blog": ["blog", "articles", "posts", "writings", "thoughts", "insights", "opinions", "publications", "content", "reads", "essays", "journals", "updates", "news", "stories"],
+  "skills": ["skills", "abilities", "expertise", "proficiencies", "competencies", "talents", "strengths", "capabilities", "knowledge", "know-how", "aptitudes", "specialties", "technical skills", "soft skills", "hard skills", "programming skills", "development skills"],
+  "education": ["education", "school", "university", "college", "degree", "academic", "studies", "learning", "courses", "bootcamp", "training", "educational background", "academic history", "schooling", "academic achievements"],
+  "testimonials": ["testimonials", "reviews", "feedback", "recommendations", "endorsements", "references", "praise", "comments", "opinions", "client feedback", "customer reviews", "what others say", "testimonies"]
 }
 
 // Function to detect section from message
@@ -101,6 +105,12 @@ const detectSection = (message: string): string | null => {
   }
   
   return null;
+};
+
+// Add this helper function at the top of the file, after the imports
+// Generate a unique ID with timestamp and random string to avoid collisions
+const generateUniqueId = (prefix: string = ''): string => {
+  return `${prefix}${Date.now()}_${Math.random().toString(36).substring(2, 11)}`;
 };
 
 export function ModernChatBox() {
@@ -160,6 +170,9 @@ export function ModernChatBox() {
   
   // Add loading state for form submission
   const [isSubmittingInfo, setIsSubmittingInfo] = useState(false)
+  
+  // Add state variable for contact form mode
+  const [isInContactForm, setIsInContactForm] = useState(false);
   
   // Custom chat state
   const [messages, setMessages] = useState<ChatMessage[]>([])
@@ -417,6 +430,57 @@ export function ModernChatBox() {
     return null
   }
 
+  // Add a custom smooth scroll function
+  const smoothScrollTo = (targetPosition: number, duration = 1000, element?: HTMLElement) => {
+    const startPosition = window.pageYOffset;
+    const distance = targetPosition - startPosition;
+    let startTime: number | null = null;
+    
+    // Easing function for natural motion
+    const easeInOutCubic = (t: number) => 
+      t < 0.5 ? 4 * t * t * t : (t - 1) * (2 * t - 2) * (2 * t - 2) + 1;
+    
+    function animation(currentTime: number) {
+      if (startTime === null) startTime = currentTime;
+      const timeElapsed = currentTime - startTime;
+      const progress = Math.min(timeElapsed / duration, 1);
+      const easedProgress = easeInOutCubic(progress);
+      
+      window.scrollTo(0, startPosition + distance * easedProgress);
+      
+      if (timeElapsed < duration) {
+        requestAnimationFrame(animation);
+      } else if (element) {
+        // Add subtle highlight effect when scrolling completes
+        addHighlightEffect(element);
+      }
+    }
+    
+    requestAnimationFrame(animation);
+  };
+  
+  // Add a subtle highlight effect to draw attention to the section
+  const addHighlightEffect = (element: HTMLElement) => {
+    // Create and add a temporary outline
+    const originalOutline = element.style.outline;
+    const originalTransition = element.style.transition;
+    
+    // Add a subtle pulse animation
+    element.style.transition = 'outline 0.5s ease-in-out';
+    element.style.outline = '2px solid rgba(59, 130, 246, 0.5)'; // Light blue outline
+    
+    // Remove the outline after a delay
+    setTimeout(() => {
+      element.style.outline = 'none';
+      
+      // Restore original styles after animation completes
+      setTimeout(() => {
+        element.style.outline = originalOutline;
+        element.style.transition = originalTransition;
+      }, 500);
+    }, 1000);
+  };
+
   // Function to scroll to a section
   const scrollToSection = (id: string) => {
     console.log(`Attempting to scroll to section: ${id}`);
@@ -439,6 +503,64 @@ export function ModernChatBox() {
     // Get the actual section ID to look for
     const actualSectionId = sectionIdMap[id] || id;
     console.log(`Mapped section ${id} to actual section ID: ${actualSectionId}`);
+    
+    // Special handling for contact section
+    if (actualSectionId === 'contact') {
+      console.log('🔍 Special handling for contact section');
+      
+      // Try multiple ways to find the contact section
+      const contactSelectors = [
+        'section#contact',
+        'section[id="contact"]',
+        'div#contact',
+        '#contact',
+        'section.contact',
+        'div.contact',
+        'section[data-section="contact"]',
+        'section:has(h2:contains("Get in Touch"))',
+        'section:has(h2:contains("Contact"))',
+        'section:has(div:contains("Let\'s Connect"))'
+      ];
+      
+      for (const selector of contactSelectors) {
+        try {
+          console.log(`🔍 Trying selector: ${selector}`);
+          const element = document.querySelector(selector);
+          if (element) {
+            console.log(`✅ Found contact section with selector: ${selector}`);
+            
+            // Use custom smooth scrolling for contact section
+            try {
+              const rect = element.getBoundingClientRect();
+              const scrollTop = window.pageYOffset || document.documentElement.scrollTop;
+              const targetPosition = scrollTop + rect.top - 80; // 80px offset for headers
+              
+              // Use a longer duration for smoother scrolling (1200ms)
+              smoothScrollTo(targetPosition, 1200, element as HTMLElement);
+              
+              return;
+            } catch (scrollError) {
+              console.error('Error during contact scroll:', scrollError);
+            }
+          }
+        } catch (selectorError) {
+          console.error(`Error with selector ${selector}:`, selectorError);
+        }
+      }
+      
+      // Final fallback: just set the hash and scroll
+      console.log('⚠️ Final fallback for contact section');
+      window.location.hash = '#contact';
+      
+      // Also try scrolling to bottom of page as an absolute last resort
+      setTimeout(() => {
+        const bodyHeight = document.body.scrollHeight;
+        smoothScrollTo(bodyHeight - window.innerHeight, 1200, document.body);
+        console.log('⚠️ Last resort: scrolling to page bottom');
+      }, 500);
+      
+      return;
+    }
     
     // Try to find the element by ID
     let element = document.getElementById(actualSectionId);
@@ -550,11 +672,8 @@ export function ModernChatBox() {
           const scrollTop = window.pageYOffset || document.documentElement.scrollTop;
           const targetPosition = scrollTop + rect.top - 80; // 80px offset for headers
           
-          // Use a single scrollTo operation with smooth behavior
-          window.scrollTo({
-            top: targetPosition,
-            behavior: 'smooth'
-          });
+          // Use custom smooth scrolling with easing (1200ms duration)
+          smoothScrollTo(targetPosition, 1200, section as HTMLElement);
           break;
         }
       }
@@ -687,7 +806,7 @@ export function ModernChatBox() {
       setMessages(prev => [...prev, {
         role: 'assistant',
         content: "I'll need your email address to proceed. Could you please provide it?",
-        id: Date.now().toString(),
+        id: generateUniqueId('msg_'),
         created_at: new Date().toISOString()
       }]);
       return;
@@ -699,7 +818,7 @@ export function ModernChatBox() {
       setMessages(prev => [...prev, {
         role: 'assistant',
         content: "That email address doesn't look valid. Could you please provide a valid email?",
-        id: Date.now().toString(),
+        id: generateUniqueId('msg_'),
         created_at: new Date().toISOString()
       }]);
       return;
@@ -715,7 +834,8 @@ export function ModernChatBox() {
         email: contactFormData.email,
         phone: userInfo.phoneNumber,
         service: contactFormData.service || 'Not specified',
-        message: contactFormData.message || 'Contact request submitted via chat'
+        message: contactFormData.message || 'Contact request submitted via chat',
+        skipChatLogStorage: true // Add flag to prevent chat log storage
       };
       
       // Send data to the API endpoint
@@ -746,7 +866,7 @@ export function ModernChatBox() {
     setMessages(prev => [...prev, { 
         role: 'assistant',
         content: "Great! I've sent your contact information to Giovanni. He'll get back to you as soon as possible. Is there anything else you'd like to know about his work or experience?",
-        id: Date.now().toString(),
+        id: generateUniqueId('msg_'),
         created_at: new Date().toISOString()
       }]);
         
@@ -757,7 +877,7 @@ export function ModernChatBox() {
       setMessages(prev => [...prev, {
         role: 'assistant',
         content: "I'm having trouble sending your contact information. Please try again or use the contact form at the bottom of the page.",
-        id: Date.now().toString(),
+        id: generateUniqueId('assistant_'),
         created_at: new Date().toISOString()
       }]);
     } finally {
@@ -767,6 +887,14 @@ export function ModernChatBox() {
 
   // Handle contact form input through chat
   const handleContactFormInput = (message: string) => {
+    // Add user message to the list
+    setMessages(prev => [...prev, {
+      id: generateUniqueId('user_'),
+      role: 'user',
+      content: message,
+      created_at: new Date().toISOString()
+    }]);
+    
     const lowercaseMessage = message.toLowerCase().trim();
     
     // Enhanced exit detection - check if user wants to exit the contact form flow
@@ -864,7 +992,7 @@ export function ModernChatBox() {
         // Process the question through the API
         // Add typing indicator
         setMessages(prev => [...prev, {
-          id: Date.now().toString(),
+          id: generateUniqueId('typing_'),
       role: 'assistant', 
       content: '', 
       created_at: new Date().toISOString(),
@@ -899,7 +1027,7 @@ export function ModernChatBox() {
             
             // Add the response to the chat
             setMessages(prev => [...prev, {
-              id: Date.now().toString(),
+              id: generateUniqueId('assistant_'),
               role: 'assistant',
               content: cleanedContent,
               created_at: new Date().toISOString()
@@ -923,7 +1051,7 @@ export function ModernChatBox() {
             
             // Add error message
             setMessages(prev => [...prev, {
-              id: Date.now().toString(),
+              id: generateUniqueId('assistant_'),
               role: 'assistant',
               content: "I'm having trouble processing your question right now. Let's try something else.",
               created_at: new Date().toISOString()
@@ -941,7 +1069,7 @@ export function ModernChatBox() {
       setMessages(prev => [...prev, {
         role: 'assistant',
         content: "No problem at all! I'm happy to talk about something else. Would you like to know about Giovanni's work experience, tech skills, projects, or certifications? Feel free to ask about any aspect of his professional background.",
-        id: Date.now().toString(),
+        id: generateUniqueId('assistant_'),
         created_at: new Date().toISOString()
       }]);
       
@@ -972,7 +1100,7 @@ export function ModernChatBox() {
           setMessages(prev => [...prev, {
             role: 'assistant',
             content: `Thanks for your email (${email}). What service are you interested in? (Web Development, Mobile App, Consulting, etc.)`,
-            id: Date.now().toString(),
+            id: generateUniqueId('assistant_'),
             created_at: new Date().toISOString()
           }]);
         } else {
@@ -980,7 +1108,7 @@ export function ModernChatBox() {
           setMessages(prev => [...prev, {
             role: 'assistant',
             content: "I didn't recognize a valid email address. Please provide a valid email so Giovanni can contact you, or type 'cancel' if you'd like to talk about something else.",
-            id: Date.now().toString(),
+            id: generateUniqueId('assistant_'),
             created_at: new Date().toISOString()
           }]);
         }
@@ -1000,7 +1128,7 @@ export function ModernChatBox() {
         setMessages(prev => [...prev, {
           role: 'assistant',
           content: "Great! Finally, please provide a brief message about your project or inquiry.",
-          id: Date.now().toString(),
+          id: generateUniqueId('assistant_'),
           created_at: new Date().toISOString()
         }]);
         break;
@@ -1023,95 +1151,586 @@ export function ModernChatBox() {
     setTimeout(scrollToBottom, 100);
   };
 
-  // Update handleSubmit to include previous messages
-  const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
+  // Handle submit for regular chat messages
+  const handleSubmit = async (e?: React.FormEvent) => {
+    if (e) {
     e.preventDefault();
+    }
     
-    if (!input.trim()) return;
+    if (!input.trim() || isLoading) {
+      return;
+    }
     
-    // Create user message
-    const userMessage: ChatMessage = {
-      id: Date.now().toString(),
-      role: 'user',
-      content: input.trim(),
-      created_at: new Date().toISOString(),
-      name: userInfo.name // Add user's name to the message
-    };
-    
-    // Add user message to chat
-    setMessages(prev => [...prev, userMessage]);
-    
-    // Clear input
+    // Setup for API call
+    const userMessage = input.trim();
     setInput('');
     
-    // Create typing indicator
-    const typingMessage: ChatMessage = {
-      id: (Date.now() + 1).toString(),
+    // Special handling for direct scroll requests
+    const lowercaseMessage = userMessage.toLowerCase();
+    
+    // Check for explicit scroll requests like "scroll to experience" or "go to contact"
+    const scrollRequestRegex = /(?:scroll|go|navigate|take me|show me|see|view|jump|head|move)(?:\s+(?:to|the|me to|me the))?\s+(?:the\s+)?([a-z]+)(?:\s+section)?/i;
+    const scrollMatch = lowercaseMessage.match(scrollRequestRegex);
+    
+    if (scrollMatch) {
+      const targetSection = scrollMatch[1].toLowerCase();
+      
+      // Add the user's message to the chat
+      setMessages(prev => [...prev, { 
+        id: generateUniqueId('user_'),
+      role: 'user',
+        content: userMessage,
+        created_at: new Date().toISOString()
+      }]);
+      
+      // Map common section references to actual section IDs
+      const sectionMap: Record<string, string> = {
+        'home': 'home',
+        'about': 'about',
+        'experience': 'experience',
+        'work': 'experience',
+        'career': 'experience',
+        'jobs': 'experience',
+        'projects': 'projects',
+        'portfolio': 'projects',
+        'apps': 'projects',
+        'applications': 'projects',
+        'certifications': 'certifications',
+        'certificates': 'certifications',
+        'skills': 'certifications',
+        'contact': 'contact',
+        'email': 'contact',
+        'message': 'contact',
+        'touch': 'contact',
+        'hire': 'contact'
+      };
+      
+      const sectionId = sectionMap[targetSection] || detectSection(userMessage);
+      
+      if (sectionId) {
+        // Scroll to the specified section
+        scrollToSection(sectionId);
+        
+        // Add typing indicator
+        const typingIndicatorId = generateUniqueId('typing_');
+        setMessages(prev => [...prev, {
+          id: typingIndicatorId,
       role: 'assistant',
       content: '',
       created_at: new Date().toISOString(),
       isTyping: true
-    };
+        }]);
+        
+        setIsLoading(true);
+        
+        // Instead of just confirming navigation, get a response from the API
+        // that provides information about the section
+        try {
+          // Process the message through the API
+          const enhancedMessage = `${userMessage} Please provide information about this section.`;
+          const requestBody = {
+            message: enhancedMessage,
+            contactId: userInfo.contactId, 
+            sessionId: userInfo.sessionId,
+            previousMessages: messages.map(msg => ({
+              role: msg.role,
+              content: msg.content
+            })),
+            stream: true // Enable streaming by default
+          };
+          
+          // Send request to get actual information
+          const response = await fetch('/api/chat', {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+            },
+            body: JSON.stringify(requestBody),
+          });
+          
+          if (!response.ok) {
+            throw new Error(`Failed to send message: ${response.status} ${response.statusText}`);
+          }
+          
+          // Handle the response similar to the regular API response
+          // Check if it's a stream
+          if (response.headers.get('Content-Type')?.includes('application/json')) {
+            // Handle streaming response
+            const reader = response.body?.getReader();
+            const decoder = new TextDecoder();
+            let streamedMessageId = '';
+            
+            // Remove typing indicator since we'll show streaming output
+            setMessages(prev => prev.filter(msg => msg.id !== typingIndicatorId));
+            
+            if (reader) {
+              while (true) {
+                const { done, value } = await reader.read();
+                
+                if (done) {
+                  break;
+                }
+                
+                // Process the chunks
+                const chunk = decoder.decode(value);
+                const lines = chunk.split('\n').filter(line => line.trim() !== '');
+                
+                for (const line of lines) {
+                  try {
+                    const data = JSON.parse(line);
+                    
+                    // If this is the first chunk, add a new message
+                    if (!streamedMessageId) {
+                      streamedMessageId = data.id;
+                      
+                      // Clean content to remove section tags before displaying
+                      const cleanedContent = data.content.replace(/\[SECTION:[a-z]+\]$/i, '').trim();
+                      
+                      setMessages(prev => [...prev, {
+                        id: data.id,
+                        role: 'assistant',
+                        content: cleanedContent,
+                        created_at: data.created_at,
+                        isTyping: false
+                      }]);
+                      
+                      // Add call to scrollWithStreaming for smooth scrolling
+                      setTimeout(scrollWithStreaming, 10);
+                    } else {
+                      // Clean content to remove section tags before displaying
+                      const cleanedContent = data.content.replace(/\[SECTION:[a-z]+\]$/i, '').trim();
+                      
+                      // Otherwise update the existing message
+                      setMessages(prev => prev.map(msg => 
+                        msg.id === streamedMessageId 
+                          ? { ...msg, content: cleanedContent } 
+                          : msg
+                      ));
+                      
+                      // Add call to scrollWithStreaming for continuous smooth scrolling
+                      setTimeout(scrollWithStreaming, 10);
+                    }
+                  } catch (error) {
+                    console.error('Error parsing streaming chunk:', error);
+                  }
+                }
+              }
+            }
+          } else {
+            // Handle non-streaming response (fallback)
+            const data = await response.json();
+            
+            // Remove typing indicator
+            setMessages(prev => prev.filter(msg => msg.id !== typingIndicatorId));
+            
+            // Clean the content to remove any section tags
+            const cleanedContent = data.content.replace(/\[SECTION:[a-z]+\]$/i, '').trim();
+            
+            // Add the response to the chat
+            setMessages(prev => [...prev, {
+              id: data.id || generateUniqueId('assistant_'),
+              role: 'assistant',
+              content: cleanedContent,
+              created_at: data.created_at || new Date().toISOString(),
+              isTyping: false
+            }]);
+          }
+        } catch (error) {
+          console.error('Error getting section information:', error);
+          
+          // Remove typing indicator
+          setMessages(prev => prev.filter(msg => msg.id !== typingIndicatorId));
+          
+          // Fallback to simple confirmation if the API call fails
+          setMessages(prev => [...prev, { 
+            id: generateUniqueId('assistant_'),
+            role: 'assistant',
+            content: `I've scrolled to the ${sectionId.charAt(0).toUpperCase() + sectionId.slice(1)} section for you. Let me know if you need any specific information about this section.`,
+            created_at: new Date().toISOString()
+          }]);
+        } finally {
+          setIsLoading(false);
+          scrollToBottom();
+        }
+        
+        return;
+      }
+    }
+    
+    // Continue with regular message processing
+    // Check if the message is a contact request and switch to contact mode
+    if (isContactRequest(userMessage) && !isInContactForm) {
+      // Add the user's message to the chat
+      setMessages(prev => [...prev, { 
+        id: generateUniqueId('user_'),
+        role: 'user', 
+        content: userMessage,
+        created_at: new Date().toISOString()
+      }]);
+      
+      // Delay the response slightly to feel more natural
+      setTimeout(() => {
+        // Automatically start contact form process
+        setContactFormStep(1);
+        setIsInContactForm(true);
+        
+        setMessages(prev => [...prev, { 
+          id: generateUniqueId('assistant_'),
+          role: 'assistant',
+          content: `I'll help you get in touch with Giovanni. I already have your name (${userInfo.name}) and phone number (${userInfo.phoneNumber}). Could you please provide your email address?`,
+          created_at: new Date().toISOString()
+        }]);
+      }, 500);
+      
+      scrollToBottom();
+      return;
+    }
+    
+    // If in contact form mode, handle differently
+    if (isInContactForm) {
+      handleContactFormInput(userMessage);
+      return;
+    }
+    
+    // Check if we should process the contact form submission
+    if (contactFormStep > 0) {
+      return;
+    }
+    
+    // Regular case: Try to detect if the message is asking about a particular section
+    const detectedSection = detectSection(userMessage);
+    
+    // If a section is detected and it's not a question (just a keyword), get AI response while scrolling
+    if (detectedSection && !userMessage.includes('?') && userMessage.split(' ').length < 4) {
+      // Add the user's message to the chat
+      setMessages(prev => [...prev, { 
+        id: generateUniqueId('user_'),
+        role: 'user', 
+        content: userMessage,
+        created_at: new Date().toISOString()
+      }]);
+      
+      // Scroll to the detected section
+      scrollToSection(detectedSection);
     
     // Add typing indicator
-    setMessages(prev => [...prev, typingMessage]);
-    
-    try {
-      // Get previous messages, excluding the typing indicator
-      const previousMessages = messages.filter(msg => !msg.isTyping).map(msg => ({
+      const sectionTypingId = generateUniqueId('typing_');
+      setMessages(prev => [...prev, {
+        id: sectionTypingId,
+        role: 'assistant', 
+        content: '', 
+        created_at: new Date().toISOString(),
+        isTyping: true 
+      }]);
+      
+      setIsLoading(true);
+      
+      // Instead of just confirming navigation, get a response from the API
+      // that provides information about the section
+      try {
+        // Process the message through the API
+        const enhancedMessage = `Tell me about ${detectedSection}`;
+        const requestBody = {
+          message: enhancedMessage,
+          contactId: userInfo.contactId, 
+          sessionId: userInfo.sessionId,
+          previousMessages: messages.map(msg => ({
         role: msg.role,
-        content: msg.content,
-        name: msg.role === 'user' ? userInfo.name : undefined // Add name to previous user messages
-      }));
-
-      // Send message to API with context
+            content: msg.content
+          })),
+          stream: true // Enable streaming by default
+        };
+        
+        // Send request to get actual information
       const response = await fetch('/api/chat', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify({
-          message: userMessage.content,
-          contactId: userInfo?.contactId,
-          sessionId: userInfo?.sessionId,
-          name: userInfo?.name, // Include user's name in the request
-          previousMessages: previousMessages // Include previous messages for context
-        }),
+          body: JSON.stringify(requestBody),
+        });
+        
+        // Process response the same way as in the regular flow
+      if (!response.ok) {
+          throw new Error(`Failed to send message: ${response.status} ${response.statusText}`);
+        }
+        
+        // Handle the streaming response
+        if (response.headers.get('Content-Type')?.includes('application/json')) {
+          // Follow the same streaming pattern as above
+          const reader = response.body?.getReader();
+          const decoder = new TextDecoder();
+          let streamedMessageId = '';
+          
+          // Remove typing indicator
+          setMessages(prev => prev.filter(msg => msg.id !== sectionTypingId));
+          
+          if (reader) {
+            while (true) {
+              const { done, value } = await reader.read();
+              
+              if (done) {
+                break;
+              }
+              
+              // Process the chunks
+              const chunk = decoder.decode(value);
+              const lines = chunk.split('\n').filter(line => line.trim() !== '');
+              
+              for (const line of lines) {
+                try {
+                  const data = JSON.parse(line);
+                  
+                  // If this is the first chunk, add a new message
+                  if (!streamedMessageId) {
+                    streamedMessageId = data.id;
+                    
+                    // Clean content to remove section tags before displaying
+                    const cleanedContent = data.content.replace(/\[SECTION:[a-z]+\]$/i, '').trim();
+                    
+                    setMessages(prev => [...prev, {
+                      id: data.id,
+                      role: 'assistant',
+                      content: cleanedContent,
+                      created_at: data.created_at,
+                      isTyping: false
+                    }]);
+                    
+                    // Add call to scrollWithStreaming for smooth scrolling
+                    setTimeout(scrollWithStreaming, 10);
+                  } else {
+                    // Clean content to remove section tags before displaying
+                    const cleanedContent = data.content.replace(/\[SECTION:[a-z]+\]$/i, '').trim();
+                    
+                    // Otherwise update the existing message
+                    setMessages(prev => prev.map(msg => 
+                      msg.id === streamedMessageId 
+                        ? { ...msg, content: cleanedContent } 
+                        : msg
+                    ));
+                    
+                    // Add call to scrollWithStreaming for continuous smooth scrolling
+                    setTimeout(scrollWithStreaming, 10);
+                  }
+                } catch (error) {
+                  console.error('Error parsing streaming chunk:', error);
+                }
+              }
+            }
+          }
+        } else {
+          // Handle non-streaming response
+      const data = await response.json();
+      
+          // Remove typing indicator
+          setMessages(prev => prev.filter(msg => msg.id !== sectionTypingId));
+          
+          // Clean the content to remove any section tags
+          const cleanedContent = data.content.replace(/\[SECTION:[a-z]+\]$/i, '').trim();
+          
+          // Add the response to the chat
+          setMessages(prev => [...prev, {
+            id: data.id || generateUniqueId('assistant_'),
+            role: 'assistant',
+            content: cleanedContent,
+            created_at: data.created_at || new Date().toISOString(),
+            isTyping: false
+          }]);
+        }
+      } catch (error) {
+        console.error('Error getting section information:', error);
+        
+        // Remove typing indicator
+        setMessages(prev => prev.filter(msg => msg.id !== sectionTypingId));
+        
+        // Fallback to simple confirmation if the API call fails
+        setMessages(prev => [...prev, { 
+          id: generateUniqueId('assistant_'),
+          role: 'assistant',
+          content: `I've scrolled to the ${detectedSection.charAt(0).toUpperCase() + detectedSection.slice(1)} section for you. Let me know if you need any specific information about this section.`,
+          created_at: new Date().toISOString()
+        }]);
+      } finally {
+        setIsLoading(false);
+        scrollToBottom();
+      }
+      
+      return;
+    }
+    
+    // Add the user's message to the chat (for standard API case)
+    setMessages(prev => [...prev, { 
+      id: generateUniqueId('user_'),
+      role: 'user', 
+      content: userMessage,
+      created_at: new Date().toISOString()
+    }]);
+    
+    // Add typing indicator for non-streaming responses
+    const typingIndicatorId = generateUniqueId('typing_');
+    setMessages(prev => [...prev, {
+      id: typingIndicatorId,
+      role: 'assistant', 
+      content: '', 
+      created_at: new Date().toISOString(),
+      isTyping: true 
+    }]);
+    
+    setIsLoading(true);
+    
+    try {
+      // If a section is detected but we're asking a question about it, 
+      // scroll to it while also getting AI response
+      if (detectedSection) {
+        scrollToSection(detectedSection);
+      }
+      
+      // Process the message through the API - ENSURE we pass contactId and sessionId
+      // but do NOT pass skipChatLogStorage flag for normal chat messages
+      const requestBody = {
+        message: userMessage,
+        contactId: userInfo.contactId, 
+        sessionId: userInfo.sessionId,
+        previousMessages: messages.map(msg => ({
+          role: msg.role,
+          content: msg.content
+        })),
+        stream: true // Enable streaming by default
+      };
+      
+      // For streaming responses, we need to handle the response differently
+      const response = await fetch('/api/chat', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(requestBody),
       });
       
       if (!response.ok) {
-        throw new Error('Failed to send message');
+        throw new Error(`Failed to send message: ${response.status} ${response.statusText}`);
       }
       
-      const data = await response.json();
-      
-      // Remove typing indicator and add AI response
-      setMessages(prev => {
-        const withoutTyping = prev.filter(msg => !msg.isTyping);
-        return [...withoutTyping, {
-          id: data.id || Date.now().toString(),
-            role: 'assistant',
-          content: data.content,
-          created_at: data.created_at || new Date().toISOString()
-        }];
-      });
-      
-      // Scroll to bottom of chat
-      setTimeout(scrollToBottom, 100);
-      
+      // Check if the response is a stream
+      if (response.headers.get('Content-Type')?.includes('application/json')) {
+        // Handle streaming response
+        const reader = response.body?.getReader();
+        const decoder = new TextDecoder();
+        let streamedMessageId = '';
+        
+        // Remove typing indicator since we'll show streaming output
+        setMessages(prev => prev.filter(msg => msg.id !== typingIndicatorId));
+        
+        if (reader) {
+          while (true) {
+            const { done, value } = await reader.read();
+            
+            if (done) {
+              break;
+            }
+            
+            // Process the chunks
+            const chunk = decoder.decode(value);
+            const lines = chunk.split('\n').filter(line => line.trim() !== '');
+            
+            for (const line of lines) {
+              try {
+                const data = JSON.parse(line);
+                
+                // If this is the first chunk, add a new message
+                if (!streamedMessageId) {
+                  streamedMessageId = data.id;
+                  
+                  // Clean content to remove section tags before displaying
+                  const cleanedContent = data.content.replace(/\[SECTION:[a-z]+\]$/i, '').trim();
+                  
+                  setMessages(prev => [...prev, {
+                    id: data.id,
+                    role: 'assistant',
+                    content: cleanedContent,
+                    created_at: data.created_at,
+                    isTyping: false
+                  }]);
+                  
+                  // Add call to scrollWithStreaming for smooth scrolling
+                  setTimeout(scrollWithStreaming, 10);
+                } else {
+                  // Clean content to remove section tags before displaying
+                  const cleanedContent = data.content.replace(/\[SECTION:[a-z]+\]$/i, '').trim();
+                  
+                  // Otherwise update the existing message
+                  setMessages(prev => prev.map(msg => 
+                    msg.id === streamedMessageId 
+                      ? { ...msg, content: cleanedContent } 
+                      : msg
+                  ));
+                  
+                  // Add call to scrollWithStreaming for continuous smooth scrolling
+                  setTimeout(scrollWithStreaming, 10);
+                }
+                
+                // If this is the final chunk, check for section references
+                if (data.done && data.content) {
+                  // Use the new extraction function to check for section tags in either format
+                  const sectionName = extractSectionFromResponse(data.content);
+                  
+                  if (sectionName) {
+                    console.log(`AI suggested navigating to section: ${sectionName}`);
+                    scrollToSection(sectionName);
+                  }
+                  
+                  break;
+                }
     } catch (error) {
-      console.error('Error:', error);
-      
-      // Remove typing indicator and add error message
-      setMessages(prev => {
-        const withoutTyping = prev.filter(msg => !msg.isTyping);
-        return [...withoutTyping, {
-          id: Date.now().toString(),
+                console.error('Error parsing streaming chunk:', error);
+              }
+            }
+          }
+        }
+      } else {
+        // Handle non-streaming response (fallback)
+        const data = await response.json();
+        
+        // Remove typing indicator
+        setMessages(prev => prev.filter(msg => msg.id !== typingIndicatorId));
+        
+        // Clean the content to remove any section tags
+        const cleanedContent = data.content.replace(/\[SECTION:[a-z]+\]$/i, '').trim();
+        
+        // Add the response to the chat
+        setMessages(prev => [...prev, {
+          id: generateUniqueId('assistant_'),
           role: 'assistant',
-          content: 'Sorry, there was an error. Please try again.',
+          content: cleanedContent,
+          created_at: data.created_at || new Date().toISOString(),
+          isTyping: false
+        }]);
+        
+        // Check for section tag in the format [SECTION:sectionname]
+        const sectionMatch = data.content.match(/\[SECTION:([a-z]+)\]$/i);
+        
+        if (sectionMatch && sectionMatch[1]) {
+          const sectionName = sectionMatch[1].toLowerCase();
+          console.log(`AI suggested navigating to section: ${sectionName}`);
+          scrollToSection(sectionName);
+        }
+      }
+    } catch (error) {
+      console.error('Error sending message:', error);
+      
+      // Remove typing indicator
+      setMessages(prev => prev.filter(msg => msg.isTyping));
+      
+      // Add error message to chat
+      setMessages(prev => [...prev, {
+        id: generateUniqueId('assistant_'),
+        role: 'assistant',
+        content: "I'm sorry, but I'm having trouble connecting right now. Please try again in a moment.",
           created_at: new Date().toISOString()
-        }];
-      });
+      }]);
+    } finally {
+      setIsLoading(false);
+      scrollToBottom();
     }
   };
 
@@ -1123,22 +1742,101 @@ export function ModernChatBox() {
     }
   }
 
-  // Update the scrollToBottom function for more reliable scrolling
-  const scrollToBottom = () => {
-    if (messagesContainerRef.current) {
+  // Update the scrollToBottom function for more responsive and smoother scrolling
+  const scrollToBottom = (instant = false) => {
+    if (!messagesContainerRef.current) return;
+    
       const container = messagesContainerRef.current;
       
-      // Immediate scroll
-      requestAnimationFrame(() => {
+    // If instant is true, skip animation
+    if (instant) {
       container.scrollTop = container.scrollHeight;
+      return;
+    }
+    
+    const smoothScrollToBottom = () => {
+      const startPosition = container.scrollTop;
+      const targetPosition = container.scrollHeight - container.clientHeight;
+      const distance = targetPosition - startPosition;
       
-        // Double-check scroll position after a short delay
-      setTimeout(() => {
-          if (container.scrollTop + container.clientHeight < container.scrollHeight) {
+      // Use dynamic duration based on distance for more natural feel
+      const duration = Math.min(400, Math.max(150, distance * 0.3));
+      
+      // Only animate if we're not already at the bottom and there's a significant distance
+      if (distance > 5) {
+        let startTime: number | null = null;
+        
+        // Enhanced easing function for a more natural motion
+        const easeOutQuint = (t: number) => 1 - Math.pow(1 - t, 5);
+        
+        const scroll = (currentTime: number) => {
+          if (startTime === null) startTime = currentTime;
+          const timeElapsed = currentTime - startTime;
+          const progress = Math.min(timeElapsed / duration, 1);
+          const easedProgress = easeOutQuint(progress);
+          
+          if (!container) return; // Safety check
+          container.scrollTop = startPosition + distance * easedProgress;
+          
+          if (timeElapsed < duration && container.scrollTop < targetPosition) {
+            requestAnimationFrame(scroll);
+          } else {
+            // Final check to ensure we're at the bottom
         container.scrollTop = container.scrollHeight;
           }
-      }, 50);
-      });
+        };
+        
+        requestAnimationFrame(scroll);
+      } else {
+        // For small distances, just jump to the bottom
+        container.scrollTop = container.scrollHeight;
+      }
+    };
+    
+    // Use immediate execution for scrolling rather than setTimeout
+    requestAnimationFrame(smoothScrollToBottom);
+  };
+
+  // Add a specialized streaming scroll function
+  const scrollWithStreaming = () => {
+    if (!messagesContainerRef.current) return;
+    
+    const container = messagesContainerRef.current;
+    const isNearBottom = container.scrollHeight - container.scrollTop - container.clientHeight < 150;
+    
+    // Only auto-scroll if user is already near bottom
+    if (isNearBottom) {
+      // For streaming, use gentler, smoother scrolling
+      const startPosition = container.scrollTop;
+      const targetPosition = container.scrollHeight - container.clientHeight;
+      const distance = targetPosition - startPosition;
+      
+      // Increased duration for slower streaming animation
+      const duration = Math.min(400, Math.max(150, distance * 0.4));
+      
+      if (distance > 2) {
+        let startTime: number | null = null;
+        
+        const easeLinear = (t: number) => t; // Linear for streaming feels more natural
+        
+        const scroll = (currentTime: number) => {
+          if (startTime === null) startTime = currentTime;
+          const timeElapsed = currentTime - startTime;
+          const progress = Math.min(timeElapsed / duration, 1);
+          const easedProgress = easeLinear(progress);
+          
+          if (!container) return;
+          container.scrollTop = startPosition + distance * easedProgress;
+          
+          if (timeElapsed < duration && progress < 1) {
+            requestAnimationFrame(scroll);
+          }
+        };
+        
+        requestAnimationFrame(scroll);
+      } else {
+        container.scrollTop = container.scrollHeight;
+      }
     }
   };
 
@@ -1188,7 +1886,7 @@ export function ModernChatBox() {
     setHasNewMessages(false);
   }
 
-  // Update handleUserInfoSubmit to use dynamic messages
+  // Update handleUserInfoSubmit to make it clear we're storing contact info only
   const handleUserInfoSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     
@@ -1227,7 +1925,7 @@ export function ModernChatBox() {
     }
     
     try {
-      // Send user info to API
+      // Send user info to API - store only contact info, not chat logs
       const response = await fetch('/api/chat/user', {
         method: 'POST',
         headers: {
@@ -1236,7 +1934,8 @@ export function ModernChatBox() {
         body: JSON.stringify({
           name: userInfo.name,
           phoneNumber: userInfo.phoneNumber,
-          sessionId: userInfo.sessionId
+          sessionId: userInfo.sessionId,
+          storeContactOnly: true // Add flag to only store contact info
         }),
       });
       
@@ -1267,7 +1966,7 @@ export function ModernChatBox() {
       
       // Add welcome message after form submission
       setMessages([{
-        id: Date.now().toString(),
+        id: generateUniqueId('assistant_'),
         role: 'assistant',
         content: `Hi ${userInfo.name}! 👋 I'm NextGio, Giovanni's AI assistant. I can help you learn about Giovanni's experience, projects, and skills. What would you like to know?`,
         created_at: new Date().toISOString()
@@ -1414,6 +2113,23 @@ export function ModernChatBox() {
       document.removeEventListener('nextgio:openchat', handleOpenChat);
     };
   }, [isOpen, sidebarDimensions]);
+
+  // Function to process section tags and handle both formats consistently
+  const extractSectionFromResponse = (content: string) => {
+    // First try the standard format [SECTION:sectionname]
+    const standardMatch = content.match(/\[SECTION:([a-z]+)\]$/i);
+    if (standardMatch && standardMatch[1]) {
+      return standardMatch[1].toLowerCase();
+    }
+    
+    // Then try the alternative format [SECTIONNAME]
+    const alternativeMatch = content.match(/\[([A-Z]+)\]$/);
+    if (alternativeMatch && alternativeMatch[1]) {
+      return alternativeMatch[1].toLowerCase();
+    }
+    
+    return null;
+  };
 
   return (
     <div className="chat-box-container prevent-scroll-propagation">
@@ -1689,8 +2405,8 @@ export function ModernChatBox() {
                   minimizedOnMobile && "minimized-mobile-chat",
                 isDark 
                     ? sidebarMode 
-                      ? "bg-black border border-gray-800" // Pure black for sidebar mode (dark)
-                      : "bg-gray-900/90 border border-gray-800 backdrop-blur-md" // Keep semi-transparent for normal mode (dark)
+                      ? "bg-zinc-900 border border-zinc-800" // Darker zinc
+                      : "bg-zinc-900/90 border border-zinc-800 backdrop-blur-md" // Darker zinc
                     : sidebarMode
                       ? "bg-white border border-black/10" // Pure white for sidebar mode (light)
                       : "bg-white/60 border border-black/10 backdrop-blur-md", // Keep semi-transparent for normal mode (light)
@@ -1721,10 +2437,10 @@ export function ModernChatBox() {
                   "flex items-center justify-between px-4 py-2.5 relative z-20",
                   sidebarMode || isMobile
                     ? isDark 
-                      ? "bg-black border-b border-gray-800" 
+                      ? "bg-zinc-900 border-b border-zinc-800" // Darker zinc
                       : "bg-white border-b border-gray-200"
                     : isDark 
-                      ? "bg-gray-900/95 backdrop-blur-xl" 
+                      ? "bg-zinc-900/95 backdrop-blur-xl" // Darker zinc
                       : "bg-white/95 backdrop-blur-xl",
                   minimizedOnMobile && "minimized-header"
                 )}>
@@ -1742,7 +2458,7 @@ export function ModernChatBox() {
                         "flex h-9 w-9 items-center justify-center rounded-lg overflow-hidden",
                         isDark 
                           ? "bg-white" 
-                          : "bg-black"
+                          : "bg-gray-800" // Changed from bg-black to bg-gray-800
                       )}>
                         <Image 
                           src="/GV Fav.png" 
@@ -1831,8 +2547,8 @@ export function ModernChatBox() {
               
                 {/* Show user form or chat messages */}
                 {shouldShowUserForm ? (
-                  <div className="flex-1 flex items-center justify-center bg-white/10 dark:bg-black/10 backdrop-blur-md">
-                    <div className="w-11/12 max-w-md p-6 bg-white/90 dark:bg-black/90 rounded-2xl shadow-xl border border-black/5 dark:border-white/10">
+                  <div className="flex-1 flex items-center justify-center bg-white/10 dark:bg-gray-800/10 backdrop-blur-md">
+                    <div className="w-11/12 max-w-md p-6 bg-white/90 dark:bg-gray-800/90 rounded-2xl shadow-xl border border-black/5 dark:border-white/10">
                       <h3 className={cn(
                         "text-xl font-semibold mb-6 text-center",
                         isDark ? "text-white" : "text-black"
@@ -1907,7 +2623,7 @@ export function ModernChatBox() {
                             "w-full py-3 px-4 rounded-lg font-medium transition-all duration-200",
                             isDark 
                               ? "bg-white text-black hover:bg-gray-200" 
-                              : "bg-black text-white hover:bg-gray-900",
+                              : "bg-gray-800 text-white hover:bg-gray-700", // Changed from black to gray-800
                             "transform hover:translate-y-[-1px] active:translate-y-[1px]",
                             isSubmittingInfo && "opacity-50 cursor-not-allowed"
                           )}
@@ -1949,8 +2665,8 @@ export function ModernChatBox() {
                     style={{
                         background: isDark 
                           ? sidebarMode
-                            ? 'rgb(0, 0, 0)' 
-                            : 'rgba(18, 18, 18, 0.7)' 
+                            ? 'rgb(24, 24, 27)' // Darker zinc-900
+                            : 'rgba(24, 24, 27, 0.7)' // Darker with transparency
                           : sidebarMode
                             ? 'rgb(255, 255, 255)' 
                             : 'transparent',
@@ -1973,7 +2689,7 @@ export function ModernChatBox() {
                     >
                       {messages.map((message, index) => (
                         <div
-                          key={message.id || index}
+                          key={message.id || `fallback_${index}_${Math.random()}`}
                           className={cn(
                             "flex w-full",
                             message.role === "user" ? "justify-end" : "justify-start",
@@ -2006,9 +2722,9 @@ export function ModernChatBox() {
                             className={cn(
                               "max-w-[80%] rounded-2xl px-4 py-2.5 text-sm leading-relaxed",
                               message.role === "user" 
-                                ? "bg-black text-white ml-auto rounded-br-sm" 
+                                ? "bg-zinc-800 text-white ml-auto rounded-br-sm" // Darker zinc
                                 : isDark
-                                  ? "bg-gray-800 text-gray-100 rounded-bl-sm"
+                                  ? "bg-zinc-800 text-gray-100 rounded-bl-sm" // Darker zinc
                                   : "bg-gray-100 text-gray-900 rounded-bl-sm",
                               message.isTyping && "min-w-[60px]",
                               "transform-gpu"
@@ -2051,7 +2767,7 @@ export function ModernChatBox() {
                           {message.role === "user" && (
                             <div className="flex-shrink-0 w-8 h-8">
                     <div className={cn(
-                                "w-8 h-8 rounded-full bg-black flex items-center justify-center text-white text-sm font-medium"
+                                "w-8 h-8 rounded-full bg-zinc-800 flex items-center justify-center text-white text-sm font-medium" // Darker zinc
                               )}>
                                 {userInfo.name ? userInfo.name.charAt(0).toUpperCase() : 'U'}
                               </div>
@@ -2070,15 +2786,15 @@ export function ModernChatBox() {
                         isDark ? "border-gray-800" : "border-gray-200"
                       )}
                       style={{
-                        backgroundColor: isDark ? 'rgba(0, 0, 0, 0.85)' : 'rgba(255, 255, 255, 0.95)',
+                        backgroundColor: isDark ? 'rgba(24, 24, 27, 0.85)' : 'rgba(255, 255, 255, 0.95)', // Darker zinc
                         backdropFilter: 'blur(12px)',
                         paddingBottom: '0'
                       }}
                     >
                       <form onSubmit={handleSubmit} className={cn(
                         "flex items-center gap-3 relative z-20 backdrop-blur-lg p-3",
-                        isDark 
-                          ? "bg-gray-900/30" 
+                      isDark 
+                          ? "bg-zinc-900/30" // Darker zinc
                           : "bg-white/30"
                       )}>
                         <div className={cn(
@@ -2086,7 +2802,7 @@ export function ModernChatBox() {
                           "rounded-xl",
                           "border",
                           isDark
-                            ? "bg-gray-950/70 border-gray-800 group-focus-within:border-gray-700"
+                            ? "bg-zinc-900/70 border-zinc-800 group-focus-within:border-zinc-700" // Darker zinc
                             : "bg-white/80 border-gray-200 group-focus-within:border-gray-300", 
                           "transition-all duration-200",
                           "focus-within:shadow-sm",
@@ -2098,30 +2814,30 @@ export function ModernChatBox() {
                           <div className={cn(
                             "absolute inset-0 opacity-0 group-focus-within:opacity-100 pointer-events-none transition-opacity duration-300",
                             isDark 
-                              ? "bg-gradient-to-tr from-gray-800/10 to-gray-600/5" 
+                              ? "bg-gradient-to-tr from-zinc-700/10 to-zinc-600/5" 
                               : "bg-gradient-to-tr from-gray-100/50 to-white/80"
                           )} />
                           
                           <TextareaAutosize
-                            ref={inputRef}
-                            value={input}
-                            onChange={handleInputChange}
-                            onKeyDown={handleKeyDown}
-                            placeholder="Message Giovanni's AI..."
+                        ref={inputRef}
+                        value={input}
+                        onChange={handleInputChange}
+                        onKeyDown={handleKeyDown}
+                          placeholder="Message Giovanni's AI..."
                             minRows={1}
                             maxRows={isMobile ? 4 : 6}
                             cacheMeasurements
-                            className={cn(
+                        className={cn(
                               "w-full resize-none bg-transparent",
                               "px-4 py-3",
                               "text-sm",
-                              isDark 
+                          isDark 
                                 ? "text-white placeholder:text-gray-500" 
                                 : "text-gray-900 placeholder:text-gray-400",
                               "focus:outline-none focus:ring-0",
-                              isMobile && "mobile-textarea"
-                            )}
-                            style={{ 
+                          isMobile && "mobile-textarea"
+                        )}
+                        style={{ 
                               fontSize: '14px',
                               lineHeight: '1.5',
                             }}
@@ -2132,7 +2848,7 @@ export function ModernChatBox() {
                             <div className={cn(
                               "absolute bottom-1 right-2 text-[10px] px-1.5 py-0.5 rounded",
                               "transition-opacity duration-200",
-                              isDark ? "text-gray-500 bg-gray-900/50" : "text-gray-400 bg-gray-100/80",
+                              isDark ? "text-gray-500 bg-zinc-800/50" : "text-gray-400 bg-gray-100/80",
                               input.length > 280 ? "text-amber-500" : ""
                             )}>
                               {input.length} {input.length > 280 ? "(long)" : ""}
@@ -2140,15 +2856,15 @@ export function ModernChatBox() {
                           )}
                         </div>
                         
-                        <button
-                          type="submit"
-                          disabled={isLoading || !input.trim()}
+                      <button
+                        type="submit"
+                        disabled={isLoading || !input.trim()}
                           aria-label="Send message"
-                          className={cn(
+                        className={cn(
                             "flex items-center justify-center",
                             "rounded-full p-0 w-10 h-10",
                             "transition-all duration-200",
-                            isDark 
+                          isDark 
                               ? "bg-gradient-to-tr from-gray-800 to-gray-900 text-white hover:from-gray-700" 
                               : "bg-gradient-to-tr from-gray-900 to-black text-white hover:from-gray-800",
                             "hover:shadow-md active:scale-95",
@@ -2172,7 +2888,7 @@ export function ModernChatBox() {
                             "opacity-0 group-hover:opacity-100 transition-opacity duration-300"
                           )}></span>
                           <Send className="h-4 w-4 transform translate-x-px -translate-y-px relative z-10 group-hover:scale-110 transition-transform duration-200" />
-                        </button>
+                      </button>
                       </form>
                     </div>
                       </div>

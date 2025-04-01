@@ -1,6 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { initializeDatabase, saveContact, getPoolClient } from '@/lib/db';
 
+// Explicitly set Node.js runtime 
+export const runtime = 'nodejs';
+
 // Initialize database connection on route module load
 try {
   console.log('Initializing database connection in user route...');
@@ -20,7 +23,7 @@ export async function POST(req: NextRequest) {
     const body = await req.json();
     console.log('Request body:', JSON.stringify(body, null, 2));
     
-    const { name, phoneNumber, sessionId: existingSessionId } = body;
+    const { name, phoneNumber, sessionId: existingSessionId, storeContactOnly } = body;
     
     // Validate required fields
     if (!name || !phoneNumber) {
@@ -64,6 +67,11 @@ export async function POST(req: NextRequest) {
       const contactResult = await saveContact(name, phoneNumber);
       console.log('Contact saved successfully:', contactResult);
       
+      // If storeContactOnly flag is true, log that we're not storing chat logs
+      if (storeContactOnly) {
+        console.log('storeContactOnly flag set to true - chat logs will not be stored for this session');
+      }
+      
       const endTime = Date.now();
       console.log(`User info submission completed in ${endTime - startTime}ms`);
       
@@ -71,7 +79,8 @@ export async function POST(req: NextRequest) {
         success: true, 
         message: 'User information saved successfully',
         contactId: contactResult.id,
-        sessionId: sessionId
+        sessionId: sessionId,
+        chatLogsDisabled: !!storeContactOnly
       };
       
       console.log('Sending response:', response);
