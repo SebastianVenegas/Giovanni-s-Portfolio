@@ -25,6 +25,7 @@
   --radius: 0.5rem;
   --terminal-bg: #1e1e1e;
   --terminal-text: #d4d4d4;
+  --sidebar-width: 320px;
 }
 
 .dark {
@@ -413,4 +414,51 @@ body {
 
 .prevent-scroll-propagation::-webkit-scrollbar-track {
   background: transparent;
+}
+
+/* Sidebar and header adjustments */
+@media (min-width: 768px) {
+  .sidebar-open .fixed {
+    padding-left: var(--sidebar-width);
+    transition: padding-left 0.3s ease-in-out;
+  }
+  
+  body:not(.sidebar-open) .fixed {
+    padding-left: 0;
+    transition: padding-left 0.3s ease-in-out;
+  }
+  
+  /* Ensure the header content transitions smoothly with sidebar */
+  .fixed {
+    transition: padding-left 0.3s ease-in-out;
+  }
+  
+  .fixed > div {
+    transition: all 0.3s ease-in-out;
+  }
+}
+
+/* Mobile sidebar adjustments */
+@media (max-width: 767px) {
+  .sidebar-open {
+    overflow: hidden;
+  }
+}
+
+/* Force sidebar to be visible and not translated out of view */
+.translate-x-0 {
+  transform: translateX(0) !important;
+}
+
+/* Ensure sidebar is properly displayed on page load */
+html.js .sidebar-open .translate-x-0,
+body.sidebar-open .translate-x-0 {
+  transform: translateX(0) !important;
+}
+
+/* Always show sidebar on desktop */
+@media (min-width: 768px) {
+  [class*="-translate-x-full"] {
+    transform: translateX(0) !important;
+  }
 }

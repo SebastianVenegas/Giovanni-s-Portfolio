@@ -138,7 +138,7 @@ export function FloatingNav() {
         >
           <div className="flex h-12 items-center justify-between">
             {/* Logo for both mobile and desktop */}
-            <div className="flex items-center">
+            <div className="flex items-center w-10 justify-start">
               <Image 
                 src="/GV Fav.png" 
                 alt="GV Logo" 
@@ -152,8 +152,8 @@ export function FloatingNav() {
             </div>
             
             {/* Desktop Navigation */}
-            <nav className="hidden md:block flex-1">
-              <ul className="flex items-center gap-1 justify-center">
+            <nav className="hidden md:flex flex-1 justify-center">
+              <ul className="flex items-center gap-2 justify-center">
                 {navItems.map((item) => (
                   <motion.li key={item.id} className="relative">
                     <Button
@@ -221,7 +221,7 @@ export function FloatingNav() {
             </Button>
 
             {/* Theme Switch */}
-            <div className="flex items-center">
+            <div className="flex items-center w-10 justify-end">
               <div className={cn("p-1 rounded-xl", mounted && isDark ? "bg-transparent" : "bg-black/5")}>
                 <ThemeSwitch />
               </div>
@@ -259,7 +259,7 @@ export function FloatingNav() {
               )}
             >
               <div className="py-4 px-2">
-                <div className="grid grid-cols-2 gap-2">
+                <div className="grid grid-cols-2 gap-2 place-items-center">
                   {navItems.map((item) => (
                     <Button
                       key={item.id}

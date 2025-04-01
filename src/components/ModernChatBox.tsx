@@ -1,4 +1,3 @@
-
 "use client"
 
 import { useEffect, useRef, useState, useLayoutEffect } from "react"
@@ -11,6 +10,7 @@ import React from "react"
 import { ResizableBox } from 'react-resizable'
 import 'react-resizable/css/styles.css'
 import Image from "next/image"
+import TextareaAutosize from "react-textarea-autosize"
 import "@/styles/chat.css"
 
 // Define the ChatMessage interface
@@ -391,12 +391,11 @@ export function ModernChatBox() {
 
   // Auto-resize textarea based on content
   const handleTextareaResize = () => {
+    // TextareaAutosize handles resizing automatically now
+    // This function is kept for backward compatibility
+    // Just updating the state for components that might use it
     if (inputRef.current) {
-      inputRef.current.style.height = '36px'; // Reset to initial height
-      const scrollHeight = inputRef.current.scrollHeight;
-      const newHeight = Math.min(scrollHeight, isMobile ? 80 : 120); // Max height based on device
-      setTextareaHeight(newHeight);
-      inputRef.current.style.height = `${newHeight}px`;
+      setTextareaHeight(inputRef.current.scrollHeight);
     }
   };
 
@@ -1563,38 +1562,65 @@ export function ModernChatBox() {
       <Button
         onClick={toggleExpanded}
         className={cn(
-          "fixed bottom-4 right-4 z-50 rounded-full p-3.5 shadow-xl transition-all duration-300 hover:scale-105",
+          "fixed bottom-4 right-4 z-50 rounded-full shadow-xl transition-all duration-300",
           (isOpen && isMobile) && "chat-button-hidden",
           isOpen 
             ? "translate-y-20 opacity-0 pointer-events-none" 
             : "translate-y-0 opacity-100 pointer-events-auto",
           isDark 
-            ? "bg-white text-black hover:bg-gray-200" 
-            : "bg-black text-white hover:bg-gray-900",
-          hasNewMessages && "animate-bounce"
+            ? "bg-gradient-to-tr from-gray-800 via-gray-900 to-black text-white hover:from-gray-700 hover:to-gray-900 border border-gray-700" 
+            : "bg-gradient-to-tr from-black to-gray-800 text-white hover:from-gray-900 hover:to-black border border-white/10",
+          hasNewMessages && "animate-bounce",
+          "p-0 overflow-hidden group"
         )}
+        style={{
+          width: "56px",
+          height: "56px",
+          boxShadow: isDark 
+            ? "0 0 20px rgba(255, 255, 255, 0.1), 0 10px 20px -10px rgba(0, 0, 0, 0.5)" 
+            : "0 10px 25px -5px rgba(0, 0, 0, 0.2), 0 8px 10px -6px rgba(0, 0, 0, 0.1)"
+        }}
         aria-label="Open chat"
       >
         {isOpen ? (
-          <X className="h-6 w-6" />
+          <X className="h-6 w-6 text-white" />
         ) : (
-          <div className="relative">
-            <div className="flex items-center justify-center">
+          <div className="relative flex items-center justify-center w-full h-full">
+            {/* Pulse effect behind icon */}
+            <div className="absolute inset-0 flex items-center justify-center">
+              <span className={cn(
+                "absolute w-10 h-10 rounded-full",
+                isDark ? "bg-white/5" : "bg-white/15",
+                "animate-pulse opacity-75 duration-1000 group-hover:opacity-100"
+              )}></span>
+            </div>
+            
+            {/* Icon container with glow effect */}
+            <div className={cn(
+              "relative z-10 flex items-center justify-center",
+              "transition-transform duration-500 group-hover:scale-110",
+              "rounded-full p-2"
+            )}>
               <Image 
                 src="/GV Fav.png" 
                 alt="GV" 
-                width={32} 
-                height={32} 
+                width={36} 
+                height={36} 
                 className={cn(
                   "rounded-full",
-                  isDark ? "brightness-0" : "brightness-100"
+                  isDark ? "brightness-100 filter drop-shadow-[0_0_3px_rgba(255,255,255,0.3)]" : "brightness-100 filter drop-shadow-[0_0_3px_rgba(255,255,255,0.5)]",
+                  "transform transition-all duration-300 group-hover:scale-105"
                 )}
               />
             </div>
+            
+            {/* Notification badge */}
             {hasNewMessages && (
-              <span className="absolute -right-1 -top-1 flex h-3 w-3">
-                <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-red-400 opacity-75"></span>
-                <span className="relative inline-flex h-3 w-3 rounded-full bg-red-500"></span>
+              <span className="absolute -right-0.5 -top-0.5 flex h-4 w-4">
+                <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-blue-400 opacity-75"></span>
+                <span className="relative inline-flex h-4 w-4 rounded-full bg-blue-500 items-center justify-center text-[8px] font-bold border border-white/20">
+                  {isDark ? "!" : "!"}
+                </span>
               </span>
             )}
           </div>
@@ -2044,59 +2070,109 @@ export function ModernChatBox() {
                         isDark ? "border-gray-800" : "border-gray-200"
                       )}
                       style={{
-                        backgroundColor: isDark ? 'rgba(0, 0, 0, 0.8)' : 'rgba(255, 255, 255, 0.9)',
-                        backdropFilter: 'blur(10px)',
-                        paddingBottom: '0' // Remove the extra padding
+                        backgroundColor: isDark ? 'rgba(0, 0, 0, 0.85)' : 'rgba(255, 255, 255, 0.95)',
+                        backdropFilter: 'blur(12px)',
+                        paddingBottom: '0'
                       }}
                     >
                       <form onSubmit={handleSubmit} className={cn(
-                        "flex items-center space-x-2 relative z-20 backdrop-blur-lg p-1.5", // Reduce padding
-                      isDark 
-                          ? "bg-gray-900/50" 
-                          : "bg-white/50"
-                    )}>
-                      <textarea
-                        ref={inputRef}
-                        value={input}
-                        onChange={handleInputChange}
-                        onKeyDown={handleKeyDown}
-                          placeholder="Message Giovanni's AI..."
-                        className={cn(
-                            "flex-1 px-2.5 py-1.5 resize-none text-sm bg-transparent",
-                          isDark 
-                              ? "text-white placeholder-gray-400" 
-                              : "text-gray-900 placeholder-gray-500",
-                            "focus:outline-none focus:ring-0 border-none",
-                          isMobile && "mobile-textarea"
-                        )}
-                        style={{ 
-                            height: '32px',
-                            minHeight: '32px',
-                            maxHeight: isMobile ? '60px' : '80px',
-                            fontSize: '13px',
-                            lineHeight: '1.3'
-                          }}
-                          rows={1}
-                      />
-                      <button
-                        type="submit"
-                        disabled={isLoading || !input.trim()}
-                        className={cn(
-                            "p-2 rounded-lg transition-all duration-200 flex items-center justify-center",
-                          isDark 
-                              ? "bg-white text-black hover:bg-gray-200" 
-                              : "bg-black text-white hover:bg-gray-900",
-                            "mr-0.5", // Reduce margin
-                            (isLoading || !input.trim()) && "opacity-50 cursor-not-allowed",
-                            "hover:scale-105 active:scale-95"
+                        "flex items-center gap-3 relative z-20 backdrop-blur-lg p-3",
+                        isDark 
+                          ? "bg-gray-900/30" 
+                          : "bg-white/30"
+                      )}>
+                        <div className={cn(
+                          "flex-1 relative group overflow-hidden",
+                          "rounded-xl",
+                          "border",
+                          isDark
+                            ? "bg-gray-950/70 border-gray-800 group-focus-within:border-gray-700"
+                            : "bg-white/80 border-gray-200 group-focus-within:border-gray-300", 
+                          "transition-all duration-200",
+                          "focus-within:shadow-sm",
+                          isDark
+                            ? "focus-within:shadow-gray-800/50"
+                            : "focus-within:shadow-gray-200"
+                        )}>
+                          {/* Subtle background gradient */}
+                          <div className={cn(
+                            "absolute inset-0 opacity-0 group-focus-within:opacity-100 pointer-events-none transition-opacity duration-300",
+                            isDark 
+                              ? "bg-gradient-to-tr from-gray-800/10 to-gray-600/5" 
+                              : "bg-gradient-to-tr from-gray-100/50 to-white/80"
+                          )} />
+                          
+                          <TextareaAutosize
+                            ref={inputRef}
+                            value={input}
+                            onChange={handleInputChange}
+                            onKeyDown={handleKeyDown}
+                            placeholder="Message Giovanni's AI..."
+                            minRows={1}
+                            maxRows={isMobile ? 4 : 6}
+                            cacheMeasurements
+                            className={cn(
+                              "w-full resize-none bg-transparent",
+                              "px-4 py-3",
+                              "text-sm",
+                              isDark 
+                                ? "text-white placeholder:text-gray-500" 
+                                : "text-gray-900 placeholder:text-gray-400",
+                              "focus:outline-none focus:ring-0",
+                              isMobile && "mobile-textarea"
+                            )}
+                            style={{ 
+                              fontSize: '14px',
+                              lineHeight: '1.5',
+                            }}
+                          />
+                          
+                          {/* Character count indicator - only show when typing */}
+                          {input.length > 0 && (
+                            <div className={cn(
+                              "absolute bottom-1 right-2 text-[10px] px-1.5 py-0.5 rounded",
+                              "transition-opacity duration-200",
+                              isDark ? "text-gray-500 bg-gray-900/50" : "text-gray-400 bg-gray-100/80",
+                              input.length > 280 ? "text-amber-500" : ""
+                            )}>
+                              {input.length} {input.length > 280 ? "(long)" : ""}
+                            </div>
+                          )}
+                        </div>
+                        
+                        <button
+                          type="submit"
+                          disabled={isLoading || !input.trim()}
+                          aria-label="Send message"
+                          className={cn(
+                            "flex items-center justify-center",
+                            "rounded-full p-0 w-10 h-10",
+                            "transition-all duration-200",
+                            isDark 
+                              ? "bg-gradient-to-tr from-gray-800 to-gray-900 text-white hover:from-gray-700" 
+                              : "bg-gradient-to-tr from-gray-900 to-black text-white hover:from-gray-800",
+                            "hover:shadow-md active:scale-95",
+                            "border",
+                            isDark 
+                              ? "border-gray-700" 
+                              : "border-gray-800",
+                            (isLoading || !input.trim()) && "opacity-50 cursor-not-allowed hover:shadow-none",
+                            "group overflow-hidden"
                           )}
                           style={{
-                            width: '30px', // Slightly smaller button
-                            height: '30px'
+                            boxShadow: isDark 
+                              ? "0 2px 10px rgba(0, 0, 0, 0.3)" 
+                              : "0 2px 10px rgba(0, 0, 0, 0.1)"
                           }}
                         >
-                          <Send className="h-4 w-4 transform rotate-45 translate-x-px -translate-y-px" />
-                      </button>
+                          {/* Subtle pulse effect behind icon */}
+                          <span className={cn(
+                            "absolute w-5 h-5 rounded-full",
+                            isDark ? "bg-white/5" : "bg-white/15",
+                            "opacity-0 group-hover:opacity-100 transition-opacity duration-300"
+                          )}></span>
+                          <Send className="h-4 w-4 transform translate-x-px -translate-y-px relative z-10 group-hover:scale-110 transition-transform duration-200" />
+                        </button>
                       </form>
                     </div>
                       </div>

@@ -1,6 +1,9 @@
-import { OpenAI } from 'openai'
+import { Configuration, OpenAIApi } from 'openai-edge';
 import { saveChatMessage, saveChatMessages } from '@/lib/db'
 import { NextResponse } from 'next/server'
+
+// Add the edge runtime directive back
+export const runtime = 'edge'
 
 // Define message type
 interface ChatMessage {
@@ -33,7 +36,7 @@ try {
 }
 
 // Create an OpenAI API client with better error handling
-let openai: OpenAI;
+let openai: OpenAIApi;
 try {
   // Get API key and remove any newlines or whitespace
   const apiKey = process.env.OPENAI_API_KEY?.replace(/\s+/g, '');
@@ -42,26 +45,25 @@ try {
     console.error('OpenAI API key is missing or invalid');
   }
   
-  openai = new OpenAI({
+  const configuration = new Configuration({
     apiKey: apiKey,
   });
+  openai = new OpenAIApi(configuration);
   
   console.log('OpenAI client initialized successfully');
 } catch (error) {
   console.error('Error initializing OpenAI client:', error);
-  openai = new OpenAI({
+  const configuration = new Configuration({
     apiKey: 'invalid-key', // This will cause API calls to fail with a clear error
   });
+  openai = new OpenAIApi(configuration);
 }
 
-// Remove the edge runtime directive
-// export const runtime = 'edge'
-
 // System prompt for the AI
-const systemPrompt = `You are Giovanni's personal AI assistant. Keep responses concise and informative. Never start with "Hello" unless it's a welcome message.
+const systemPrompt = `You are Giovanni's personal AI assistant. Keep responses concise and informative. Never start with "Hello" unless it's a welcome message(Only answer questions about Giovanni)(if user asks to contact Giovanni, provide his contact information)(remaber you are built into giovanniv.com Giovanni's website)(Remaber Giovanni Venegas built you)(do not answer questions that are not related to Giovanni)(If you need to mention his website remaber dont say at giovanniv.com say here because you are built into his website)(if user asks about your creator, say Giovanni Venegas built)
 
 About Giovanni:
-Giovanni Venegas is a Senior Full Stack Engineer and Solutions Architect with over 13 years of experience in developing innovative web solutions for government agencies, global insurers, and Fortune 500 companies. He's bilingual (English/Spanish) and holds top security clearances.
+Giovanni Venegas is a Senior Full Stack Engineer and Solutions Architect with over 13 years of experience in developing innovative web solutions for government agencies, global insurers, and Fortune 500 companies. He's bilingual (English/Spanish) and holds top security clearances(Giovanni is always opend to new job opportunities).
 
 Core Technical Expertise:
 1. Front-End & Frameworks
@@ -141,27 +143,20 @@ export async function POST(req: Request) {
     const { message, contactId, sessionId, name, isWelcome, previousMessages } = body;
     
     if (!message) {
-      return new Response(
-        JSON.stringify({ error: 'Message is required' }),
-        { status: 400 }
-      );
+      return NextResponse.json({ error: 'Message is required' }, { status: 400 });
     }
-    
-    // Add system message to provide context
+
     const systemMessage = {
       role: 'system' as const,
       content: systemPrompt
     };
 
-    // Prepare the messages array including previous context
     const apiMessages = [
       systemMessage,
-      // Include previous messages for context if available
       ...(previousMessages || []).map((msg: any) => ({
         role: msg.role,
         content: msg.content
       })),
-      // Add the current message
       {
         role: 'user' as const,
         content: isWelcome 
@@ -170,109 +165,69 @@ export async function POST(req: Request) {
       }
     ];
 
-    try {
-      // Save user message if we have contact info
-      if (contactId && sessionId && !isWelcome) {
-        try {
-          await saveChatMessage(
-            contactId,
-            sessionId,
-            'user',
-            message
-          );
-        } catch (error) {
-          console.error('Error saving user message:', error);
-        }
+    if (contactId && sessionId && !isWelcome) {
+      try {
+        await saveChatMessage(contactId, sessionId, 'user', message);
+      } catch (error) {
+        console.error('Error saving user message:', error);
       }
-
-      // Create completion with OpenAI
-      const completion = await openai.chat.completions.create({
-        model: 'gpt-3.5-turbo',
-        messages: apiMessages,
-        temperature: 0.7,
-        max_tokens: 500,
-        presence_penalty: 0.6,
-        frequency_penalty: 0.6,
-        top_p: 0.9,
-      });
-
-      const responseContent = completion.choices[0].message.content || '';
-      
-      // Save assistant message if we have contact info
-      if (contactId && sessionId && !isWelcome) {
-        try {
-          await saveChatMessage(
-            contactId,
-            sessionId,
-            'assistant',
-            responseContent
-          );
-        } catch (error) {
-          console.error('Error saving assistant message:', error);
-        }
-      }
-
-      // Handle welcome message
-      if (isWelcome) {
-        const welcomeMessages = [
-          `Hi ${name} 👋 I'm NextGio, Giovanni's personal AI assistant. I'm here to guide you through Giovanni's expertise in full-stack development and cloud architecture. Ask me about his work with Next.js, AI integrations, or enterprise solutions.`,
-          
-          `Welcome to NextGio ${name}! I'm here to share Giovanni's journey in building secure, scalable solutions for Fortune 500 companies and government agencies. What would you like to know?`,
-          
-          `Hey ${name}! I'm NextGio, your window into Giovanni's tech world. From cloud architecture to AI integration, I'm here to showcase his innovative solutions. What interests you most?`
-        ];
-        
-        // Select a random welcome message
-        const welcomeMessage = welcomeMessages[Math.floor(Math.random() * welcomeMessages.length)];
-        
-        return NextResponse.json({
-          content: welcomeMessage,
-          id: Date.now().toString(),
-          created_at: new Date().toISOString(),
-          isWelcome: true
-        });
-      }
-
-      return new Response(
-        JSON.stringify({ 
-          role: "assistant",
-          content: responseContent,
-          created_at: new Date().toISOString(),
-          id: Date.now().toString(),
-          isTyping: false
-        }),
-        { 
-          status: 200,
-          headers: { 
-            'Content-Type': 'application/json',
-            'Cache-Control': 'no-store, no-cache, must-revalidate'
-          }
-        }
-      );
-      
-    } catch (error) {
-      console.error('Error getting OpenAI response:', error);
-      throw error;
     }
+
+    if (isWelcome) {
+      const welcomeMessages = [
+        `Hi ${name} 👋 I'm NextGio, Giovanni's personal AI assistant. I'm here to guide you through Giovanni's expertise in full-stack development and cloud architecture. Ask me about his work with Next.js, AI integrations, or enterprise solutions.`,
+        `Welcome to NextGio ${name}! I'm here to share Giovanni's journey in building secure, scalable solutions for Fortune 500 companies and government agencies. What would you like to know?`,
+        `Hey ${name}! I'm NextGio, your window into Giovanni's tech world. From cloud architecture to AI integration, I'm here to showcase his innovative solutions. What interests you most?`
+      ];
+      
+      const welcomeMessage = welcomeMessages[Math.floor(Math.random() * welcomeMessages.length)];
+      
+      return NextResponse.json({
+        content: welcomeMessage,
+        id: Date.now().toString(),
+        created_at: new Date().toISOString(),
+        isWelcome: true
+      });
+    }
+
+    const response = await openai.createChatCompletion({
+      model: 'gpt-3.5-turbo',
+      messages: apiMessages,
+      temperature: 0.7,
+      max_tokens: 500,
+      presence_penalty: 0.6,
+      frequency_penalty: 0.6,
+      top_p: 0.9,
+      stream: false,
+    });
+
+    const responseData = await response.json();
+    const responseContent = responseData.choices[0].message.content;
+
+    if (contactId && sessionId && !isWelcome) {
+      try {
+        await saveChatMessage(contactId, sessionId, 'assistant', responseContent);
+      } catch (error) {
+        console.error('Error saving assistant message:', error);
+      }
+    }
+
+    return NextResponse.json({ 
+      role: "assistant",
+      content: responseContent,
+      created_at: new Date().toISOString(),
+      id: Date.now().toString(),
+      isTyping: false
+    });
     
   } catch (error) {
     console.error('Error in chat API:', error);
-    
-    return new Response(
-      JSON.stringify({ 
-        role: "assistant",
-        content: "I apologize, but I'm having trouble connecting right now. Please try your question again in a moment.",
-        created_at: new Date().toISOString(),
-        id: Date.now().toString(),
-        isTyping: false
-      }),
-      { 
-        status: 200,
-        headers: { 
-          'Content-Type': 'application/json',
-          'Cache-Control': 'no-store, no-cache, must-revalidate'
-        }
-      }
-    );
+    return NextResponse.json({ 
+      role: "assistant",
+      content: "I apologize, but I'm having trouble connecting right now. Please try your question again in a moment.",
+      created_at: new Date().toISOString(),
+      id: Date.now().toString(),
+      isTyping: false
+    }, { status: 200 });
   }
 }

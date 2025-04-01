@@ -2,39 +2,28 @@ import { NextResponse } from 'next/server';
 import { NextRequest } from 'next/server';
 import { getChatHistory, getContacts, getPoolClient } from '@/lib/db';
 
-// Simple API key authentication
+// API key authentication
 function validateApiKey(request: NextRequest): boolean {
-  // For development testing
   const apiKey = request.headers.get('x-api-key');
   
-  // Get the valid API key from environment variables with fallback
-  const validApiKey = process.env.ADMIN_API_KEY || 'admin_access_key_a987zyx654';
+  // For production, use environment variable
+  const envApiKey = process.env.NEXT_PUBLIC_ADMIN_PASSWORD;
   
-  // Special development case - allow a hardcoded key for testing
-  // IMPORTANT: This is for development only and would be removed in production
-  const hardcodedKey = 'Aaron3209';
-  
-  console.log(`API Key validation: 
-    - API key present: ${apiKey ? 'Yes' : 'No'}
-    - API key length: ${apiKey?.length || 0}
-    - Environment variable set: ${process.env.ADMIN_API_KEY ? 'Yes' : 'No'}
-    - Using fallback: ${!process.env.ADMIN_API_KEY ? 'Yes' : 'No'}
-    - Key matches .env: ${apiKey === process.env.ADMIN_API_KEY ? 'Yes' : 'No'}
-    - Key matches hardcoded: ${apiKey === hardcodedKey ? 'Yes' : 'No'}`);
-
+  // For development fallback - should be set properly in production
   if (!apiKey) {
     console.log('API Key validation failed: No API key provided');
     return false;
   }
 
-  // Check against all valid options
-  const isValidEnvKey = apiKey === validApiKey;
-  const isValidHardcodedKey = apiKey === hardcodedKey;
+  // Check if key matches environment variable
+  if (envApiKey && apiKey === envApiKey) {
+    return true;
+  }
   
-  if (isValidEnvKey || isValidHardcodedKey) {
-    if (isValidHardcodedKey && !isValidEnvKey) {
-      console.log('API Key validation: Using hardcoded development key');
-    }
+  // Fallback for development/testing only
+  // In production, this should be removed and only env vars should be used
+  if (process.env.NODE_ENV !== 'production' && apiKey === 'Aaron3209') {
+    console.log('API Key validation: Using development fallback key');
     return true;
   }
   

@@ -1,5 +1,13 @@
 import { Pool } from 'pg';
 
+// Create a PostgreSQL pool
+export const db = new Pool({
+  connectionString: process.env.DATABASE_URL,
+  ssl: process.env.NODE_ENV === 'production' ? {
+    rejectUnauthorized: false
+  } : undefined
+});
+
 let pool: Pool | null = null;
 const connectionConfig = {
   connectionString: process.env.DATABASE_URL || process.env.POSTGRES_URL,
