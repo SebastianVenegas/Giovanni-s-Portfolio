@@ -1,5 +1,6 @@
 import { Configuration, OpenAIApi } from 'openai-edge';
-import { saveChatMessage, saveChatMessages } from '@/lib/db'
+// Remove the database import
+// import { saveChatMessage, saveChatMessages } from '@/lib/db'
 import { NextResponse } from 'next/server'
 
 // Add the edge runtime directive back
@@ -20,10 +21,11 @@ interface UserInfo {
   sessionId?: string;
 }
 
-// Initialize database connection
-import { initializeDatabase, getPoolClient } from '@/lib/db';
+// Comment out database initialization
+// import { initializeDatabase, getPoolClient } from '@/lib/db';
 
-// Initialize database on app startup
+// Initialize database on app startup - comment out
+/*
 try {
   console.log('Initializing database connection pool...');
   initializeDatabase().then(() => {
@@ -34,6 +36,7 @@ try {
 } catch (error) {
   console.error('Error during database initialization:', error);
 }
+*/
 
 // Create an OpenAI API client with better error handling
 let openai: OpenAIApi;
@@ -165,6 +168,8 @@ export async function POST(req: Request) {
       }
     ];
 
+    // Comment out database operations
+    /*
     if (contactId && sessionId && !isWelcome) {
       try {
         await saveChatMessage(contactId, sessionId, 'user', message);
@@ -172,6 +177,7 @@ export async function POST(req: Request) {
         console.error('Error saving user message:', error);
       }
     }
+    */
 
     if (isWelcome) {
       const welcomeMessages = [
@@ -204,6 +210,8 @@ export async function POST(req: Request) {
     const responseData = await response.json();
     const responseContent = responseData.choices[0].message.content;
 
+    // Comment out database operations
+    /*
     if (contactId && sessionId && !isWelcome) {
       try {
         await saveChatMessage(contactId, sessionId, 'assistant', responseContent);
@@ -211,6 +219,7 @@ export async function POST(req: Request) {
         console.error('Error saving assistant message:', error);
       }
     }
+    */
 
     return NextResponse.json({ 
       role: "assistant",

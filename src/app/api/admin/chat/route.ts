@@ -1,10 +1,11 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { createClient } from '@vercel/postgres';
+// Remove the database import for Edge runtime
+// import { createClient } from '@vercel/postgres'; 
 import { streamText } from 'ai';
 import { openai } from '@ai-sdk/openai';
 import { ContactStats, ChatSession } from './types';
 import OpenAI from 'openai';
-import { createAdminChatTables } from './create-tables';
+// import { createAdminChatTables } from './create-tables';
 import { setCorsHeaders, createApiError, createApiResponse, validateApiKey, handleOptionsRequest } from '@/lib/api';
 
 export const runtime = 'edge';
@@ -24,125 +25,24 @@ if (!process.env.OPENAI_API_KEY) {
   console.log(`[Admin Chat] OPENAI_API_KEY is configured (${masked})`);
 }
 
-// Initialize tables on startup
-(async () => {
-  // Skip database initialization
-  console.log('[Admin Chat] Database initialization skipped - storage disabled');
-})();
+// Initialize tables on startup - skip in Edge runtime
+console.log('[Admin Chat] Database initialization skipped - storage disabled');
 
-// Helper function to save a chat message - optimized to be async without awaiting
+// Helper function to save a chat message - no database in Edge
 function saveAdminChatMessageAsync(sessionId: string, role: string, content: string, updateTitle: boolean = false) {
-  console.log(`[Admin Chat] Saving message: sessionId=${sessionId}, role=${role}, content length=${content.length}`);
-  
-  // Save the message asynchronously without awaiting
-  (async () => {
-    let client;
-    try {
-      // Create a database client
-      client = createClient();
-      await client.connect();
-      console.log('[Admin Chat] Database connected successfully');
-      
-      // Check if the session exists, if not create it
-      const sessionCheck = await client.sql`
-        SELECT session_id, title FROM admin_chat_sessions WHERE session_id = ${sessionId}
-      `;
-      
-      let sessionTitle = 'New Conversation';
-      
-      if (sessionCheck.rowCount === 0) {
-        console.log(`[Admin Chat] Creating new session: ${sessionId}`);
-        
-        // If this is a user message, create a title from it
-        if (role === 'user' && updateTitle) {
-          // Extract first 30 chars for the title
-          sessionTitle = content.length > 30 
-            ? content.substring(0, 30).trim() + '...' 
-            : content.trim();
-        }
-        
-        // Insert the new session
-        await client.sql`
-          INSERT INTO admin_chat_sessions (session_id, title, created_at, updated_at)
-          VALUES (${sessionId}, ${sessionTitle}, NOW(), NOW())
-        `;
-      } else {
-        // Update the session's updated_at timestamp
-        await client.sql`
-          UPDATE admin_chat_sessions 
-          SET updated_at = NOW()
-          WHERE session_id = ${sessionId}
-        `;
-      }
-      
-      // Insert the message
-      await client.sql`
-        INSERT INTO admin_chat_messages (session_id, role, content, created_at)
-        VALUES (${sessionId}, ${role}, ${content}, NOW())
-      `;
-      
-      console.log(`[Admin Chat] Message saved successfully: role=${role}`);
-    } catch (error: any) {
-      console.error(`[Admin Chat] Error saving message: ${error.message}`, error);
-      // Don't throw - this is an async operation and we don't want to fail the main request
-    } finally {
-      if (client) {
-        try {
-          await client.end();
-          console.log('[Admin Chat] Database connection closed');
-        } catch (closeError: any) {
-          console.error(`[Admin Chat] Error closing database connection: ${closeError.message}`);
-        }
-      }
-    }
-  })();
+  console.log(`[Admin Chat] Message saving skipped (storage disabled): sessionId=${sessionId}, role=${role}, content length=${content.length}`);
+  // Skip database operations in Edge runtime
 }
 
-// Function to get minimal essential context for fast responses
+// Function to get minimal essential context for fast responses - no database in Edge
 async function getMinimalContext() {
-  let client;
-  try {
-    // Create a database client
-    client = createClient();
-    await client.connect();
-    console.log('[Admin Chat] Context DB connected successfully');
-    
-    // Get only essential statistics
-    const chatStats = await client.sql`
-      SELECT 
-        COUNT(DISTINCT contact_id) as total_users,
-        COUNT(DISTINCT session_id) as total_sessions,
-        COUNT(*) as total_messages
-      FROM chat_logs
-      LIMIT 1
-    `;
-    
-    const chatStatsData = chatStats.rows.length > 0 ? chatStats.rows[0] : {
-      total_users: 0,
-      total_sessions: 0,
-      total_messages: 0
-    };
-    
-    // Build minimal context
-    return `
-CHAT STATISTICS:
-- Total unique users: ${chatStatsData.total_users || 0}
-- Total chat sessions: ${chatStatsData.total_sessions || 0}
-- Total messages exchanged: ${chatStatsData.total_messages || 0}
+  // Skip database query and use static context
+  return `
+CHAT STATISTICS (STATIC - DB STORAGE DISABLED):
+- Total unique users: 0
+- Total chat sessions: 0
+- Total messages exchanged: 0
 `;
-  } catch (error: any) {
-    console.error(`[Admin Chat] Database query error for context: ${error.message}`, error);
-    return 'DATABASE CONNECTION ERROR: Could not retrieve chat statistics.';
-  } finally {
-    if (client) {
-      try {
-        await client.end();
-        console.log('[Admin Chat] Context DB connection closed');
-      } catch (closeError: any) {
-        console.error(`[Admin Chat] Error closing context DB connection: ${closeError.message}`);
-      }
-    }
-  }
 }
 
 // Handle preflight requests
@@ -484,8 +384,8 @@ function createFallbackResponse(sessionId: string, userMessage: string) {
 
 If you need immediate assistance, please contact Giovanni directly.`;
   
-  // Save the fallback message to the database
-  saveAdminChatMessageAsync(sessionId, 'assistant', fallbackMessage);
+  // Save the fallback message to the database - skip in Edge runtime
+  // saveAdminChatMessageAsync(sessionId, 'assistant', fallbackMessage);
   
   // Create a JSON response (non-streaming)
   return createApiResponse({

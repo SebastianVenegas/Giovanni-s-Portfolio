@@ -10,39 +10,41 @@ const nextConfig = {
     // your project has ESLint errors.
     ignoreDuringBuilds: true,
   },
+  typescript: {
+    ignoreBuildErrors: false,
+    tsconfigPath: "tsconfig.json",
+  },
   webpack: (config, { isServer }) => {
-    // Fix for PostgreSQL client in serverless environment
     if (!isServer) {
-      // Don't resolve Node.js modules on the client
+      // Don't bundle pg and related packages on the client-side
       config.resolve.fallback = {
+        ...config.resolve.fallback,
         fs: false,
-        net: false,
-        tls: false,
-        crypto: false,
         path: false,
         stream: false,
+        crypto: false,
         os: false,
-        util: false,
-        buffer: false,
-        querystring: false,
+        net: false,
+        tls: false,
+        child_process: false,
+        dns: false,
         http: false,
         https: false,
         zlib: false,
-        child_process: false,
-        dns: false,
-        dgram: false,
-        url: false,
-      }
-      
-      // Mock pg module
-      config.plugins.push(
-        new webpack.NormalModuleReplacementPlugin(
-          /pg/,
-          'noop-loader'
-        )
-      );
+        'pg-native': false,
+        pg: false,
+        'pg-pool': false,
+        'pg-connection-string': false,
+        pgpass: false,
+        'pg-format': false,
+        'pg-cursor': false,
+      };
     }
     return config
+  },
+  // Mark pg and related packages as external for server components
+  experimental: {
+    serverComponentsExternalPackages: ['pg', 'pg-pool', 'pg-connection-string', 'pgpass']
   }
 }
 

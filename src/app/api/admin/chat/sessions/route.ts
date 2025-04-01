@@ -1,50 +1,64 @@
 import { NextRequest } from 'next/server';
-import { createClient } from '@vercel/postgres';
+// Remove PostgreSQL import for Edge runtime
+// import { createClient } from '@vercel/postgres';
+import { setCorsHeaders, createApiError, createApiResponse, validateApiKey, handleOptionsRequest } from '@/lib/api';
 
 export const runtime = 'edge';
 export const preferredRegion = 'auto';
 
+// Handle preflight requests
+export async function OPTIONS() {
+  return handleOptionsRequest();
+}
+
+/**
+ * Handles GET requests to retrieve chat sessions
+ */
 export async function GET(req: NextRequest) {
   try {
-    // Extract the API key
-    const apiKey = req.headers.get('x-api-key');
-    
     // Validate the API key
-    if (!apiKey || apiKey !== process.env.ADMIN_API_KEY) {
-      console.log('Invalid API key provided');
-      return new Response(
-        JSON.stringify({ error: 'Unauthorized access' }),
-        { status: 401, headers: { 'Content-Type': 'application/json' } }
-      );
+    if (!validateApiKey(req)) {
+      return createApiError('Unauthorized', 401);
     }
     
+    // Skip database query and return empty history
+    console.log(`[Admin Chat] Sessions list requested (storage disabled)`);
+    
+    // Return empty sessions array
+    return createApiResponse({ 
+      sessions: [] 
+    });
+    
+    /*
+    // This database code is commented out for Edge runtime compatibility
     // Create a database client
     const client = createClient();
     await client.connect();
     
-    // Get all admin chat sessions, ordered by updated_at (most recent first)
+    // Get the latest 100 sessions
     const result = await client.sql`
-      SELECT id, session_id, title, created_at, updated_at 
+      SELECT session_id, title, updated_at
       FROM admin_chat_sessions
       ORDER BY updated_at DESC
+      LIMIT 100
     `;
     
     await client.end();
     
-    // Return the list of sessions
-    return new Response(
-      JSON.stringify(result.rows),
-      { status: 200, headers: { 'Content-Type': 'application/json' } }
-    );
+    // Format the results
+    const sessions = result.rows.map(row => ({
+      id: row.session_id,
+      title: row.title,
+      updated_at: row.updated_at
+    }));
     
+    // Return the sessions
+    return createApiResponse({ 
+      sessions 
+    });
+    */
   } catch (error) {
-    console.error('Error getting admin chat sessions:', error);
-    return new Response(
-      JSON.stringify({ 
-        error: 'Failed to retrieve chat sessions',
-        message: error instanceof Error ? error.message : 'An unknown error occurred'
-      }),
-      { status: 500, headers: { 'Content-Type': 'application/json' } }
-    );
+    console.error('Error retrieving chat sessions:', error);
+    return createApiError('An error occurred while retrieving chat sessions', 500);
   }
 } 

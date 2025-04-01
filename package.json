@@ -4,7 +4,7 @@
   "private": true,
   "scripts": {
     "dev": "next dev",
-    "build": "npx prisma generate && next build",
+    "build": "next build",
     "start": "next start",
     "lint": "next lint"
   },
@@ -49,8 +49,6 @@
     "openai": "^4.90.0",
     "openai-edge": "^1.2.2",
     "openai-streams": "^6.1.0",
-    "pg": "^8.14.1",
-    "pngjs": "^7.0.0",
     "react": "^19.1.0",
     "react-day-picker": "^9.5.1",
     "react-dom": "^19.1.0",
@@ -67,6 +65,12 @@
     "use-debounce": "^10.0.4",
     "uuid": "^11.1.0",
     "zod": "^3.24.2"
+  },
+  "optionalDependencies": {
+    "pg": "^8.11.3",
+    "pg-pool": "^3.6.1",
+    "pg-connection-string": "^2.6.2",
+    "pgpass": "^1.0.5"
   },
   "devDependencies": {
     "@eslint/eslintrc": "^3",
@@ -90,6 +94,7 @@
     "os-browserify": "^0.3.0",
     "path-browserify": "^1.0.1",
     "postcss": "^8",
+    "prisma": "^6.5.0",
     "process": "^0.11.10",
     "querystring-es3": "^0.2.1",
     "stream-browserify": "^3.0.0",
