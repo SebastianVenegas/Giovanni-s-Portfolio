@@ -667,7 +667,6 @@ const RenderMessageContent = ({ content, isDark }: { content: string, isDark: bo
           location={location || ''} 
           temperature={temperature}
           conditions={conditions}
-          isDark={isDark}
         />
         <div className="mt-4">
           <Markdown
@@ -1084,17 +1083,10 @@ const AdminChat = ({ isDark = false }: AdminChatProps) => {
 
   // Load chat history when the session ID changes
   useEffect(() => {
-    // Only load if we have a session ID and haven't exceeded retry limit
-    if (sessionId && !isLoadingHistoryRef.current && historyRetryCount <= MAX_RETRIES) {
-      // Debounce the loadChatHistory call to prevent rapid consecutive calls
-      const timeoutId = setTimeout(() => {
-        loadChatHistory();
-      }, 200);
-      
-      // Clean up the timeout if component unmounts or dependencies change
-      return () => clearTimeout(timeoutId);
+    if (sessionId) {
+      loadChatHistory();
     }
-  }, [sessionId, loadChatHistory, historyRetryCount, MAX_RETRIES]);
+  }, [sessionId, loadChatHistory]);
   
   // Modified useChat with custom options
   const {
@@ -1121,9 +1113,12 @@ const AdminChat = ({ isDark = false }: AdminChatProps) => {
     },
     onResponse: async (response) => {
       // Check for a session ID header and store it
-      const responseSessionId = response.headers.get('X-Session-ID');
+      const responseSessionId = response.headers.get('X-SESSION-ID');
       if (responseSessionId) {
-  }, [sessionId, loadChatHistory]);
+        setSessionId(responseSessionId);
+      }
+    }
+  });
   
   // Scroll management
   const isNearBottom = () => {

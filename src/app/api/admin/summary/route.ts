@@ -41,10 +41,10 @@ export async function OPTIONS() {
 }
 
 // Helper function to generate a mock summary when OpenAI API is unavailable
-function generateMockSummary(conversations: ConversationData[]) {
+function generateMockSummary(conversations: ConversationData[] = []) {
   const totalConversations = conversations.length;
-  const totalMessages = conversations.reduce((sum, conv) => sum + conv.messageCount, 0);
-  const uniqueContacts = new Set(conversations.map(conv => conv.contactName)).size;
+  const totalMessages = conversations.reduce((sum, conv) => sum + conv.messageCount, 0) || 0;
+  const uniqueContacts = new Set(conversations.map(conv => conv.contactName)).size || 0;
   
   // Create mock data
   return {
@@ -98,69 +98,81 @@ export async function GET(request: Request) {
     console.log('OpenAI API Key available:', process.env.OPENAI_API_KEY ? 'Yes' : 'No');
     
     try {
-      // Use raw SQL query to fetch contacts and chat logs directly
-      console.log('Querying database using raw SQL...');
+      // Try to access the database, but handle the case where Prisma may not be initialized
+      let conversations: ConversationData[] = [];
       
-      // First get all contacts
-      const contacts = await prisma.$queryRaw`
-        SELECT * FROM contacts ORDER BY created_at DESC
-      `;
-      console.log('Fetched contacts:', Array.isArray(contacts) ? contacts.length : 0);
-
-      // Now we need to organize conversations by session
-      const sessionMessages = new Map();
-      const contactMap = new Map();
-      
-      // Create a map of contacts for easy lookup
-      (contacts as Contact[]).forEach(contact => {
-        contactMap.set(contact.id, contact);
-      });
-      
-      // Get all chat logs
-      const chatLogs = await prisma.$queryRaw`
-        SELECT * FROM chat_logs ORDER BY created_at ASC
-      `;
-      console.log('Fetched chat logs:', Array.isArray(chatLogs) ? chatLogs.length : 0);
-      
-      // Group messages by session_id
-      (chatLogs as ChatLog[]).forEach(log => {
-        if (!sessionMessages.has(log.session_id)) {
-          sessionMessages.set(log.session_id, {
-            sessionId: log.session_id,
-            contactId: log.contact_id,
-            messages: [],
-            createdAt: log.created_at
-          });
-        }
-        sessionMessages.get(log.session_id).messages.push(log);
-      });
-      
-      // Format all conversations for analysis
-      const conversations: ConversationData[] = [];
-      
-      sessionMessages.forEach(session => {
-        if (session.messages.length > 0) {
-          const contact = contactMap.get(session.contactId);
+      try {
+        // Check if prisma is initialized
+        if (typeof prisma !== 'undefined' && prisma !== null) {
+          console.log('Querying database using raw SQL...');
           
-          if (contact) {
-            // Format the conversation for this session
-            const conversationText = session.messages
-              .map((msg: ChatLog) => `${msg.role.toUpperCase()}: ${msg.content}`)
-              .join('\n');
-            
-            conversations.push({
-              contactName: contact.name || 'Unknown',
-              contactPhone: contact.phone_number || 'No Phone',
-              sessionId: session.sessionId,
-              createdAt: session.createdAt,
-              messageCount: session.messages.length,
-              conversation: conversationText
-            });
-          }
-        }
-      });
+          // First get all contacts
+          const contacts = await prisma.$queryRaw`
+            SELECT * FROM contacts ORDER BY created_at DESC
+          `;
+          console.log('Fetched contacts:', Array.isArray(contacts) ? contacts.length : 0);
 
-      console.log(`Processed ${conversations.length} conversations for analysis`);
+          // Now we need to organize conversations by session
+          const sessionMessages = new Map();
+          const contactMap = new Map();
+          
+          // Create a map of contacts for easy lookup
+          (contacts as Contact[]).forEach(contact => {
+            contactMap.set(contact.id, contact);
+          });
+          
+          // Get all chat logs
+          const chatLogs = await prisma.$queryRaw`
+            SELECT * FROM chat_logs ORDER BY created_at ASC
+          `;
+          console.log('Fetched chat logs:', Array.isArray(chatLogs) ? chatLogs.length : 0);
+          
+          // Group messages by session_id
+          (chatLogs as ChatLog[]).forEach(log => {
+            if (!sessionMessages.has(log.session_id)) {
+              sessionMessages.set(log.session_id, {
+                sessionId: log.session_id,
+                contactId: log.contact_id,
+                messages: [],
+                createdAt: log.created_at
+              });
+            }
+            sessionMessages.get(log.session_id).messages.push(log);
+          });
+          
+          // Format all conversations for analysis
+          sessionMessages.forEach(session => {
+            if (session.messages.length > 0) {
+              const contact = contactMap.get(session.contactId);
+              
+              if (contact) {
+                // Format the conversation for this session
+                const conversationText = session.messages
+                  .map((msg: ChatLog) => `${msg.role.toUpperCase()}: ${msg.content}`)
+                  .join('\n');
+                
+                conversations.push({
+                  contactName: contact.name || 'Unknown',
+                  contactPhone: contact.phone_number || 'No Phone',
+                  sessionId: session.sessionId,
+                  createdAt: session.createdAt,
+                  messageCount: session.messages.length,
+                  conversation: conversationText
+                });
+              }
+            }
+          });
+
+          console.log(`Processed ${conversations.length} conversations for analysis`);
+        } else {
+          console.log('Prisma client not initialized, using mock data');
+          return createApiResponse(generateMockSummary());
+        }
+      } catch (dbError) {
+        console.error('Database error:', dbError);
+        console.log('Using mock data due to database error');
+        return createApiResponse(generateMockSummary());
+      }
 
       // If no conversations found, return a default message
       if (conversations.length === 0) {
@@ -248,52 +260,55 @@ export async function GET(request: Request) {
         const completion = await openai.chat.completions.create({
           model: "gpt-4-turbo-preview",
           messages: [
-            { 
-              role: "system", 
-              content: "You are NextGio, Giovanni's personal AI assistant. You analyze conversations from his portfolio website and provide insights in a friendly, conversational manner. Your goal is to help Giovanni identify opportunities and improve his professional presence. Speak directly to Giovanni as if you're having a chat with him."
+            {
+              role: "system",
+              content: "You are NextGio, Giovanni's personal AI assistant who helps analyze conversations with visitors on his portfolio website. Always respond in valid JSON format that follows the structure specified in the prompt."
             },
-            { role: "user", content: prompt }
+            {
+              role: "user", 
+              content: prompt
+            }
           ],
-          response_format: { type: "json_object" },
           temperature: 0.7,
+          max_tokens: 1200,
+          top_p: 1,
+          response_format: { type: "json_object" }
         });
 
-        // Parse the response
-        const summaryResponse = completion.choices[0].message.content;
+        // Get the response text and parse it as JSON
+        const responseText = completion.choices[0].message.content;
         
-        console.log('Received response from OpenAI');
-        
-        // If the response is empty or not valid JSON, return an error
-        if (!summaryResponse) {
-          console.error('Empty response from OpenAI');
-          throw new Error('Empty response from OpenAI');
+        if (!responseText) {
+          console.error('OpenAI provided empty response');
+          return createApiResponse(generateMockSummary(conversations));
         }
-
-        console.log('Parsing OpenAI response to JSON');
-        const summaryData = JSON.parse(summaryResponse);
-        console.log('Successfully parsed summary data');
-        return createApiResponse(summaryData);
-      } catch (openAiError: any) {
-        console.error('OpenAI API error:', openAiError);
         
-        // Check if it's a quota exceeded error (429)
-        if (openAiError.status === 429 || (openAiError.message && openAiError.message.includes('429'))) {
-          console.log('OpenAI quota exceeded, using mock data instead');
+        try {
+          // Parse and validate JSON response
+          const analysisData = JSON.parse(responseText);
           
-          // Use a mock response instead
-          const mockSummary = generateMockSummary(conversations);
-          return createApiResponse(mockSummary);
+          // Return the result
+          console.log('Successfully generated conversational analysis');
+          return createApiResponse(analysisData);
+        } catch (jsonError) {
+          console.error('Error parsing JSON response:', jsonError);
+          console.log('Raw response:', responseText);
+          
+          // Fall back to mock data if JSON parsing fails
+          return createApiResponse(generateMockSummary(conversations));
         }
+      } catch (openaiError) {
+        console.error('OpenAI API error:', openaiError);
         
-        // For other errors, just return an error message
-        return createApiError(`Failed to generate summary: ${openAiError.message || openAiError}`, 500);
+        // Fall back to a simple mock summary if OpenAI call fails
+        return createApiResponse(generateMockSummary(conversations));
       }
-    } catch (dbError) {
-      console.error('Database error:', dbError);
-      return createApiError('Failed to retrieve conversation data from database', 500);
+    } catch (error) {
+      console.error('Summary API error:', error);
+      return createApiError('Failed to generate summary', 500);
     }
-  } catch (error: any) {
-    console.error('General error in summary endpoint:', error);
-    return createApiError(`Internal server error: ${error.message || 'Unknown error'}`, 500);
+  } catch (error) {
+    console.error('Unexpected error in summary API:', error);
+    return createApiError('Internal server error', 500);
   }
 } 

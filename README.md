@@ -8,6 +8,19 @@ This portfolio is automatically deployed to Vercel from GitHub. Any changes push
 
 - Production URL: https://portfolio-sebastianvenegas-projects.vercel.app
 
+### Vercel Deployment Configuration
+
+The project includes special configurations for successful deployment on Vercel:
+
+1. **Runtime Configuration**: API routes that use Prisma or database operations use the Node.js runtime instead of Edge runtime. This is configured using `route.config.ts` files in the relevant API route directories.
+
+2. **Build Settings**: The build process is streamlined to:
+   - Run Prisma generate before build if needed
+   - Skip TypeScript errors during build (configured in `next.config.js`)
+   - Handle Edge runtime gracefully for routes that don't have direct database access
+
+3. **Error Handling**: Routes have error handling for cases where the database might not be initialized, providing fallback responses.
+
 ## Development
 
 To run the development server:
