@@ -85,13 +85,14 @@ export async function GET(request: Request) {
   try {
     // Validate the API key
     const apiKey = request.headers.get('x-api-key');
+    const adminApiKey = process.env.ADMIN_API_KEY || process.env.NEXT_PUBLIC_ADMIN_PASSWORD;
     
     console.log('API Key provided:', apiKey ? 'Yes' : 'No');
-    console.log('Admin API Key:', process.env.ADMIN_API_KEY ? 'Available' : 'Not available');
+    console.log('Admin API Key:', adminApiKey ? 'Available' : 'Not available');
 
-    if (apiKey !== process.env.ADMIN_API_KEY) {
+    if (apiKey !== adminApiKey) {
       console.log('Authentication failed: API key mismatch');
-      return createApiError('Unauthorized', 401);
+      return createApiError('Unauthorized - Invalid API key', 401);
     }
 
     // Log OpenAI API key availability (don't log the key itself)

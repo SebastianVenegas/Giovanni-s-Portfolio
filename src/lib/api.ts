@@ -38,7 +38,7 @@ export function handleOptionsRequest() {
 // Utility function to validate API keys
 export function validateApiKey(req: NextRequest, envKeyName: string = 'ADMIN_API_KEY') {
   const apiKey = req.headers.get('x-api-key');
-  const envKey = process.env[envKeyName];
+  const envKey = process.env[envKeyName] || process.env.NEXT_PUBLIC_ADMIN_PASSWORD;
   
   if (!apiKey || apiKey !== envKey) {
     return false;
