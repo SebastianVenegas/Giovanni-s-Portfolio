@@ -112,4 +112,4 @@ export async function DELETE(req: NextRequest) {
     console.error('Error deleting chat session:', error);
     return createApiError('An error occurred while deleting chat session', 500);
   }
-} 
+}
