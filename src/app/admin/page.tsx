@@ -826,28 +826,29 @@ export default function AdminPage() {
   }, [isMenuOpen])
 
   return isLoading ? (
-    <div className="min-h-screen w-full flex items-center justify-center bg-gradient-to-br from-[#040d18] via-[#071526] to-[#0a1c34]">
+    <div className="fixed inset-0 bg-zinc-900 flex flex-col items-center justify-center">
       <motion.div
-        initial={{ opacity: 0, scale: 0.8 }}
+        initial={{ opacity: 0, scale: 0.95 }}
         animate={{ opacity: 1, scale: 1 }}
-        className="p-8 rounded-xl bg-[#071018]/80 shadow-xl border border-white/5 backdrop-blur-md flex flex-col items-center"
+        transition={{ duration: 0.3 }}
+        className="flex flex-col items-center"
       >
-        <Image 
-          src="/GV Fav.png" 
-          alt="GV Logo" 
-          width={60} 
-          height={60}
-          className="mb-4 animate-pulse rounded-sm"
-        />
-        <h1 className="text-xl font-bold text-blue-400 mb-2">NextGio Admin</h1>
-        <p className="text-gray-400 mb-6 text-center">Initializing dashboard...</p>
-        <div className="relative w-48 h-1.5 bg-[#0c1829] rounded-full overflow-hidden">
-          <motion.div 
-            className="absolute top-0 left-0 h-full bg-gradient-to-r from-blue-500 to-blue-400"
-            initial={{ width: '0%' }}
-            animate={{ width: '100%' }}
-            transition={{ duration: 2, repeat: Infinity, repeatType: 'reverse', ease: 'easeInOut' }}
+        <div className="relative mb-6">
+          <div className="absolute inset-0 rounded-full bg-zinc-800 blur-md opacity-30 -z-10"></div>
+          <Image 
+            src="/GV Fav.png" 
+            alt="NextGio Logo" 
+            width={48} 
+            height={48} 
+            className="brightness-100 relative z-10"
           />
+        </div>
+        
+        <h1 className="text-xl font-medium text-zinc-200 mb-6">NextGio Admin</h1>
+        
+        <div className="flex items-center justify-center px-4 py-2 rounded-md bg-zinc-800/50 border border-zinc-700/30">
+          <Loader2 className="h-4 w-4 text-zinc-400 animate-spin mr-3" />
+          <p className="text-sm text-zinc-400">Initializing dashboard</p>
         </div>
       </motion.div>
     </div>

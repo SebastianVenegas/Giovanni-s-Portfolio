@@ -55,6 +55,7 @@ const terminalLines = [
   { type: "array", content: '      "Flask",' },
   { type: "array", content: '      "Unqork",' },
   { type: "array", content: '      "PHP/Laravel",' },
+  { type: "array", content: '      "Electron",' },
   { type: "array", content: '      "Enterprise CMS"' },
   { type: "property", content: "    ]," },
   { type: "property", content: "    preferred: [" },
@@ -694,6 +695,18 @@ export default function ModernHero() {
                       "object-contain",
                       mounted && resolvedTheme === "dark" && "filter brightness-0 invert"
                     )}
+                  />
+                </div>
+              </motion.div>
+              <motion.div 
+                whileHover={{ scale: 1.1 }}
+                className="p-2 rounded-lg bg-black/5 dark:bg-white/5 hover:bg-black/10 dark:hover:bg-white/10 transition-all"
+              >
+                <div className="w-8 h-8 relative">
+                  <Image 
+                    src="/images/tech-stack/Electron.png" 
+                    alt="Electron" 
+                    fill 
                   />
                 </div>
               </motion.div>

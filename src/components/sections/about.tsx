@@ -249,6 +249,7 @@ export function About() {
                     { name: "WordPress", image: "/images/tech-stack/wordpress.png" },
                     { name: "Flask", image: "/images/tech-stack/flask.png" },
                     { name: "Unqork", image: "/images/tech-stack/unqork1.png" },
+                    { name: "Electron", image: "/images/tech-stack/Electron.png" },
                   ].map((tech, index) => (
                     <motion.div
                       key={index}
@@ -257,16 +258,18 @@ export function About() {
                       transition={{ duration: 0.4, delay: 0.7 + index * 0.05 }}
                       className="flex items-center gap-2 px-3 py-2 bg-gray-100 dark:bg-black/40 rounded-lg text-sm font-medium text-gray-700 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-black/60 transition-colors"
                     >
-                      <div className="w-6 h-6 relative">
+                      <div className="w-6 h-6 relative flex items-center justify-center">
                         <img 
                           src={tech.image} 
                           alt={tech.name} 
                           className={cn(
-                            "object-contain",
-                            mounted && isDark && (tech.name === "Next.js" || tech.name === "AWS" || tech.name === "Flask" || tech.name === "Unqork" || tech.name === "WordPress") && "filter brightness-0 invert"
+                            "object-contain absolute w-5 h-5 left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2",
+                            mounted && isDark && (tech.name === "Next.js" || tech.name === "AWS" || tech.name === "Flask" || tech.name === "Unqork" || tech.name === "WordPress") && "filter brightness-0 invert",
+                            tech.name === "WordPress" && "scale-150",
+                            tech.name === "Electron" && "scale-90",
+                            tech.name === "Flask" && "scale-90",
+                            tech.name === "Unqork" && "scale-90"
                           )}
-                          width={24}
-                          height={24}
                         />
                       </div>
                       {tech.name}

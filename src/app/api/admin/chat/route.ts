@@ -3,11 +3,13 @@ import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@vercel/postgres'; 
 import { streamText } from 'ai';
 import { openai } from '@ai-sdk/openai';
-import { ContactStats, ChatSession } from './types';
+import { ContactStats } from './types';
 import OpenAI from 'openai';
 // Restore table creation import
 import { createAdminChatTables } from './create-tables';
 import { setCorsHeaders, createApiError, createApiResponse, validateApiKey, handleOptionsRequest } from '@/lib/api';
+import { Configuration, OpenAIApi } from 'openai-edge';
+import { prisma } from '@/lib/prisma';
 
 // Change from Edge runtime to Node.js
 // export const runtime = 'edge';
@@ -44,8 +46,9 @@ async function saveAdminChatMessageAsync(sessionId: string, role: string, conten
 // Function to get minimal essential context for fast responses
 async function getMinimalContext() {
   console.log('[Admin Chat] Starting getMinimalContext');
+  let db;
   try {
-    const db = createClient();
+    db = createClient();
     console.log('[Admin Chat] Database client created, connecting...');
     await db.connect();
     console.log('[Admin Chat] Database connected successfully');
@@ -64,48 +67,77 @@ async function getMinimalContext() {
       FROM contacts
     `;
     
-    console.log(`[Admin Chat] Stats query result: sessions=${stats.rows[0]?.total_sessions || 0}, messages=${stats.rows[0]?.total_messages || 0}, contacts=${contactStats.rows[0]?.total_contacts || 0}`);
+    // Get recent contacts with retry logic
+    let recentContacts;
+    try {
+      recentContacts = await db.sql`
+        SELECT id, name, phone_number, created_at
+        FROM contacts
+        ORDER BY created_at DESC
+        LIMIT 5
+      `;
+    } catch (contactError) {
+      console.error('[Admin Chat] Error fetching recent contacts:', contactError);
+      recentContacts = { rows: [] };
+    }
     
-    // Get recent contacts
-    const recentContacts = await db.sql`
-      SELECT id, name, phone_number, created_at
-      FROM contacts
-      ORDER BY created_at DESC
-      LIMIT 5
-    `;
-    console.log(`[Admin Chat] Recent contacts query returned ${recentContacts.rows.length} rows`);
+    // Get most recent sessions with complete message history
+    let recentSessions;
+    try {
+      recentSessions = await db.sql<ChatSession>`
+        WITH recent_sessions AS (
+          SELECT DISTINCT ON (cl.session_id)
+            cl.session_id,
+            c.name as title,
+            c.phone_number as phone,
+            MIN(cl.created_at) OVER (PARTITION BY cl.session_id) as thread_start,
+            MAX(cl.created_at) OVER (PARTITION BY cl.session_id) as thread_end,
+            COUNT(*) OVER (PARTITION BY cl.session_id) as message_count
+          FROM chat_logs cl
+          JOIN contacts c ON cl.contact_id = c.id
+          ORDER BY cl.session_id, cl.created_at DESC
+        )
+        SELECT 
+          rs.session_id as id,
+          rs.title,
+          rs.phone,
+          rs.thread_start as created_at,
+          COALESCE(
+            (
+              SELECT json_agg(
+                json_build_object(
+                  'role', cl.role,
+                  'content', cl.content,
+                  'created_at', cl.created_at
+                ) ORDER BY cl.created_at ASC
+              )::text
+              FROM chat_logs cl
+              WHERE cl.session_id = rs.session_id
+            ),
+            '[]'
+          ) as messages,
+          rs.message_count
+        FROM recent_sessions rs
+        ORDER BY rs.thread_start DESC
+        LIMIT 5
+      `;
+    } catch (sessionsError) {
+      console.error('[Admin Chat] Error fetching recent sessions:', sessionsError);
+      recentSessions = { rows: [] };
+    }
+
+    const totalSessions = stats.rows[0]?.total_sessions || 0;
+    const totalMessages = stats.rows[0]?.total_messages || 0;
+    const totalContacts = contactStats.rows[0]?.total_contacts || 0;
     
-    // Get most recent sessions with more details
-    console.log('[Admin Chat] Querying for recent sessions...');
-    const recentSessions = await db.sql<ChatSession>`
-      SELECT 
-        cl.session_id as id, 
-        c.name as title, 
-        c.phone_number as phone,
-        MIN(cl.created_at) as created_at,
-        (SELECT content FROM chat_logs 
-         WHERE session_id = cl.session_id AND role = 'user' 
-         ORDER BY created_at ASC LIMIT 1) as first_message
-      FROM chat_logs cl
-      JOIN contacts c ON cl.contact_id = c.id
-      GROUP BY cl.session_id, c.name, c.phone_number
-      ORDER BY MIN(cl.created_at) DESC
-      LIMIT 5
-    `;
-    console.log(`[Admin Chat] Recent sessions query returned ${recentSessions.rows.length} rows`);
-    
-    await db.end();
-    console.log('[Admin Chat] Database connection closed');
-    
-    const hasChats = stats.rows[0]?.total_sessions > 0;
-    const hasContacts = (contactStats.rows[0]?.total_contacts || 0) > 0;
-    console.log(`[Admin Chat] Has chats: ${hasChats}, Has contacts: ${hasContacts}`);
+    const hasChats = totalSessions > 0;
+    const hasContacts = totalContacts > 0;
     
     const contextString = `
 CHAT STATISTICS:
-- Total contacts: ${contactStats.rows[0]?.total_contacts || 0}
-- Total chat sessions: ${stats.rows[0]?.total_sessions || 0}
-- Total messages exchanged: ${stats.rows[0]?.total_messages || 0}
+- Total contacts: ${totalContacts}
+- Total chat sessions: ${totalSessions}
+- Total messages exchanged: ${totalMessages}
 - Has recent chats: ${hasChats ? 'YES' : 'NO'}
 - Has contacts: ${hasContacts ? 'YES' : 'NO'}
 
@@ -113,23 +145,92 @@ ${hasContacts ? `RECENT CONTACTS:
 ${recentContacts.rows.map(c => `- ${new Date(c.created_at).toLocaleString()}: ${c.name} (${c.phone_number})`).join('\n')}` : 'NO CONTACTS FOUND.'}
 
 ${hasChats ? `RECENT CONVERSATIONS:
-${recentSessions.rows.map(s => `- ${new Date(s.created_at).toLocaleString()}: ${s.title || 'Unknown User'} (${s.phone || 'No phone'})
-  First message: "${s.first_message?.substring(0, 50) ?? ''}${(s.first_message?.length ?? 0) > 50 ? '...' : ''}"`)
-.join('\n')}` : 'NO RECENT CONVERSATIONS FOUND.'}
-`;
-    console.log('[Admin Chat] Returning context:', contextString);
+${recentSessions.rows.map(s => {
+  try {
+    const messages = JSON.parse(s.messages) as Array<{
+      role: string;
+      content: string;
+      created_at: string;
+    }>;
+    return `CONVERSATION WITH: ${s.title || 'Unknown User'} (${s.phone || 'No phone'})
+START TIME: ${new Date(s.created_at).toLocaleString()}
+TOTAL MESSAGES: ${s.message_count}
+
+COMPLETE TRANSCRIPT:
+${messages.map(m => `[${new Date(m.created_at).toLocaleString()}] ${m.role.toUpperCase()}: ${m.content}`).join('\n')}
+----------------------------------------`;
+  } catch (error) {
+    console.error('Error parsing messages:', error);
+    return '';
+  }
+}).filter(Boolean).join('\n\n')}` : 'NO RECENT CONVERSATIONS FOUND.'}`;
+
     return contextString;
   } catch (error) {
     console.error('[Admin Chat] Error getting context:', error);
-    // Return a more informative error message
-    return `Error retrieving context data: ${error instanceof Error ? error.message : 'Unknown error'}
-Debug: There might be a problem with the database connection. Please check that the tables exist and the Postgres connection is working.`;
+    // Instead of returning an error message, return a valid context with no data
+    return `
+CHAT STATISTICS:
+- Total contacts: 0
+- Total chat sessions: 0
+- Total messages exchanged: 0
+- Has recent chats: NO
+- Has contacts: NO
+
+NO CONTACTS FOUND.
+
+NO RECENT CONVERSATIONS FOUND.`;
+  } finally {
+    if (db) {
+      try {
+        await db.end();
+        console.log('[Admin Chat] Database connection closed');
+      } catch (closeError) {
+        console.error('[Admin Chat] Error closing database connection:', closeError);
+      }
+    }
   }
 }
 
 // Handle preflight requests
 export async function OPTIONS() {
   return handleOptionsRequest();
+}
+
+// Define message types with proper interfaces
+interface ChatMessage {
+  role: 'system' | 'user' | 'assistant';
+  content: string;
+  created_at?: string;
+}
+
+interface ChatSession {
+  id: string;
+  title: string;
+  phone: string;
+  created_at: Date;
+  messages: string;  // JSON string of messages
+  message_count: number;
+  first_message?: string;
+}
+
+interface FormattedMessage {
+  role: string;
+  content: string;
+  created_at: string;
+}
+
+interface ChatLogMessage {
+  id: number;
+  role: string;
+  content: string;
+  created_at: Date;
+  contact_id: number;
+  session_id: string;
+  contact_name?: string;
+  thread_start?: Date;
+  thread_end?: Date;
+  message_count?: number;
 }
 
 /**
@@ -178,50 +279,44 @@ export async function POST(req: NextRequest) {
     }
     
     // Construct system message with instructions
-    const systemMessage = {
-      role: 'system',
-      content: `You are NextGio Admin, Giovanni Venegas's personal AI assistant and administrator for his portfolio website.
-                You serve two key purposes:
-                1. You are Giovanni's personal AI assistant, helping with any questions or tasks he needs.
-                2. You provide access to review visitor interactions handled by the public-facing NextGio chatbot.
+    const systemPrompt = `You are NextGio, Giovanni's personal AI assistant. Your sole user is Giovanni Venegas. All your responses should be directed to him and only him.
 
-                DATABASE CONTEXT (REAL-TIME DATA):
-                ${minimalContext}
-                
-                CRITICAL INSTRUCTIONS:
-                1. You have direct access to the database that stores ALL chat logs and contacts from Giovanni's portfolio website.
-                2. The visitor-facing chatbot (public NextGio) automatically responds to website visitors, NOT Giovanni himself.
-                3. When Giovanni asks about visitors or messages, show him conversations that were already automatically handled by the public NextGio chatbot.
-                4. You are Giovanni's PERSONAL ASSISTANT first and foremost - you can help with any task, question, or request he has.
-                5. Be conversational, helpful, and personable as Giovanni's dedicated assistant.
-                6. IMPORTANT: You DO have real-time weather data access. When asked about weather, respond with accurate weather information that will be displayed in a weather card component. DO NOT claim you don't have access to weather data.
-                7. When showing visitor messages, clarify that these interactions were already handled by the public NextGio chatbot.
-                8. Respond quickly and concisely, keeping your responses brief and to the point.
-                9. IMPORTANT: When asked about new chats or conversations:
-                   - DO NOT say you are "checking" or "looking"
-                   - LOOK DIRECTLY at the DATABASE CONTEXT section above
-                   - If it shows "Has recent chats: YES", then report the chats listed under RECENT CONVERSATIONS
-                   - If it shows "Has recent chats: NO", say "There are no chat sessions available."
-                   - If it shows an error message, say "I'm having trouble connecting to the chat database. [Insert error details]"
-                10. NEVER say "There are no recent chats" unless the context SPECIFICALLY says "Has recent chats: NO" or shows 0 total sessions.
-                11. When asked about contacts:
-                   - Look at the "Has contacts" value in the DATABASE CONTEXT
-                   - If it shows "Has contacts: YES", then list the contacts from RECENT CONTACTS
-                   - If it shows "Has contacts: NO", say "There are no contacts in the database."
-                12. You can ONLY read data from the database, NEVER attempt to add or modify contacts or chat logs.
-                
-                WHEN ASKED ABOUT WEATHER:
-                - Respond as if you have real-time weather data
-                - Mention the current weather conditions for the location
-                - Include temperature and conditions (sunny, cloudy, rainy, etc.)
-                - The weather information will be displayed automatically
-                
-                Remember, you are Giovanni's personal AI assistant first and foremost, while also providing access to visitor interaction data from his portfolio website.`
-    };
+    CRITICAL INSTRUCTIONS:
+    1. You have direct access to the database that stores ALL chat logs and contacts from Giovanni's portfolio website.
+    2. The visitor-facing chatbot (public NextGio) automatically responds to website visitors, NOT Giovanni himself.
+    3. When Giovanni asks about visitors or messages, show him conversations that were already automatically handled by the public NextGio chatbot.
+    4. You are Giovanni's PERSONAL ASSISTANT first and foremost - you can help with any task, question, or request he has.
+    5. Be conversational, helpful, and personable as Giovanni's dedicated assistant.
+    6. IMPORTANT: You DO have real-time weather data access. When asked about weather, respond with accurate weather information that will be displayed in a weather card component.
+    7. When showing visitor messages, clarify that these interactions were already handled by the public NextGio chatbot.
+    8. Respond quickly and concisely, keeping your responses brief and to the point.
+
+    CHAT DISPLAY RULES:
+    1. When asked about chats or conversations:
+       - DO NOT say phrases like "Let me check" or "Let me fetch"
+       - DO NOT say "I can see that" or similar phrases
+       - Simply state what is available directly based on the DATABASE CONTEXT below
+       - If the context shows chats, list them immediately
+       - If the context shows no chats (e.g., due to an error during fetch), say "There are no chat sessions available."
+
+    2. When showing chat transcripts:
+       - Show the complete transcript immediately if available in the DATABASE CONTEXT
+       - Include all messages with timestamps
+       - DO NOT say you are "fetching" or "checking"
+       - DO NOT apologize for or mention any limitations
+       - If the transcript is not available in the context, say "That conversation is not available in the database."
+
+    DATABASE CONTEXT (REAL-TIME DATA):
+    ${minimalContext}
+
+    Remember: You have full access to all chat data. Never say you are checking or fetching - simply respond with what is available in the context above. If the context shows no chats or contacts, state that directly.`;
     
     // Add system message to the beginning
     const fullMessages = [
-      systemMessage,
+      {
+        role: 'system',
+        content: systemPrompt,
+      },
       ...messages
     ];
     
@@ -509,4 +604,175 @@ If you need immediate assistance, please contact Giovanni directly.`;
   }, 200, {
     'X-SESSION-ID': sessionId
   });
+}
+
+// Function to get chat history for multiple contacts
+async function getMultipleContactHistory(contactIds: string[]): Promise<ChatLogMessage[]> {
+  try {
+    if (!contactIds.length) return [];
+    
+    // Enhanced query to ensure we get complete messages and proper ordering
+    const messages = await prisma.$queryRaw`
+      WITH conversation_threads AS (
+        SELECT 
+          cl.session_id,
+          cl.contact_id,
+          MIN(cl.created_at) as thread_start,
+          MAX(cl.created_at) as thread_end,
+          COUNT(*) as message_count
+        FROM chat_logs cl
+        WHERE cl.contact_id = ANY(${contactIds}::int[])
+        GROUP BY cl.session_id, cl.contact_id
+      ),
+      full_messages AS (
+        SELECT 
+          cl.id,
+          cl.role,
+          cl.content,
+          cl.created_at,
+          cl.contact_id,
+          cl.session_id,
+          c.name as contact_name,
+          ct.thread_start,
+          ct.thread_end,
+          ct.message_count
+        FROM chat_logs cl
+        JOIN conversation_threads ct 
+          ON cl.session_id = ct.session_id 
+          AND cl.contact_id = ct.contact_id
+        LEFT JOIN contacts c ON cl.contact_id = c.id
+        WHERE cl.contact_id = ANY(${contactIds}::int[])
+      )
+      SELECT *
+      FROM full_messages
+      ORDER BY 
+        thread_start DESC,
+        created_at ASC;
+    `;
+    
+    return messages as ChatLogMessage[];
+  } catch (error) {
+    console.error('Error fetching multiple contact history:', error);
+    return [];
+  }
+}
+
+// Function to get specific session messages with complete context
+async function getSessionMessages(sessionId: string): Promise<ChatLogMessage[]> {
+  try {
+    // Enhanced query to get ALL messages in the session with full context
+    const messages = await prisma.$queryRaw`
+      WITH session_context AS (
+        SELECT 
+          cl.session_id,
+          MIN(cl.created_at) as thread_start,
+          MAX(cl.created_at) as thread_end,
+          COUNT(*) as message_count
+        FROM chat_logs cl
+        WHERE cl.session_id = ${sessionId}
+        GROUP BY cl.session_id
+      )
+      SELECT 
+        cl.id,
+        cl.role,
+        cl.content,
+        cl.created_at,
+        cl.contact_id,
+        cl.session_id,
+        c.name as contact_name,
+        sc.thread_start,
+        sc.thread_end,
+        sc.message_count
+      FROM chat_logs cl
+      JOIN session_context sc ON cl.session_id = sc.session_id
+      LEFT JOIN contacts c ON cl.contact_id = c.id
+      WHERE cl.session_id = ${sessionId}
+      ORDER BY cl.created_at ASC
+    `;
+    
+    return messages as ChatLogMessage[];
+  } catch (error) {
+    console.error('Error fetching session messages:', error);
+    return [];
+  }
+}
+
+// Function to format chat history for AI context
+function formatChatHistoryForAI(history: ChatLogMessage[]): string {
+  if (!history.length) return '';
+
+  // Group messages by conversation thread
+  const groupedMessages = history.reduce((acc, msg) => {
+    const key = `${msg.contact_id}-${msg.session_id}`;
+    if (!acc[key]) {
+      acc[key] = {
+        messages: [],
+        contact_name: msg.contact_name || `Contact ID ${msg.contact_id}`,
+        thread_start: msg.thread_start,
+        thread_end: msg.thread_end
+      };
+    }
+    acc[key].messages.push(msg);
+    return acc;
+  }, {} as Record<string, { 
+    messages: ChatLogMessage[], 
+    contact_name: string,
+    thread_start?: Date,
+    thread_end?: Date
+  }>);
+
+  // Format each conversation with complete history
+  return Object.entries(groupedMessages)
+    .sort((a, b) => {
+      // Sort conversations by most recent first
+      const aStart = a[1].thread_start?.getTime() || 0;
+      const bStart = b[1].thread_start?.getTime() || 0;
+      return bStart - aStart;
+    })
+    .map(([_, thread]) => {
+      const dateStr = thread.thread_start 
+        ? new Date(thread.thread_start).toLocaleString()
+        : 'Unknown date';
+        
+      return `Complete conversation with ${thread.contact_name} (Started: ${dateStr}):
+${thread.messages.map(msg => 
+  `[${new Date(msg.created_at).toLocaleString()}]
+${msg.role.toUpperCase()}: ${msg.content}`
+).join('\n\n')}
+----------------------------------------`;
+    })
+    .join('\n\n');
+}
+
+// Function to extract identifiers and proactively fetch related conversations
+function extractIdentifiers(message: string): { contactIds: string[], sessionIds: string[] } {
+  const contactIdRegex = /\b\d{9,}\b|\((\d{9,})\)/g;
+  const contactIds = [...new Set([...(message.match(contactIdRegex) || [])].map(id => id.replace(/[()]/g, '')))];
+  
+  // Enhanced name matching with common variations and fuzzy matching
+  const nameRegex = /(Oscar|Giovannis?|Murali|Sebastian(?:\s+Venegas)?|Giovanni|any other names?)(?:\s|$)/gi;
+  const names = [...new Set([...(message.match(nameRegex) || []).map(name => name.trim().toLowerCase())])];
+  
+  // Proactively query database for contact IDs when names are mentioned
+  if (names.length > 0) {
+    try {
+      const db = createClient();
+      db.connect().then(async () => {
+        const nameContacts = await db.sql`
+          SELECT id, name
+          FROM contacts
+          WHERE LOWER(name) SIMILAR TO ${names.join('|')}
+        `;
+        contactIds.push(...nameContacts.rows.map(c => c.id.toString()));
+        await db.end();
+      }).catch(console.error);
+    } catch (error) {
+      console.error('Error querying contacts by name:', error);
+    }
+  }
+  
+  return {
+    contactIds: [...new Set(contactIds)],
+    sessionIds: [...new Set([...contactIds])]
+  };
 } 

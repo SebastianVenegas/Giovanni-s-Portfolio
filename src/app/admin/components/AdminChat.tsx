@@ -44,8 +44,8 @@ const dotVariants = {
 // Recommended prompts
 const recommendedPrompts = [
   { 
-    text: "New visitor messages", 
-    prompt: "Show me any new visitor messages or interactions on my portfolio website since my last check.",
+    text: "Latest visitor messages", 
+    prompt: "Show me any latest visitor messages or interactions on my portfolio website since my last check.",
     icon: ChatBubbleLeftRightIcon,
     hasNotification: false
   },
@@ -56,8 +56,8 @@ const recommendedPrompts = [
     hasNotification: false
   },
   { 
-    text: "Recent visitors", 
-    prompt: "Tell me about any new visitors who have interacted with NextGio on my portfolio website recently.",
+    text: "Latest visitors", 
+    prompt: "Tell me about any latest visitors who have interacted with NextGio on my portfolio website recently.",
     icon: UsersIcon,
     hasNotification: false
   },
@@ -751,7 +751,29 @@ const LanguageLabel = ({ language }: { language: string }) => {
 
 // Update the RenderMessageContent component to use the CodeBlock component
 const RenderMessageContent = ({ content, isDark }: { content: string, isDark: boolean }) => {
-  // Helper function to detect language based on content if not specified
+  // Helper function to clean up message content
+  const cleanMessageContent = (text: string) => {
+    if (!text) return "";
+    
+    // Remove repeated "sent the following message at" patterns
+    text = text.replace(/(?:sent the following messages? at \d+:\d+ (?:AM|PM) )?View \w+'s profile \w+ \w+ \w+ \w+ \d+:\d+ (?:AM|PM)\s*/g, '');
+    
+    // Remove any remaining timestamp patterns
+    text = text.replace(/\b\d{1,2}:\d{2} (?:AM|PM)\b\s*/g, '');
+    
+    // Clean up any remaining "View profile" mentions
+    text = text.replace(/View \w+'s profile/g, '');
+    
+    // Remove repeated names
+    text = text.replace(/(\w+)\s+\1(\s+\1)*\s*/g, '$1 ');
+    
+    // Fix spacing issues
+    text = text.replace(/\s{2,}/g, ' ').trim();
+    
+    return text;
+  };
+
+  // Process content to detect language based on content if not specified
   const detectLanguage = (code: string, specifiedLang?: string): string => {
     if (specifiedLang) return specifiedLang;
     
@@ -769,59 +791,8 @@ const RenderMessageContent = ({ content, isDark }: { content: string, isDark: bo
     return 'text';
   };
 
-  // Pre-process content to ensure it's displayed correctly as a single message
-  const processContent = (text: string) => {
-    if (!text || text === "..." || text === "…" || text === ". . .") {
-      return "";
-    }
-    
-    // Clean up data prefixes that may appear when displayed
-    let processed = text;
-    
-    // Remove any 'data:' prefixes that might appear in the rendered content
-    if (processed.includes('data:')) {
-      const cleanedLines = processed.split('\n').map(line => {
-        // If line starts with data:, remove it
-        if (line.trim().startsWith('data:')) {
-          return line.replace(/^data:\s*/, '');
-        }
-        return line;
-      });
-      processed = cleanedLines.join('\n');
-    }
-    
-    // Remove [DONE] marker if present
-    processed = processed.replace('[DONE]', '');
-    
-    // Remove any ":" alone on a line (often comes from SSE)
-    processed = processed.replace(/^:\s*$/gm, '');
-    
-    // Remove trailing ellipses
-    processed = processed.replace(/\s*\.{3}\s*$/, "").replace(/\s*…\s*$/, "");
-    
-    // Complex regex to handle missing spaces between words
-    processed = processed.replace(/([a-z])([A-Z])/g, '$1 $2'); // Add space between lowercase and uppercase
-    processed = processed.replace(/([a-zA-Z])([A-Z][a-z])/g, '$1 $2'); // Add space between regular words and camelCase
-    processed = processed.replace(/([.!?])([A-Za-z])/g, '$1 $2'); // Add space after sentence punctuation
-    processed = processed.replace(/([,;:])([A-Za-z])/g, '$1 $2'); // Add space after other punctuation
-    
-    // Fix spacing around punctuation
-    processed = processed.replace(/\s+([.,;:!?])/g, '$1'); // Remove spaces before punctuation
-    processed = processed.replace(/([.,;:!?])\s+/g, '$1 '); // Ensure exactly one space after punctuation
-    
-    // Replace multiple spaces with a single space
-    processed = processed.replace(/\s{2,}/g, ' ');
-    
-    // Fix newline formatting
-    processed = processed.replace(/\s*\n\s*/g, '\n'); // Remove extra spaces around newlines
-    processed = processed.replace(/([.!?])\s*\n/g, '$1\n\n'); // Double newline after sentences at line breaks
-    processed = processed.replace(/\n{3,}/g, '\n\n'); // Limit to max double newlines
-    
-    return processed.trim();
-  };
-  
   // Use the processed content for rendering
-  const processedContent = processContent(content);
+  const processedContent = cleanMessageContent(content);
   
   // Check if the content contains the Weather pattern
   if (processedContent.match(/The weather in .* is currently/)) {
@@ -1912,7 +1883,7 @@ const AdminChat = ({ isDark = false }: AdminChatProps) => {
               )}
               style={{ outline: "none", boxShadow: "none" }}
               onKeyDown={handleKeyDown}
-              disabled={isLoading || isProcessingAudio}
+              disabled={isProcessingAudio}
               autoFocus
             />
                         </motion.div>
@@ -1967,19 +1938,30 @@ const AdminChat = ({ isDark = false }: AdminChatProps) => {
                   )}
 
                   <motion.button
-              type="submit"
-                    disabled={!input.trim() || isLoading || isProcessingAudio}
+                    type="submit"
+                    disabled={(!input.trim() && !isLoading) || isProcessingAudio}
+                    onClick={() => {
+                      if (isLoading) {
+                        stop();
+                        setIsWaitingForResponse(false); // Manually set loading state to false
+                      }
+                    }}
                     className={cn(
                       "p-2.5 rounded-xl disabled:opacity-40 disabled:cursor-not-allowed transition-all duration-200",
                       isDark
                         ? "bg-white/10 text-white hover:bg-white/20 disabled:bg-zinc-800 disabled:text-zinc-500"
                         : "bg-black/5 text-black hover:bg-black/10 disabled:bg-zinc-100 disabled:text-zinc-400",
-                      "transform hover:scale-105 active:scale-95"
+                      "transform hover:scale-105 active:scale-95",
+                      isLoading && "bg-red-500/10 hover:bg-red-500/20"
                     )}
                     whileHover={{ scale: 1.05 }}
                     whileTap={{ scale: 0.95 }}
                   >
-                    <PaperAirplaneIcon className="h-5 w-5" />
+                    {isLoading ? (
+                      <StopIcon className="h-5 w-5 text-red-500" />
+                    ) : (
+                      <PaperAirplaneIcon className="h-5 w-5" />
+                    )}
                   </motion.button>
           </div>
         </div>

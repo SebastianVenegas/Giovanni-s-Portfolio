@@ -29,7 +29,7 @@
     "@types/react-syntax-highlighter": "^15.5.13",
     "@vercel/analytics": "^1.5.0",
     "@vercel/postgres": "^0.10.0",
-    "ai": "^4.2.8",
+    "ai": "^4.2.10",
     "bcrypt": "^5.1.1",
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",
@@ -68,8 +68,8 @@
   },
   "optionalDependencies": {
     "pg": "^8.11.3",
-    "pg-pool": "^3.6.1",
     "pg-connection-string": "^2.6.2",
+    "pg-pool": "^3.6.1",
     "pgpass": "^1.0.5"
   },
   "devDependencies": {

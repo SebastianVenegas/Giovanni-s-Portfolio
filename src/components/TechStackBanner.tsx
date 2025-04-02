@@ -16,6 +16,7 @@ const techStackLogos = [
   { name: "Node.js", logo: "/images/tech-stack/nodejs.png" },
   { name: "Python", logo: "/images/tech-stack/python.png" },
   { name: "PHP", logo: "/images/tech-stack/php.png" },
+  { name: "Electron", logo: "/images/tech-stack/Electron.png" },
   { name: "Azure", logo: "/images/tech-stack/azure.png" },
   { name: "Laravel", logo: "/images/tech-stack/laravel.png" },
   { name: "GraphQL", logo: "/images/tech-stack/graphql.png" },
@@ -29,7 +30,7 @@ const techStackLogos = [
   { name: "Magento", logo: "/images/tech-stack/magento.png" },
   { name: "WordPress", logo: "/images/tech-stack/wordpress.png" },
   { name: "Flask", logo: "/images/tech-stack/flask.png" },
-  { name: "Unqork", logo: "/images/tech-stack/unqork1.png" }
+  { name: "Unqork", logo: "/images/tech-stack/unqork1.png" },
 ]
 
 export function TechStackBanner() {

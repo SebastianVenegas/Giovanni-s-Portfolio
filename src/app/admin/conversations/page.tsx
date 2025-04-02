@@ -18,11 +18,43 @@ import {
   Loader2
 } from 'lucide-react'
 import { motion, AnimatePresence } from 'framer-motion'
-import { Badge, badgeVariants } from "@/components/ui/badge"
+import { Badge } from "@/components/ui/badge"
 import { Input } from "@/components/ui/input"
 import { Button } from "@/components/ui/button"
 import { cn } from "@/lib/utils"
 import { useTheme } from "next-themes"
+
+// Custom scrollbar styles
+const scrollbarStyles = `
+  /* For Webkit browsers like Chrome, Safari */
+  .conversation-scroll::-webkit-scrollbar,
+  .messages-scroll::-webkit-scrollbar {
+    width: 6px;
+  }
+
+  .conversation-scroll::-webkit-scrollbar-track,
+  .messages-scroll::-webkit-scrollbar-track {
+    background: transparent;
+  }
+
+  .conversation-scroll::-webkit-scrollbar-thumb,
+  .messages-scroll::-webkit-scrollbar-thumb {
+    background-color: rgba(125, 125, 125, 0.2);
+    border-radius: 10px;
+  }
+
+  .conversation-scroll::-webkit-scrollbar-thumb:hover,
+  .messages-scroll::-webkit-scrollbar-thumb:hover {
+    background-color: rgba(125, 125, 125, 0.3);
+  }
+
+  /* For Firefox */
+  .conversation-scroll,
+  .messages-scroll {
+    scrollbar-width: thin;
+    scrollbar-color: rgba(125, 125, 125, 0.2) transparent;
+  }
+`
 
 // Types for chat data
 interface Message {
@@ -77,8 +109,19 @@ export default function ConversationsPage() {
   const [expandedSessions, setExpandedSessions] = useState<string[]>([])
   const [isRefreshing, setIsRefreshing] = useState(false)
   const [filterType, setFilterType] = useState<'all' | 'recent' | 'active'>('all')
-  const [sortOrder, setSortOrder] = useState<'newest' | 'oldest'>('newest')
+  const [sortOrder, setSortOrder] = useState<'latest' | 'oldest'>('latest')
   const [error, setError] = useState('')
+
+  // Apply scrollbar styles
+  useEffect(() => {
+    const styleElement = document.createElement('style');
+    styleElement.textContent = scrollbarStyles;
+    document.head.appendChild(styleElement);
+
+    return () => {
+      document.head.removeChild(styleElement);
+    };
+  }, []);
 
   // Function to format date display
   const formatDate = (dateString: string) => {
@@ -232,33 +275,33 @@ export default function ConversationsPage() {
       )
       
       // Sort by newest or oldest based on user selection
-      return sortOrder === 'newest' 
+      return sortOrder === 'latest' 
         ? bLatestTime - aLatestTime
         : aLatestTime - bLatestTime
     })
 
   return (
     <div className={cn(
-      "min-h-full w-full pt-24 pb-16 px-4",
-      isDark ? "bg-zinc-900 text-zinc-100" : "bg-zinc-50 text-zinc-800"
+      "fixed inset-0 overflow-y-auto",
+      isDark ? "bg-zinc-900/95 text-zinc-100" : "bg-zinc-50/95 text-zinc-800"
     )}>
-      <div className="max-w-7xl mx-auto">
-        {/* Stats cards and filter header */}
-        <div className="mb-8">
-          <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-4 mb-6">
-            <h1 className="text-2xl font-bold">Conversations</h1>
+      <div className="max-w-6xl mx-auto px-4 py-20">
+        <div className="space-y-6">
+          {/* Header section */}
+          <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-4 mb-8">
+            <h1 className="text-3xl font-bold tracking-tight">Conversations</h1>
             
-            <div className="flex items-center gap-2">
+            <div className="flex items-center gap-3">
               <Button 
                 variant="outline" 
                 size="sm"
                 onClick={fetchData}
                 disabled={isRefreshing}
                 className={cn(
-                  "text-xs",
+                  "text-xs font-medium h-9 px-4",
                   isDark 
-                    ? "bg-zinc-800 border-zinc-700" 
-                    : "bg-white border-zinc-200"
+                    ? "bg-zinc-800/50 border-zinc-700 hover:bg-zinc-800" 
+                    : "bg-white/50 border-zinc-200 hover:bg-white"
                 )}
               >
                 {isRefreshing ? (
@@ -276,19 +319,19 @@ export default function ConversationsPage() {
                   value={searchTerm}
                   onChange={(e) => setSearchTerm(e.target.value)}
                   className={cn(
-                    "h-9 w-[200px] text-xs",
+                    "h-9 w-[250px] text-xs pr-8",
                     isDark 
-                      ? "bg-zinc-800 border-zinc-700 text-zinc-100" 
-                      : "bg-white border-zinc-200 text-zinc-800"
+                      ? "bg-zinc-800/50 border-zinc-700 focus:bg-zinc-800" 
+                      : "bg-white/50 border-zinc-200 focus:bg-white"
                   )}
                 />
                 <Search className="h-3.5 w-3.5 absolute right-3 top-2.5 opacity-40" />
               </div>
             </div>
           </div>
-          
-          {/* Stats cards */}
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
+
+          {/* Stats Grid */}
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
             <StatsCard 
               title="Total Users" 
               value={stats.totalUsers.toString()}
@@ -314,18 +357,18 @@ export default function ConversationsPage() {
               isDark={isDark}
             />
           </div>
-          
+
           {/* Filters */}
-          <div className="flex flex-wrap items-center gap-2 mb-4">
-            <span className="text-xs opacity-70">Filter:</span>
+          <div className="flex flex-wrap items-center gap-2 py-4 px-4 rounded-lg bg-opacity-50 backdrop-blur-sm
+            ${isDark ? 'bg-zinc-800/30 border border-zinc-700/50' : 'bg-white/30 border border-zinc-200/50'}">
+            <span className="text-xs font-medium opacity-70">Filter:</span>
             
             <Badge 
-              variant={filterType === 'all' ? "default" : "outline"}
               className={cn(
-                "cursor-pointer",
+                "cursor-pointer transition-colors",
                 filterType === 'all' 
-                  ? "" 
-                  : isDark ? "hover:bg-zinc-800" : "hover:bg-zinc-100"
+                  ? isDark ? "bg-zinc-100 text-zinc-900" : "bg-zinc-900 text-zinc-100"
+                  : isDark ? "bg-zinc-800 hover:bg-zinc-700" : "bg-zinc-100 hover:bg-zinc-200"
               )}
               onClick={() => setFilterType('all')}
             >
@@ -333,12 +376,11 @@ export default function ConversationsPage() {
             </Badge>
             
             <Badge 
-              variant={filterType === 'recent' ? "default" : "outline"}
               className={cn(
-                "cursor-pointer",
+                "cursor-pointer transition-colors",
                 filterType === 'recent' 
-                  ? "" 
-                  : isDark ? "hover:bg-zinc-800" : "hover:bg-zinc-100"
+                  ? isDark ? "bg-zinc-100 text-zinc-900" : "bg-zinc-900 text-zinc-100"
+                  : isDark ? "bg-zinc-800 hover:bg-zinc-700" : "bg-zinc-100 hover:bg-zinc-200"
               )}
               onClick={() => setFilterType('recent')}
             >
@@ -346,12 +388,11 @@ export default function ConversationsPage() {
             </Badge>
             
             <Badge 
-              variant={filterType === 'active' ? "default" : "outline"}
               className={cn(
-                "cursor-pointer",
+                "cursor-pointer transition-colors",
                 filterType === 'active' 
-                  ? "" 
-                  : isDark ? "hover:bg-zinc-800" : "hover:bg-zinc-100"
+                  ? isDark ? "bg-zinc-100 text-zinc-900" : "bg-zinc-900 text-zinc-100"
+                  : isDark ? "bg-zinc-800 hover:bg-zinc-700" : "bg-zinc-100 hover:bg-zinc-200"
               )}
               onClick={() => setFilterType('active')}
             >
@@ -360,99 +401,95 @@ export default function ConversationsPage() {
             
             <div className="flex-1"></div>
             
-            <span className="text-xs opacity-70">Sort:</span>
+            <span className="text-xs font-medium opacity-70">Sort:</span>
             
             <Badge 
-              variant={sortOrder === 'newest' ? "default" : "outline"}
               className={cn(
-                "cursor-pointer",
-                sortOrder === 'newest' 
-                  ? "" 
-                  : isDark ? "hover:bg-zinc-800" : "hover:bg-zinc-100"
+                "cursor-pointer transition-colors",
+                sortOrder === 'latest' 
+                  ? isDark ? "bg-zinc-100 text-zinc-900" : "bg-zinc-900 text-zinc-100"
+                  : isDark ? "bg-zinc-800 hover:bg-zinc-700" : "bg-zinc-100 hover:bg-zinc-200"
               )}
-              onClick={() => setSortOrder('newest')}
+              onClick={() => setSortOrder('latest')}
             >
-              Newest first
+              Latest first
             </Badge>
             
             <Badge 
-              variant={sortOrder === 'oldest' ? "default" : "outline"}
               className={cn(
-                "cursor-pointer",
+                "cursor-pointer transition-colors",
                 sortOrder === 'oldest' 
-                  ? "" 
-                  : isDark ? "hover:bg-zinc-800" : "hover:bg-zinc-100"
+                  ? isDark ? "bg-zinc-100 text-zinc-900" : "bg-zinc-900 text-zinc-100"
+                  : isDark ? "bg-zinc-800 hover:bg-zinc-700" : "bg-zinc-100 hover:bg-zinc-200"
               )}
               onClick={() => setSortOrder('oldest')}
             >
               Oldest first
             </Badge>
           </div>
+
+          {/* Error display */}
+          {error && (
+            <div className={cn(
+              "p-4 rounded-lg border text-center",
+              isDark 
+                ? "bg-red-900/20 border-red-900/30 text-red-300" 
+                : "bg-red-50 border-red-100 text-red-600"
+            )}>
+              <p className="text-sm font-medium">{error}</p>
+            </div>
+          )}
+
+          {/* Loading state */}
+          {isLoading ? (
+            <div className="flex flex-col items-center justify-center py-16">
+              <Loader2 className="h-8 w-8 animate-spin opacity-50 mb-4" />
+              <p className="text-sm opacity-70">Loading conversations...</p>
+            </div>
+          ) : filteredChats.length === 0 ? (
+            <div className={cn(
+              "text-center py-16 rounded-lg border backdrop-blur-sm",
+              isDark 
+                ? "bg-zinc-800/30 border-zinc-700/50" 
+                : "bg-white/30 border-zinc-200/50"
+            )}>
+              <MessageSquare className="h-10 w-10 mx-auto mb-4 opacity-20" />
+              <h3 className="font-semibold mb-2">No conversations found</h3>
+              <p className="text-sm opacity-70 max-w-md mx-auto">
+                {searchTerm 
+                  ? "Try adjusting your search terms or filters"
+                  : chatData.length === 0 
+                    ? "No conversations have been recorded yet. When visitors chat with your site, they'll appear here."
+                    : "No conversations match your current filters."}
+              </p>
+            </div>
+          ) : (
+            <div className="space-y-4">
+              <AnimatePresence initial={false}>
+                {filteredChats.map((chat) => (
+                  <ConversationCard 
+                    key={chat.contact.id}
+                    chat={chat}
+                    isExpanded={expandedContacts.includes(chat.contact.id.toString())}
+                    expandedSessions={expandedSessions}
+                    toggleExpand={() => toggleContactExpansion(chat.contact.id.toString())}
+                    toggleSession={toggleSessionExpansion}
+                    formatDate={formatDate}
+                    formatRelativeTime={formatRelativeTime}
+                    formatPhoneNumber={formatPhoneNumber}
+                    isDark={isDark}
+                  />
+                ))}
+              </AnimatePresence>
+            </div>
+          )}
         </div>
-        
-        {/* Error display */}
-        {error && (
-          <div className={cn(
-            "mb-6 p-4 rounded-lg border text-center",
-            isDark 
-              ? "bg-red-900/20 border-red-900/30 text-red-300" 
-              : "bg-red-50 border-red-100 text-red-600"
-          )}>
-            <p>{error}</p>
-          </div>
-        )}
-        
-        {/* Loading state */}
-        {isLoading ? (
-          <div className="flex flex-col items-center justify-center py-12">
-            <Loader2 className="h-8 w-8 animate-spin opacity-50 mb-4" />
-            <p className="text-sm opacity-70">Loading conversations...</p>
-          </div>
-        ) : filteredChats.length === 0 ? (
-          // Empty state
-          <div className={cn(
-            "text-center py-16 rounded-lg border",
-            isDark 
-              ? "bg-zinc-800/50 border-zinc-700/50" 
-              : "bg-white border-zinc-200/80"
-          )}>
-            <MessageSquare className="h-10 w-10 mx-auto mb-4 opacity-20" />
-            <h3 className="font-semibold mb-2">No conversations found</h3>
-            <p className="text-sm opacity-70 max-w-md mx-auto">
-              {searchTerm 
-                ? "Try adjusting your search terms or filters"
-                : chatData.length === 0 
-                  ? "No conversations have been recorded yet. When visitors chat with your site, they'll appear here."
-                  : "No conversations match your current filters."}
-            </p>
-          </div>
-        ) : (
-          // Conversation list
-          <div className="space-y-4">
-            <AnimatePresence initial={false}>
-              {filteredChats.map((chat) => (
-                <ConversationCard 
-                  key={chat.contact.id}
-                  chat={chat}
-                  isExpanded={expandedContacts.includes(chat.contact.id.toString())}
-                  expandedSessions={expandedSessions}
-                  toggleExpand={() => toggleContactExpansion(chat.contact.id.toString())}
-                  toggleSession={toggleSessionExpansion}
-                  formatDate={formatDate}
-                  formatRelativeTime={formatRelativeTime}
-                  formatPhoneNumber={formatPhoneNumber}
-                  isDark={isDark}
-                />
-              ))}
-            </AnimatePresence>
-          </div>
-        )}
       </div>
     </div>
   )
 }
 
-// Stats card component
+// Update StatsCard component
 function StatsCard({ 
   title, 
   value, 
@@ -466,15 +503,15 @@ function StatsCard({
 }) {
   return (
     <div className={cn(
-      "rounded-lg border p-4",
+      "rounded-lg border p-4 backdrop-blur-sm",
       isDark 
-        ? "bg-zinc-800/80 border-zinc-700/50" 
-        : "bg-white border-zinc-200/70 shadow-sm"
+        ? "bg-zinc-800/30 border-zinc-700/50 hover:bg-zinc-800/50" 
+        : "bg-white/30 border-zinc-200/50 hover:bg-white/50"
     )}>
       <div className="flex items-center gap-3">
         <div className={cn(
           "p-2 rounded-full",
-          isDark ? "bg-zinc-700/50" : "bg-zinc-100"
+          isDark ? "bg-zinc-700/50" : "bg-zinc-100/50"
         )}>
           {icon}
         </div>
@@ -487,7 +524,7 @@ function StatsCard({
   )
 }
 
-// Conversation card component
+// Update ConversationCard component
 function ConversationCard({
   chat,
   isExpanded,
@@ -538,10 +575,10 @@ function ConversationCard({
       exit={{ opacity: 0, height: 0, overflow: 'hidden' }}
       transition={{ duration: 0.2 }}
       className={cn(
-        "rounded-lg border overflow-hidden",
+        "rounded-lg border backdrop-blur-sm",
         isDark 
-          ? "bg-zinc-800/80 border-zinc-700/50" 
-          : "bg-white border-zinc-200 shadow-sm"
+          ? "bg-zinc-800/30 border-zinc-700/50" 
+          : "bg-white/30 border-zinc-200/50"
       )}
     >
       {/* Contact header - always visible */}
@@ -566,7 +603,7 @@ function ConversationCard({
             <div>
               <div className="flex items-center gap-2">
                 <h3 className="font-medium">{chat.contact.name}</h3>
-                <Badge variant="outline" className="text-xs font-normal">
+                <Badge className="text-xs font-normal bg-secondary">
                   {totalMessages} msg{totalMessages !== 1 ? 's' : ''}
                 </Badge>
               </div>
@@ -632,7 +669,10 @@ function ConversationCard({
               <div className="pl-13">
                 <h4 className="text-sm font-medium mb-3">Conversation Sessions ({chat.sessions.length})</h4>
                 
-                <div className="space-y-3">
+                <div className={cn(
+                  "space-y-3",
+                  chat.sessions.length > 3 ? "max-h-[600px] overflow-y-auto pr-1 messages-scroll" : ""
+                )}>
                   {chat.sessions.map(session => (
                     <SessionCard
                       key={session.sessionId}
@@ -654,7 +694,7 @@ function ConversationCard({
   )
 }
 
-// Session card component
+// Update SessionCard component styling similarly
 function SessionCard({
   session,
   isExpanded,
@@ -712,7 +752,7 @@ function SessionCard({
             <div>
               <div className="flex items-center gap-2">
                 <h4 className="text-sm font-medium">Session {sessionId}</h4>
-                <Badge variant="outline" className="text-xs font-normal">
+                <Badge className="text-xs font-normal bg-secondary">
                   {session.messages.length} msg{session.messages.length !== 1 ? 's' : ''}
                 </Badge>
               </div>
@@ -751,15 +791,17 @@ function SessionCard({
               "p-3 pt-0",
               isDark ? "border-t border-zinc-600/30" : "border-t border-zinc-200/60"
             )}>
-              <div className="pt-3 space-y-3">
-                {sortedMessages.map((message, index) => (
-                  <MessageBubble
-                    key={message.id || index}
-                    message={message}
-                    formatDate={formatDate}
-                    isDark={isDark}
-                  />
-                ))}
+              <div className="pt-3 max-h-[500px] overflow-y-auto pr-1 messages-scroll">
+                <div className="space-y-3">
+                  {sortedMessages.map((message, index) => (
+                    <MessageBubble
+                      key={message.id || index}
+                      message={message}
+                      formatDate={formatDate}
+                      isDark={isDark}
+                    />
+                  ))}
+                </div>
               </div>
             </div>
           </motion.div>
