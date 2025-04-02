@@ -283,33 +283,23 @@ type ActiveSection = 'chatbot' | 'conversations' | 'crm'
 export default function AdminPage() {
   const router = useRouter()
   const { theme, setTheme, resolvedTheme } = useTheme()
-  const isDark = resolvedTheme === "dark"
   const [mounted, setMounted] = useState(false)
-  const [apiKey, setApiKey] = useState('')
-  const [isAuthenticated, setIsAuthenticated] = useState(false)
-  const [isLoading, setIsLoading] = useState(false)
-  const [chatData, setChatData] = useState<ChatData[]>([])
-  const [stats, setStats] = useState<Stats>({
-    totalUsers: 0,
-    totalSessions: 0,
-    totalMessages: 0,
-    activeToday: 0,
-    lastActivity: ''
-  })
-  const [error, setError] = useState('')
-  const [searchTerm, setSearchTerm] = useState('')
-  const [activeTab, setActiveTab] = useState('users')
-  const [expandedContacts, setExpandedContacts] = useState<string[]>([])
-  const [isRefreshing, setIsRefreshing] = useState(false)
-  const [summaryData, setSummaryData] = useState<SummaryData | null>(null)
-  const [isSummaryLoading, setIsSummaryLoading] = useState(false)
   const [activeSection, setActiveSection] = useState<ActiveSection>('chatbot')
   const [isMenuOpen, setIsMenuOpen] = useState(false)
+  
+  // Use a safe default (true) for isDark to match server rendering
+  // Only update it after component is mounted
+  const isDark = !mounted ? true : resolvedTheme === "dark"
   
   // Track mounted state for theme switching
   useEffect(() => {
     setMounted(true)
-  }, [])
+    
+    // Set the default theme to dark to match our server render
+    if (!theme || theme === 'system') {
+      setTheme('dark')
+    }
+  }, [theme, setTheme])
 
   // Theme cycle function
   const cycleTheme = () => {
@@ -321,282 +311,41 @@ export default function AdminPage() {
   // Add styles using useEffect
   useEffect(() => {
     // Create style element
-    const styleElement = document.createElement('style');
-    styleElement.textContent = styles;
-    document.head.appendChild(styleElement);
+    const styleElement = document.createElement('style')
+    styleElement.textContent = styles
+    document.head.appendChild(styleElement)
 
     // Cleanup
     return () => {
-      document.head.removeChild(styleElement);
-    };
-  }, []);
-  
-  // Try to auto-login if API key is in session storage
-  useEffect(() => {
-    // First check the API status to see if environment variables are working
-    const checkApiStatus = async () => {
-      try {
-        const statusResponse = await fetch('/api/admin/status');
-        if (statusResponse.ok) {
-          const statusData = await statusResponse.json();
-          console.log('API status check:', statusData);
-        }
-      } catch (error) {
-        console.error('Error checking API status:', error);
-      }
-    };
-    
-    checkApiStatus();
-    
-    const storedApiKey = typeof window !== 'undefined' ? sessionStorage.getItem('admin_api_key') : null;
-    
-    if (storedApiKey) {
-      console.log('Found stored API key, attempting auto-login');
-      
-      // Use the hardcoded key if the stored one is different, for debugging
-      const keyToUse = storedApiKey === 'Aaron3209' ? storedApiKey : 'Aaron3209';
-      setApiKey(keyToUse);
-      
-      // Auto-submit login
-      const autoLogin = async () => {
-        setIsLoading(true);
-        setError('');
-        
-        try {
-          console.log('Auto-login: Attempting with key');
-          // First fetch just the stats for quick display
-          const statsResponse = await fetch('/api/admin/chats?stats=true', {
-            headers: {
-              'x-api-key': keyToUse,
-              'Content-Type': 'application/json'
-            }
-          });
-          
-          console.log('Auto-login: Stats response status:', statsResponse.status);
-          
-          if (!statsResponse.ok) {
-            // Try with the hardcoded key as a fallback
-            if (keyToUse !== 'Aaron3209') {
-              console.log('Auto-login: Trying with hardcoded key as fallback');
-              const retryResponse = await fetch('/api/admin/chats?stats=true', {
-                headers: {
-                  'x-api-key': 'Aaron3209', 
-                  'Content-Type': 'application/json'
-                }
-              });
-              
-              if (retryResponse.ok) {
-                console.log('Auto-login: Retry with hardcoded key succeeded');
-                const statsData = await retryResponse.json();
-                setStats(statsData.stats);
-                setApiKey('Aaron3209'); // Update to use the working key
-                setIsAuthenticated(true);
-                return; // Exit early as we've succeeded
-              }
-            }
-            
-            if (statsResponse.status === 401) {
-              throw new Error('Invalid API key - please log in again');
-            }
-            throw new Error(`Failed to fetch statistics: ${statsResponse.status}`);
-          }
-          
-          // Original request succeeded
-          const statsData = await statsResponse.json();
-          console.log('Auto-login: Stats data received:', statsData.stats ? 'yes' : 'no');
-          setStats(statsData.stats);
-          setIsAuthenticated(true);
-          
-          // Then fetch the full chat data
-          console.log('Auto-login: Fetching full chat data');
-          const chatResponse = await fetch('/api/admin/chats', {
-            headers: {
-              'x-api-key': keyToUse,
-              'Content-Type': 'application/json'
-            }
-          });
-          
-          console.log('Auto-login: Chat response status:', chatResponse.status);
-          
-          if (!chatResponse.ok) {
-            throw new Error(`Failed to fetch chat data: ${chatResponse.status}`);
-          }
-          
-          const chatData = await chatResponse.json();
-          console.log('Auto-login: Chat data received, chats:', chatData.chats?.length || 0);
-          setChatData(chatData.chats || []);
-          
-          // Update stats again with potentially more accurate data from full payload
-          if (chatData.stats) {
-            setStats(chatData.stats);
-          }
-        } catch (error: any) {
-          console.error('Auto-login error:', error);
-          setError(error.message || 'Auto-login failed. Please log in manually.');
-          
-          // Don't clear session storage on failure - allow manual login
-        } finally {
-          setIsLoading(false);
-        }
-      };
-      
-      autoLogin();
+      document.head.removeChild(styleElement)
     }
   }, [])
   
-  // Login form
-  const handleLogin = async (e: React.FormEvent) => {
-    e.preventDefault()
-    
-    // Validate input
-    if (!apiKey || apiKey.trim() === '') {
-      setError('Please enter your access code')
-      return
-    }
-    
-    setIsLoading(true)
-    setError('')
-    
-    // Store the API key in sessionStorage for future use
-    if (typeof window !== 'undefined') {
-      sessionStorage.setItem('admin_api_key', apiKey)
-    }
-    
-    try {
-      // Try with entered key
-      const statsResponse = await fetch('/api/admin/chats?stats=true', {
-        headers: {
-          'x-api-key': apiKey,
-          'Content-Type': 'application/json'
-        }
-      })
-      
-      // Handle API errors
-      if (!statsResponse.ok) {
-        if (statsResponse.status === 401) {
-          throw new Error('Invalid access code. Please try again.')
-        } else {
-          // Try to get detailed error from response
-          let errorDetail = '';
-          try {
-            const errorJson = await statsResponse.json();
-            errorDetail = errorJson.message || '';
-          } catch (e) {
-            // Ignore if we can't parse the error
-          }
-          
-          throw new Error(`Authentication failed: ${statsResponse.status}${errorDetail ? ` - ${errorDetail}` : ''}`)
-        }
+  // Close mobile menu when resizing to desktop
+  useEffect(() => {
+    const handleResize = () => {
+      if (window.innerWidth >= 768 && isMenuOpen) {
+        setIsMenuOpen(false)
       }
-      
-      // Auth successful
-      const statsData = await statsResponse.json()
-      setStats(statsData.stats || {})
-      setIsAuthenticated(true)
-      
-      // Then fetch the full chat data in background
-      fetchData().catch(error => {
-        console.error('Error fetching initial data:', error)
-        // Don't show this error to user since they're already logged in
-      })
-      
-    } catch (error: any) {
-      setIsAuthenticated(false)
-      console.error('Login error:', error)
-      
-      // Show user-friendly error
-      if (error.message.includes('Failed to fetch')) {
-        setError('Connection error. Please check your internet connection and try again.')
-      } else {
-        setError(error.message || 'Login failed. Please try again.')
-      }
-    } finally {
-      setIsLoading(false)
     }
-  }
-  
-  // Format date
-  const formatDate = (dateString: string) => {
-    try {
-      return format(new Date(dateString), 'MMM d, yyyy h:mm a')
-    } catch (e) {
-      return dateString
-    }
-  }
-  
-  // Toggle expansion for a contact
-  const toggleContactExpansion = (contactId: string) => {
-    setExpandedContacts(prev => 
-      prev.includes(contactId) 
-        ? prev.filter(id => id !== contactId)
-        : [...prev, contactId]
-    );
-  };
-  
-  // Filter chats based on search term
-  const filteredChats = chatData.filter(chat => 
-    chat.contact.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    chat.contact.phone_number.includes(searchTerm)
-  )
-  
-  // Add the missing fetchData function
-  const fetchData = async () => {
-    try {
-      const response = await fetch('/api/admin/chats', {
-        headers: {
-          'x-api-key': apiKey
-        }
-      });
-      
-      if (!response.ok) {
-        throw new Error('Failed to refresh data');
-      }
-      
-      const data = await response.json();
-      setChatData(data.chats);
-      if (data.stats) {
-        setStats(data.stats);
-      }
-    } catch (error: any) {
-      // Silently fail refresh but don't show error
-      console.error('Error refreshing data:', error);
-    }
-  };
-  
-  // Replace the first refreshData function with this combined version
-  const refreshData = async () => {
-    if (isRefreshing) return;
     
-    setIsRefreshing(true);
-    try {
-      await fetchData();
-      await fetchSummaryData();
-    } catch (error) {
-      console.error('Error refreshing data:', error);
-    } finally {
-      setIsRefreshing(false);
+    window.addEventListener('resize', handleResize)
+    return () => window.removeEventListener('resize', handleResize)
+  }, [isMenuOpen])
+
+  // Prevent body scroll when mobile menu is open
+  useEffect(() => {
+    if (isMenuOpen) {
+      document.body.style.overflow = 'hidden'
+    } else {
+      document.body.style.overflow = ''
     }
-  };
-  
-  // Handle export data
-  const exportChatData = () => {
-    // Create JSON data for export
-    const jsonData = JSON.stringify(chatData, null, 2)
-    const blob = new Blob([jsonData], { type: 'application/json' })
-    const url = URL.createObjectURL(blob)
     
-    // Create a download link and click it
-    const a = document.createElement('a')
-    a.href = url
-    a.download = `chat-logs-${format(new Date(), 'yyyy-MM-dd')}.json`
-    document.body.appendChild(a)
-    a.click()
-    
-    // Clean up
-    document.body.removeChild(a)
-    URL.revokeObjectURL(url)
-  }
-  
+    return () => {
+      document.body.style.overflow = ''
+    }
+  }, [isMenuOpen])
+
   // Handle logout
   const handleLogout = () => {
     // Clear both cookie and session storage
@@ -606,23 +355,14 @@ export default function AdminPage() {
       sessionStorage.removeItem('admin_api_key')
     }
     
-    setIsAuthenticated(false)
-    setApiKey('')
-    setChatData([])
-    
     // Redirect to admin-access page
     router.push('/admin-access')
   }
-  
-  // Add getTotalMessages function
-  const getTotalMessages = () => {
-    return stats.totalMessages || 0;
-  };
 
   // Theme switch component
   const ThemeSwitch = () => {
     // Don't show animation until mounted
-    if (!mounted) return <Monitor className="h-4 w-4" />;
+    if (!mounted) return <Monitor className="h-4 w-4" />
     
     return (
       <motion.button
@@ -686,315 +426,19 @@ export default function AdminPage() {
           </motion.div>
         </div>
       </motion.button>
-    );
-  };
+    )
+  }
 
-  // Update the fetchSummaryData function to use headers for authentication
-  const fetchSummaryData = async () => {
-    try {
-      setIsSummaryLoading(true);
-      console.log('Fetching summary with API key:', apiKey ? 'Available' : 'Not available');
-      
-      const response = await fetch('/api/admin/summary', {
-        headers: {
-          'x-api-key': apiKey || '' // Ensure apiKey is not null
-        }
-      });
-      
-      console.log('Summary API response status:', response.status);
-      
-      if (!response.ok) {
-        const errorData = await response.json();
-        console.error('API error response:', JSON.stringify(errorData));
-        throw new Error(`${errorData.error || `Failed to fetch summary data: ${response.status}`}`);
-      }
-      
-      const data = await response.json();
-      console.log('Summary data received:', data ? 'Yes' : 'No');
-      setSummaryData(data);
-    } catch (error: any) {
-      console.error('Error fetching summary data:', error);
-      // Set fallback data with error information
-      setSummaryData({
-        summary: `Unable to generate summary: ${error.message || 'Unknown error'}. Please check that your OpenAI API key is properly configured in the environment variables.`,
-        topTopics: ["Check OpenAI API key", "Verify environment variables", "Ensure database is accessible"],
-        sentimentAnalysis: { positive: 0, neutral: 100, negative: 0 },
-        recentHighlights: [
-          {
-            contact: "System",
-            highlight: "There was an error generating the summary. Check the server logs for more details.",
-            sentiment: "neutral"
-          }
-        ]
-      });
-    } finally {
-      setIsSummaryLoading(false);
-    }
-  };
-
-  // Add this to the useEffect that loads data on authentication
-  useEffect(() => {
-    if (isAuthenticated) {
-      fetchData();
-      fetchSummaryData();
-    }
-  }, [isAuthenticated]);
-
-  useEffect(() => {
-    // Check if we're in a browser environment before accessing window
-    if (typeof window !== 'undefined') {
-      // Set base URL for API calls
-      if (!process.env.NEXT_PUBLIC_BASE_URL) {
-        process.env.NEXT_PUBLIC_BASE_URL = window.location.origin;
-      }
-    }
-  }, []);
-
-  // Close mobile menu when resizing to desktop
-  useEffect(() => {
-    const handleResize = () => {
-      if (window.innerWidth >= 768 && isMenuOpen) {
-        setIsMenuOpen(false)
-      }
-    }
-    
-    window.addEventListener('resize', handleResize)
-    return () => window.removeEventListener('resize', handleResize)
-  }, [isMenuOpen])
-
-  // Prevent body scroll when mobile menu is open
-  useEffect(() => {
-    if (isMenuOpen) {
-      document.body.style.overflow = 'hidden'
-    } else {
-      document.body.style.overflow = ''
-    }
-    
-    return () => {
-      document.body.style.overflow = ''
-    }
-  }, [isMenuOpen])
-
-  return isLoading ? (
-    <div className="fixed inset-0 bg-zinc-900 flex flex-col items-center justify-center">
-      <motion.div
-        initial={{ opacity: 0, scale: 0.95 }}
-        animate={{ opacity: 1, scale: 1 }}
-        transition={{ duration: 0.3 }}
-        className="flex flex-col items-center"
-      >
-        <div className="relative mb-6">
-          <div className="absolute inset-0 rounded-full bg-zinc-800 blur-md opacity-30 -z-10"></div>
-          <Image 
-            src="/GV Fav.png" 
-            alt="NextGio Logo" 
-            width={48} 
-            height={48} 
-            className="brightness-100 relative z-10"
-          />
-        </div>
-        
-        <h1 className="text-xl font-medium text-zinc-200 mb-6">NextGio Admin</h1>
-        
-        <div className="flex items-center justify-center px-4 py-2 rounded-md bg-zinc-800/50 border border-zinc-700/30">
-          <Loader2 className="h-4 w-4 text-zinc-400 animate-spin mr-3" />
-          <p className="text-sm text-zinc-400">Initializing dashboard</p>
-        </div>
-      </motion.div>
-    </div>
-  ) : !isAuthenticated ? (
-    <div className="min-h-screen w-full flex items-center justify-center bg-gradient-to-br from-zinc-900 via-zinc-900 to-zinc-800 overflow-hidden">
-      {/* Subtle animated background */}
-      <div className="absolute inset-0 z-0 overflow-hidden opacity-30">
-        <div className="absolute inset-0 bg-[linear-gradient(to_right,#222_1px,transparent_1px),linear-gradient(to_bottom,#222_1px,transparent_1px)] bg-[size:40px_40px] [mask-image:radial-gradient(ellipse_80%_50%_at_50%_50%,#000_60%,transparent_100%)]" />
-        
-        <motion.div
-          animate={{
-            x: [0, 10, 0],
-            y: [0, 15, 0],
-            opacity: [0.1, 0.15, 0.1],
-          }}
-          transition={{
-            duration: 15,
-            repeat: Infinity,
-            repeatType: "reverse"
-          }}
-          className="absolute top-1/4 right-1/3 w-[500px] h-[500px] rounded-full bg-gradient-to-br from-blue-600/20 to-indigo-700/20 blur-3xl"
-        />
-        <motion.div
-          animate={{
-            x: [0, -15, 0],
-            y: [0, -10, 0],
-            opacity: [0.1, 0.15, 0.1],
-          }}
-          transition={{
-            duration: 20, 
-            repeat: Infinity,
-            repeatType: "reverse"
-          }}
-          className="absolute bottom-1/3 left-1/4 w-[600px] h-[600px] rounded-full bg-gradient-to-br from-violet-600/10 to-purple-700/10 blur-3xl"
-        />
-      </div>
-
-      <motion.div
-        initial={{ opacity: 0, y: 20 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.6, ease: [0.22, 1, 0.36, 1] }}
-        className="w-full max-w-[420px] z-10 px-6"
-      >
-        <div className="backdrop-blur-md bg-zinc-800/40 border border-zinc-700/50 shadow-xl rounded-2xl overflow-hidden">
-          {/* Subtle top highlight */}
-          <div className="h-0.5 w-full bg-gradient-to-r from-zinc-700/50 via-zinc-500/50 to-zinc-700/50"></div>
-          
-          <div className="px-8 pt-8 pb-6">
-            <div className="flex flex-col items-center">
-              <motion.div
-                initial={{ scale: 0.9, opacity: 0 }}
-                animate={{ scale: 1, opacity: 1 }}
-                transition={{ delay: 0.2, type: "spring", stiffness: 300, damping: 20 }}
-                className="relative"
-              >
-                <div className="absolute inset-0 rounded-full bg-blue-500/20 blur-xl opacity-50 -z-10"></div>
-                <div className="w-20 h-20 flex items-center justify-center overflow-hidden rounded-xl">
-                  <Image 
-                    src="/GV Fav.png" 
-                    alt="NextGio" 
-                    width={60} 
-                    height={60} 
-                    className="object-contain brightness-110"
-                  />
-                </div>
-              </motion.div>
-              
-              <motion.h1 
-                initial={{ opacity: 0, y: 10 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ delay: 0.3, duration: 0.5 }}
-                className="mt-5 text-2xl font-semibold text-white"
-              >
-                NextGio Admin
-              </motion.h1>
-              
-              <motion.p
-                initial={{ opacity: 0 }}
-                animate={{ opacity: 1 }}
-                transition={{ delay: 0.4, duration: 0.5 }}
-                className="mt-2 text-sm text-zinc-400 text-center"
-              >
-                Enter your access code to manage conversations and analytics
-              </motion.p>
-            </div>
-
-            <motion.form 
-              initial={{ opacity: 0, y: 10 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: 0.5, duration: 0.5 }}
-              onSubmit={handleLogin}
-              className="mt-6 space-y-5"
-            >
-              <div className="space-y-1">
-                <div className="relative group">
-                  <div className="absolute inset-0 bg-gradient-to-r from-blue-600/20 to-violet-600/20 rounded-lg blur opacity-0 group-focus-within:opacity-100 transition-opacity duration-300"></div>
-                  <div className="relative bg-zinc-800/80 border border-zinc-700/80 focus-within:border-zinc-600 rounded-lg overflow-hidden transition-colors duration-200">
-                    <div className="flex">
-                      <div className="flex items-center justify-center w-12 text-zinc-500">
-                        <LockKeyhole className="h-5 w-5" />
-                      </div>
-                      <input
-                        type="password"
-                        id="password"
-                        placeholder="Access Code"
-                        value={apiKey}
-                        onChange={(e) => {
-                          setApiKey(e.target.value);
-                          setError(''); // Clear error when user types
-                        }}
-                        required
-                        className="flex-1 h-12 bg-transparent border-0 focus:outline-none focus:ring-0 text-white placeholder:text-zinc-500 px-0 py-3"
-                        autoFocus
-                      />
-                    </div>
-                  </div>
-                </div>
-              </div>
-
-              {/* Error message with animation */}
-              <AnimatePresence mode="wait">
-                {error && (
-                  <motion.div
-                    initial={{ opacity: 0, y: -10, height: 0 }}
-                    animate={{ opacity: 1, y: 0, height: 'auto' }}
-                    exit={{ opacity: 0, height: 0 }}
-                    transition={{ duration: 0.2 }}
-                    className="overflow-hidden"
-                  >
-                    <div className="px-4 py-3 rounded bg-red-500/10 border border-red-500/20">
-                      <p className="text-sm text-red-400 flex items-center">
-                        <X className="h-4 w-4 mr-2 flex-shrink-0" />
-                        {error}
-                      </p>
-                    </div>
-                  </motion.div>
-                )}
-              </AnimatePresence>
-
-              <motion.button
-                type="submit"
-                disabled={isLoading}
-                className={`w-full h-12 rounded-lg relative overflow-hidden transition-all duration-300 ${
-                  isLoading 
-                    ? 'bg-gradient-to-r from-blue-600 to-violet-600 text-white' 
-                    : 'bg-zinc-800 hover:bg-zinc-700 text-white'
-                }`}
-                whileTap={{ scale: 0.98 }}
-              >
-                <div className="relative z-10 flex items-center justify-center font-medium">
-                  {isLoading ? (
-                    <div className="flex items-center">
-                      <Loader2 className="h-5 w-5 mr-3 animate-spin" />
-                      <span>Verifying access...</span>
-                    </div>
-                  ) : (
-                    <div className="flex items-center">
-                      <LogOut className="h-5 w-5 mr-3" />
-                      <span>Sign In</span>
-                    </div>
-                  )}
-                </div>
-                {/* Button shine effect */}
-                {!isLoading && (
-                  <motion.div 
-                    className="absolute inset-0 bg-gradient-to-r from-transparent via-white/10 to-transparent skew-x-20"
-                    animate={{ x: ["calc(-100% - 50px)", "calc(100% + 50px)"] }}
-                    transition={{ duration: 3, repeat: Infinity, repeatDelay: 5 }}
-                  />
-                )}
-              </motion.button>
-            </motion.form>
-          </div>
-
-          <div className="px-8 py-4 bg-black/20 border-t border-zinc-800/50">
-            <div className="flex items-center justify-between text-xs text-zinc-500">
-              <span>© 2024 NextGio</span>
-              <span className="flex items-center">
-                <Shield className="h-3 w-3 mr-1" />
-                Secure Login
-              </span>
-            </div>
-          </div>
-        </div>
-      </motion.div>
-    </div>
-  ) : (
+  return (
     <div className={`flex flex-col h-screen ${isDark ? 'bg-zinc-900' : 'bg-zinc-50'}`}>
-      {/* Background logo */}
+      {/* Background logo - always use dark theme styles until mounted */}
       <div className="fixed inset-0 flex items-center justify-center z-0 pointer-events-none">
         <Image 
           src="/GV Fav.png" 
           alt="Background Logo" 
           width={500} 
           height={500}
-          className={`opacity-[0.02] ${isDark ? "" : "brightness-0"}`}
+          className={`opacity-[0.02]`}
         />
       </div>
       
@@ -1021,10 +465,7 @@ export default function AdminPage() {
                     alt="GV Logo" 
                     width={32} 
                     height={32} 
-                    className={cn(
-                      "rounded-full shadow-sm",
-                      isDark ? "" : "brightness-0"
-                    )}
+                    className="rounded-full shadow-sm"
                   />
                   <div className="absolute -bottom-0.5 -right-0.5 h-2.5 w-2.5 rounded-full bg-emerald-500 animate-pulse ring-2 ring-zinc-800 dark:ring-zinc-900"></div>
                 </div>
@@ -1170,10 +611,7 @@ export default function AdminPage() {
                     alt="GV Logo" 
                     width={40} 
                     height={40}
-                    className={cn(
-                      "rounded-full",
-                      isDark ? "" : "brightness-0"
-                    )}
+                    className="rounded-full"
                   />
                 </div>
                 <div className="grid grid-cols-1 gap-2">
@@ -1238,5 +676,5 @@ export default function AdminPage() {
         )}
       </AnimatePresence>
     </div>
-  );
+  )
 } 

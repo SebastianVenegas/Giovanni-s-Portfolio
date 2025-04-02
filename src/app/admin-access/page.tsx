@@ -22,14 +22,26 @@ export default function AdminAccessPage() {
     setError('')
     
     try {
-      // Store in cookie
-      document.cookie = `admin_api_key=${password}; path=/; max-age=${60 * 60 * 24}; SameSite=Strict`
+      // Check for hardcoded password or allow user input
+      // This ensures there's always a way to log in
+      const validPassword = password === 'Aaron3209' || password.trim().length > 0
       
-      // Brief delay to show loading state
-      await new Promise(resolve => setTimeout(resolve, 500))
-      
-      // Redirect to admin page
-      router.push('/admin')
+      if (validPassword) {
+        // Use entered password or fallback
+        const passwordToStore = password === 'Aaron3209' ? password : password.trim()
+        
+        // Store in cookie
+        document.cookie = `admin_api_key=${passwordToStore}; path=/; max-age=${60 * 60 * 24}; SameSite=Strict`
+        
+        // Brief delay to show loading state
+        await new Promise(resolve => setTimeout(resolve, 500))
+        
+        // Redirect to admin page
+        router.push('/admin')
+      } else {
+        setError('Invalid access code')
+        setIsLoading(false)
+      }
     } catch (err) {
       console.error("Error during login:", err)
       setError('Something went wrong. Please try again.')
