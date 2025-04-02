@@ -45,7 +45,8 @@ import {
   Phone,
   LayoutDashboard,
   Menu,
-  X
+  X,
+  Shield
 } from 'lucide-react'
 import { motion, AnimatePresence } from 'framer-motion'
 import Image from 'next/image'
@@ -447,64 +448,34 @@ export default function AdminPage() {
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault()
     
-    if (!apiKey) {
-      setError('Please enter the API key')
+    // Validate input
+    if (!apiKey || apiKey.trim() === '') {
+      setError('Please enter your access code')
       return
-    }
-    
-    console.log(`Logging in with API key length: ${apiKey.length}, key: ${apiKey === 'Aaron3209' ? 'matches hardcoded' : 'does not match hardcoded'}`)
-    
-    // Store the API key in sessionStorage for future use
-    if (typeof window !== 'undefined') {
-      sessionStorage.setItem('admin_api_key', apiKey)
-      console.log('API key stored in session storage')
     }
     
     setIsLoading(true)
     setError('')
     
-    // Try multiple API keys if needed
-    const keysToTry = [apiKey];
-    if (apiKey !== 'Aaron3209') {
-      keysToTry.push('Aaron3209'); // Add fallback key
+    // Store the API key in sessionStorage for future use
+    if (typeof window !== 'undefined') {
+      sessionStorage.setItem('admin_api_key', apiKey)
     }
     
-    let loginSuccess = false;
-    
-    for (const keyAttempt of keysToTry) {
-      if (loginSuccess) break;
-      
-      try {
-        console.log(`Trying login with key: ${keyAttempt === 'Aaron3209' ? 'hardcoded key' : 'user-entered key'}`)
-        
-        // Test with status endpoint first
-        try {
-          const statusResponse = await fetch('/api/admin/status');
-          if (statusResponse.ok) {
-            const statusData = await statusResponse.json();
-            console.log('API status before login attempt:', statusData);
-          }
-        } catch (error) {
-          console.error('Error checking API status:', error);
-        }
-        
-        // First fetch just the stats for quick display
-        const statsResponse = await fetch('/api/admin/chats?stats=true', {
+    try {
+      // Try with entered key
+      const statsResponse = await fetch('/api/admin/chats?stats=true', {
         headers: {
-            'x-api-key': keyAttempt,
-            'Content-Type': 'application/json'
-          }
-        })
-        
-        console.log('Stats response status:', statsResponse.status)
-        
-        if (!statsResponse.ok) {
-          if (statsResponse.status === 401) {
-            console.error('Authentication failed with status 401 - Invalid API key')
-            // Continue to next key if available
-            continue;
-          }
-          
+          'x-api-key': apiKey,
+          'Content-Type': 'application/json'
+        }
+      })
+      
+      // Handle API errors
+      if (!statsResponse.ok) {
+        if (statsResponse.status === 401) {
+          throw new Error('Invalid access code. Please try again.')
+        } else {
           // Try to get detailed error from response
           let errorDetail = '';
           try {
@@ -514,60 +485,34 @@ export default function AdminPage() {
             // Ignore if we can't parse the error
           }
           
-          throw new Error(`Failed to fetch statistics: ${statsResponse.status}${errorDetail ? ` - ${errorDetail}` : ''}`)
-        }
-        
-        // This key worked!
-        if (keyAttempt !== apiKey) {
-          console.log('Login succeeded with fallback key - updating state');
-          setApiKey(keyAttempt);
-          // Update in session storage too
-          if (typeof window !== 'undefined') {
-            sessionStorage.setItem('admin_api_key', keyAttempt);
-          }
-        }
-        
-        const statsData = await statsResponse.json()
-        setStats(statsData.stats)
-      setIsAuthenticated(true)
-        loginSuccess = true;
-        
-        // Then fetch the full chat data
-        console.log('Fetching full chat data')
-        const chatResponse = await fetch('/api/admin/chats', {
-          headers: {
-            'x-api-key': keyAttempt,
-            'Content-Type': 'application/json'
-          }
-        })
-        
-        console.log('Chat response status:', chatResponse.status)
-        
-        if (!chatResponse.ok) {
-          throw new Error(`Failed to fetch chat data: ${chatResponse.status}`)
-        }
-        
-        const chatData = await chatResponse.json()
-        setChatData(chatData.chats || [])
-        
-        // Update stats again with potentially more accurate data from full payload
-        if (chatData.stats) {
-          setStats(chatData.stats)
-        }
-        
-    } catch (error: any) {
-        if (keyAttempt === keysToTry[keysToTry.length - 1]) {
-          // Only show error if we've tried all keys
-          console.error('Login error:', error)
-          setError(error.message || 'Failed to login. Please check the API key and try again.')
-          setIsAuthenticated(false)
-        } else {
-          console.log('Login failed with this key, trying fallback...');
+          throw new Error(`Authentication failed: ${statsResponse.status}${errorDetail ? ` - ${errorDetail}` : ''}`)
         }
       }
+      
+      // Auth successful
+      const statsData = await statsResponse.json()
+      setStats(statsData.stats || {})
+      setIsAuthenticated(true)
+      
+      // Then fetch the full chat data in background
+      fetchData().catch(error => {
+        console.error('Error fetching initial data:', error)
+        // Don't show this error to user since they're already logged in
+      })
+      
+    } catch (error: any) {
+      setIsAuthenticated(false)
+      console.error('Login error:', error)
+      
+      // Show user-friendly error
+      if (error.message.includes('Failed to fetch')) {
+        setError('Connection error. Please check your internet connection and try again.')
+      } else {
+        setError(error.message || 'Login failed. Please try again.')
+      }
+    } finally {
+      setIsLoading(false)
     }
-    
-    setIsLoading(false)
   }
   
   // Format date
@@ -654,7 +599,9 @@ export default function AdminPage() {
   
   // Handle logout
   const handleLogout = () => {
-    // Clear session storage
+    // Clear both cookie and session storage
+    document.cookie = "admin_api_key=; path=/; expires=Thu, 01 Jan 1970 00:00:00 GMT; SameSite=Strict"
+    
     if (typeof window !== 'undefined') {
       sessionStorage.removeItem('admin_api_key')
     }
@@ -662,6 +609,9 @@ export default function AdminPage() {
     setIsAuthenticated(false)
     setApiKey('')
     setChatData([])
+    
+    // Redirect to admin-access page
+    router.push('/admin-access')
   }
   
   // Add getTotalMessages function
@@ -853,477 +803,440 @@ export default function AdminPage() {
       </motion.div>
     </div>
   ) : !isAuthenticated ? (
-    <div className="min-h-screen w-full flex items-center justify-center relative bg-gradient-to-br from-[#040d18] via-[#071526] to-[#0a1c34] overflow-hidden">
-      {/* Animated Background */}
-      <div className="absolute inset-0 z-0 overflow-hidden">
-        {/* Animated grid background */}
-        <div className="absolute inset-0 bg-[linear-gradient(to_right,#e5e5e5_1px,transparent_1px),linear-gradient(to_bottom,#e5e5e5_1px,transparent_1px)] dark:bg-[linear-gradient(to_right,#1d1d1d_1px,transparent_1px),linear-gradient(to_bottom,#1d1d1d_1px,transparent_1px)] bg-[size:44px_44px] [mask-image:radial-gradient(ellipse_60%_50%_at_50%_50%,#000_70%,transparent_100%)] opacity-30" />
+    <div className="min-h-screen w-full flex items-center justify-center bg-gradient-to-br from-zinc-900 via-zinc-900 to-zinc-800 overflow-hidden">
+      {/* Subtle animated background */}
+      <div className="absolute inset-0 z-0 overflow-hidden opacity-30">
+        <div className="absolute inset-0 bg-[linear-gradient(to_right,#222_1px,transparent_1px),linear-gradient(to_bottom,#222_1px,transparent_1px)] bg-[size:40px_40px] [mask-image:radial-gradient(ellipse_80%_50%_at_50%_50%,#000_60%,transparent_100%)]" />
         
-        {/* Animated blurred circles */}
         <motion.div
           animate={{
-            scale: [1, 1.2, 1],
-            opacity: [0.3, 0.2, 0.3],
+            x: [0, 10, 0],
+            y: [0, 15, 0],
+            opacity: [0.1, 0.15, 0.1],
           }}
           transition={{
-            duration: 8,
+            duration: 15,
             repeat: Infinity,
             repeatType: "reverse"
           }}
-          className="absolute top-1/4 left-1/4 w-64 h-64 rounded-full bg-gradient-to-r from-cyan-400 to-blue-500 dark:from-cyan-800 dark:to-blue-900 blur-3xl opacity-30"
+          className="absolute top-1/4 right-1/3 w-[500px] h-[500px] rounded-full bg-gradient-to-br from-blue-600/20 to-indigo-700/20 blur-3xl"
         />
         <motion.div
           animate={{
-            scale: [1, 1.1, 1],
-            opacity: [0.2, 0.3, 0.2],
-            x: [0, 20, 0]
+            x: [0, -15, 0],
+            y: [0, -10, 0],
+            opacity: [0.1, 0.15, 0.1],
           }}
           transition={{
-            duration: 10,
+            duration: 20, 
             repeat: Infinity,
             repeatType: "reverse"
           }}
-          className="absolute bottom-1/4 right-1/4 w-96 h-96 rounded-full bg-gradient-to-r from-amber-400 to-rose-500 dark:from-amber-900 dark:to-rose-900 blur-3xl opacity-20"
+          className="absolute bottom-1/3 left-1/4 w-[600px] h-[600px] rounded-full bg-gradient-to-br from-violet-600/10 to-purple-700/10 blur-3xl"
         />
       </div>
 
-      <AnimatePresence>
-        <motion.div
-          initial={{ opacity: 0, y: 30 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.7, type: "spring" }}
-          className="w-full max-w-md z-10"
-        >
-          <Card className="border border-black/10 dark:border-white/10 shadow-xl glass-effect glass-card backdrop-blur-md bg-white/70 dark:bg-black/30 overflow-hidden">
-            {/* Gradient top border */}
-            <div className="absolute top-0 left-0 right-0 h-1 bg-gradient-to-r from-gray-400 via-gray-600 to-gray-800 dark:from-gray-700 dark:via-gray-500 dark:to-gray-300"></div>
-            
-            <CardHeader className="space-y-4 text-center pb-0">
+      <motion.div
+        initial={{ opacity: 0, y: 20 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.6, ease: [0.22, 1, 0.36, 1] }}
+        className="w-full max-w-[420px] z-10 px-6"
+      >
+        <div className="backdrop-blur-md bg-zinc-800/40 border border-zinc-700/50 shadow-xl rounded-2xl overflow-hidden">
+          {/* Subtle top highlight */}
+          <div className="h-0.5 w-full bg-gradient-to-r from-zinc-700/50 via-zinc-500/50 to-zinc-700/50"></div>
+          
+          <div className="px-8 pt-8 pb-6">
+            <div className="flex flex-col items-center">
               <motion.div
-                initial={{ scale: 0.8, opacity: 0 }}
+                initial={{ scale: 0.9, opacity: 0 }}
                 animate={{ scale: 1, opacity: 1 }}
-                transition={{ type: "spring", stiffness: 200, damping: 15, delay: 0.1 }}
-                className="mx-auto relative"
+                transition={{ delay: 0.2, type: "spring", stiffness: 300, damping: 20 }}
+                className="relative"
               >
-                {/* Logo with glow effect */}
-                <div className="absolute inset-0 rounded-full bg-gradient-to-r from-gray-400 to-gray-600 dark:from-gray-600 dark:to-gray-400 blur-md opacity-30 -z-10"></div>
-                <div className="w-24 h-24 relative mx-auto mb-4">
+                <div className="absolute inset-0 rounded-full bg-blue-500/20 blur-xl opacity-50 -z-10"></div>
+                <div className="w-20 h-20 flex items-center justify-center overflow-hidden rounded-xl">
                   <Image 
                     src="/GV Fav.png" 
-                    alt="GV Logo" 
-                    width={96} 
-                    height={96} 
-                    className="object-contain"
+                    alt="NextGio" 
+                    width={60} 
+                    height={60} 
+                    className="object-contain brightness-110"
                   />
                 </div>
               </motion.div>
               
-              <motion.div
-                initial={{ y: 20, opacity: 0 }}
-                animate={{ y: 0, opacity: 1 }}
-                transition={{ duration: 0.5, delay: 0.2 }}
+              <motion.h1 
+                initial={{ opacity: 0, y: 10 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: 0.3, duration: 0.5 }}
+                className="mt-5 text-2xl font-semibold text-white"
               >
-                <CardTitle className="text-3xl font-bold text-gray-900 dark:text-white">Admin Portal</CardTitle>
-                <CardDescription className="text-gray-600 dark:text-gray-300 mt-2">Enter your access code to continue</CardDescription>
-              </motion.div>
-          </CardHeader>
-            
-          <form onSubmit={handleLogin}>
-              <CardContent className="pt-6 pb-6">
-              <div className="space-y-4">
-                  <motion.div 
-                    className="space-y-2"
-                    initial={{ x: -10, opacity: 0 }}
-                    animate={{ x: 0, opacity: 1 }}
-                    transition={{ delay: 0.3 }}
-                  >
-                    <div className="relative">
-                  <Input
+                NextGio Admin
+              </motion.h1>
+              
+              <motion.p
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                transition={{ delay: 0.4, duration: 0.5 }}
+                className="mt-2 text-sm text-zinc-400 text-center"
+              >
+                Enter your access code to manage conversations and analytics
+              </motion.p>
+            </div>
+
+            <motion.form 
+              initial={{ opacity: 0, y: 10 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: 0.5, duration: 0.5 }}
+              onSubmit={handleLogin}
+              className="mt-6 space-y-5"
+            >
+              <div className="space-y-1">
+                <div className="relative group">
+                  <div className="absolute inset-0 bg-gradient-to-r from-blue-600/20 to-violet-600/20 rounded-lg blur opacity-0 group-focus-within:opacity-100 transition-opacity duration-300"></div>
+                  <div className="relative bg-zinc-800/80 border border-zinc-700/80 focus-within:border-zinc-600 rounded-lg overflow-hidden transition-colors duration-200">
+                    <div className="flex">
+                      <div className="flex items-center justify-center w-12 text-zinc-500">
+                        <LockKeyhole className="h-5 w-5" />
+                      </div>
+                      <input
+                        type="password"
                         id="password"
-                        placeholder="Enter access code"
-                    type="password"
-                    value={apiKey}
-                        onChange={(e) => setApiKey(e.target.value)}
-                    required
-                        className="bg-white/50 dark:bg-gray-800/50 border-gray-300 dark:border-gray-700 text-gray-900 dark:text-white placeholder:text-gray-500 dark:placeholder:text-gray-400 focus:border-gray-500 h-12 text-lg px-4 pr-10"
+                        placeholder="Access Code"
+                        value={apiKey}
+                        onChange={(e) => {
+                          setApiKey(e.target.value);
+                          setError(''); // Clear error when user types
+                        }}
+                        required
+                        className="flex-1 h-12 bg-transparent border-0 focus:outline-none focus:ring-0 text-white placeholder:text-zinc-500 px-0 py-3"
                         autoFocus
                       />
-                      <motion.div 
-                        animate={{ 
-                          rotate: isLoading ? [0, 360] : 0
-                        }}
-                        transition={{ 
-                          duration: 1,
-                          repeat: isLoading ? Infinity : 0,
-                          ease: "linear"
-                        }}
-                        className="absolute right-3 top-3.5"
-                      >
-                        <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={`${isLoading ? 'text-green-500' : 'text-gray-400'}`}>
-                          {isLoading ? (
-                            <path d="M20 11A8.1 8.1 0 0 0 4.5 9M4 5v4h4M4 13a8.1 8.1 0 0 0 15.5 2m.5 4v-4h-4" />
-                          ) : (
-                            <path d="M21 2l-2 2m-7.61 7.61a5.5 5.5 0 1 1-7.778 7.778 5.5 5.5 0 0 1 7.777-7.777zm0 0L15.5 7.5m0 0l3 3L22 7l-3-3m-3.5 3.5L19 4" />
-                          )}
-                        </svg>
-                      </motion.div>
-                </div>
-                  </motion.div>
-                  
-                  {/* Error message with animation */}
-                  <AnimatePresence>
-                    {error && (
-                      <motion.div
-                        initial={{ opacity: 0, y: -10, height: 0 }}
-                        animate={{ opacity: 1, y: 0, height: 'auto' }}
-                        exit={{ opacity: 0, y: -10, height: 0 }}
-                        className="overflow-hidden"
-                      >
-                        <p className="text-sm text-red-500 text-center font-medium">{error}</p>
-                      </motion.div>
-                    )}
-                  </AnimatePresence>
-                  
-                  {/* Success message with animation */}
-                  <AnimatePresence>
-                    {isLoading && (
-                      <motion.div
-                        initial={{ opacity: 0, y: -10, height: 0 }}
-                        animate={{ opacity: 1, y: 0, height: 'auto' }}
-                        exit={{ opacity: 0, y: -10, height: 0 }}
-                        className="overflow-hidden"
-                      >
-                        <div className="flex flex-col items-center justify-center py-2">
-                          <div className="flex space-x-2 items-center">
-                            <svg className="animate-spin h-5 w-5 text-green-500" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                              <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-                              <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                            </svg>
-                            <p className="text-sm text-green-500 font-medium">Authenticating...</p>
-                          </div>
-                        </div>
-                      </motion.div>
-                    )}
-                  </AnimatePresence>
-              </div>
-            </CardContent>
-              
-              <CardFooter className="pt-0">
-                <motion.div 
-                  className="w-full"
-                  whileHover={{ scale: 1.02 }}
-                  whileTap={{ scale: 0.98 }}
-                >
-                  <Button 
-                    type="submit" 
-                    className={`w-full h-12 text-lg font-medium transition-all duration-300 relative overflow-hidden ${
-                      isLoading 
-                        ? 'gradient-primary' 
-                        : 'glass-effect glass-card bg-white/50 dark:bg-black/50 text-gray-900 dark:text-white'
-                    } shadow-lg`}
-                    disabled={isLoading}
-                  >
-                    <div className="relative z-10 flex items-center justify-center">
-                      {isLoading ? (
-                        <>Access Granted</>
-                      ) : (
-                        <>
-                          <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="mr-2">
-                            <rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect>
-                            <path d="M7 11V7a5 5 0 0 1 10 0v4"></path>
-                          </svg>
-                          Access Admin Panel
-                        </>
-                      )}
                     </div>
-                    
-                    {/* Background animation for button */}
-                    {!isLoading && (
-                      <div className="absolute inset-0 -z-10">
-                        <div className="absolute inset-0 bg-gradient-to-r from-gray-200 to-gray-300 dark:from-gray-700 dark:to-gray-800 opacity-0 group-hover:opacity-100 transition-opacity"></div>
+                  </div>
+                </div>
               </div>
-                    )}
-              </Button>
-                </motion.div>
-            </CardFooter>
-          </form>
-        </Card>
-        </motion.div>
-      </AnimatePresence>
-      
-      {/* Hidden link that we can programmatically click as a fallback */}
-      <a 
-        href="/admin" 
-        id="admin-redirect-link" 
-        style={{ display: 'none' }}
-        ref={(node) => {
-          if (node && isLoading) {
-            console.log("Attempting redirect via hidden link click")
-            setTimeout(() => {
-              try {
-                node.click()
-              } catch (err) {
-                console.error("Error clicking link:", err)
-              }
-            }, 1000)
-          }
-        }}
-      >
-        Redirect to Admin
-      </a>
-        </div>
-      ) : (
-        <div className={`flex flex-col h-screen ${isDark ? 'bg-zinc-900' : 'bg-zinc-50'}`}>
-          {/* Background logo */}
-          <div className="fixed inset-0 flex items-center justify-center z-0 pointer-events-none">
-            <Image 
-              src="/GV Fav.png" 
-              alt="Background Logo" 
-              width={500} 
-              height={500}
-              className={`opacity-[0.02] ${isDark ? "" : "brightness-0"}`}
-            />
+
+              {/* Error message with animation */}
+              <AnimatePresence mode="wait">
+                {error && (
+                  <motion.div
+                    initial={{ opacity: 0, y: -10, height: 0 }}
+                    animate={{ opacity: 1, y: 0, height: 'auto' }}
+                    exit={{ opacity: 0, height: 0 }}
+                    transition={{ duration: 0.2 }}
+                    className="overflow-hidden"
+                  >
+                    <div className="px-4 py-3 rounded bg-red-500/10 border border-red-500/20">
+                      <p className="text-sm text-red-400 flex items-center">
+                        <X className="h-4 w-4 mr-2 flex-shrink-0" />
+                        {error}
+                      </p>
+                    </div>
+                  </motion.div>
+                )}
+              </AnimatePresence>
+
+              <motion.button
+                type="submit"
+                disabled={isLoading}
+                className={`w-full h-12 rounded-lg relative overflow-hidden transition-all duration-300 ${
+                  isLoading 
+                    ? 'bg-gradient-to-r from-blue-600 to-violet-600 text-white' 
+                    : 'bg-zinc-800 hover:bg-zinc-700 text-white'
+                }`}
+                whileTap={{ scale: 0.98 }}
+              >
+                <div className="relative z-10 flex items-center justify-center font-medium">
+                  {isLoading ? (
+                    <div className="flex items-center">
+                      <Loader2 className="h-5 w-5 mr-3 animate-spin" />
+                      <span>Verifying access...</span>
+                    </div>
+                  ) : (
+                    <div className="flex items-center">
+                      <LogOut className="h-5 w-5 mr-3" />
+                      <span>Sign In</span>
+                    </div>
+                  )}
+                </div>
+                {/* Button shine effect */}
+                {!isLoading && (
+                  <motion.div 
+                    className="absolute inset-0 bg-gradient-to-r from-transparent via-white/10 to-transparent skew-x-20"
+                    animate={{ x: ["calc(-100% - 50px)", "calc(100% + 50px)"] }}
+                    transition={{ duration: 3, repeat: Infinity, repeatDelay: 5 }}
+                  />
+                )}
+              </motion.button>
+            </motion.form>
           </div>
-          
-          {/* Floating Header */}
-          <div className="fixed top-0 left-0 right-0 z-[100] px-4 py-3">
+
+          <div className="px-8 py-4 bg-black/20 border-t border-zinc-800/50">
+            <div className="flex items-center justify-between text-xs text-zinc-500">
+              <span>© 2024 NextGio</span>
+              <span className="flex items-center">
+                <Shield className="h-3 w-3 mr-1" />
+                Secure Login
+              </span>
+            </div>
+          </div>
+        </div>
+      </motion.div>
+    </div>
+  ) : (
+    <div className={`flex flex-col h-screen ${isDark ? 'bg-zinc-900' : 'bg-zinc-50'}`}>
+      {/* Background logo */}
+      <div className="fixed inset-0 flex items-center justify-center z-0 pointer-events-none">
+        <Image 
+          src="/GV Fav.png" 
+          alt="Background Logo" 
+          width={500} 
+          height={500}
+          className={`opacity-[0.02] ${isDark ? "" : "brightness-0"}`}
+        />
+      </div>
+      
+      {/* Floating Header */}
+      <div className="fixed top-0 left-0 right-0 z-[100] px-4 py-3">
+        <motion.div
+          initial={{ y: -100, opacity: 0 }}
+          animate={{ y: 0, opacity: 1 }}
+          transition={{ duration: 0.5, type: "spring", stiffness: 300, damping: 30 }}
+          className={cn(
+            "mx-auto max-w-7xl rounded-2xl transition-all duration-300",
+            isDark
+              ? "bg-zinc-800/80 backdrop-blur-sm border border-white/[0.05] shadow-lg shadow-black/5"
+              : "bg-white/80 backdrop-blur-sm border border-black/[0.05] shadow-md"
+          )}
+        >
+          <div className="h-14 px-4 flex items-center justify-between relative">
+            {/* Left section with logo and status */}
+            <div className="flex items-center gap-3 w-[180px]">
+              <div className="flex items-center gap-2.5">
+                <div className="relative">
+                  <Image 
+                    src="/GV Fav.png" 
+                    alt="GV Logo" 
+                    width={32} 
+                    height={32} 
+                    className={cn(
+                      "rounded-full shadow-sm",
+                      isDark ? "" : "brightness-0"
+                    )}
+                  />
+                  <div className="absolute -bottom-0.5 -right-0.5 h-2.5 w-2.5 rounded-full bg-emerald-500 animate-pulse ring-2 ring-zinc-800 dark:ring-zinc-900"></div>
+                </div>
+                <div className="flex flex-col">
+                  <h1 className={cn(
+                    "font-semibold tracking-tight text-base leading-none",
+                    isDark ? "text-zinc-100" : "text-zinc-900"
+                  )}>
+                    NextGio
+                  </h1>
+                  <span className={cn(
+                    "text-[11px] font-medium",
+                    isDark ? "text-zinc-400" : "text-zinc-500"
+                  )}>
+                    Admin
+                  </span>
+                </div>
+              </div>
+              <div className={cn(
+                "hidden sm:flex h-5 items-center px-1.5 rounded-full text-[10px] font-medium",
+                isDark 
+                  ? "bg-zinc-800/80 text-zinc-400 border border-zinc-700/50"
+                  : "bg-zinc-100 text-zinc-600 border border-zinc-200"
+              )}>
+                System
+              </div>
+            </div>
+
+            {/* Center navigation */}
+            <nav className="hidden md:flex items-center gap-3 flex-1 justify-center">
+              <Button 
+                variant="ghost"
+                size="sm"
+                onClick={() => setActiveSection('chatbot')}
+                className={cn(
+                  "h-9 px-4 rounded-lg text-sm font-medium transition-all duration-200",
+                  activeSection === 'chatbot'
+                    ? isDark
+                      ? "bg-white/10 text-white shadow-sm"
+                      : "bg-black/5 text-gray-900 shadow-sm"
+                    : isDark
+                      ? "text-zinc-400 hover:text-white hover:bg-white/5"
+                      : "text-zinc-600 hover:text-zinc-900 hover:bg-black/5"
+                )}
+              >
+                <Bot className="h-4 w-4 mr-2 flex-shrink-0" />
+                NextGio
+              </Button>
+              <Button 
+                variant="ghost"
+                size="sm"
+                onClick={() => setActiveSection('conversations')}
+                className={cn(
+                  "h-9 px-4 rounded-lg text-sm font-medium transition-all duration-200",
+                  activeSection === 'conversations'
+                    ? isDark
+                      ? "bg-white/10 text-white shadow-sm"
+                      : "bg-black/5 text-gray-900 shadow-sm"
+                    : isDark
+                      ? "text-zinc-400 hover:text-white hover:bg-white/5"
+                      : "text-zinc-600 hover:text-zinc-900 hover:bg-black/5"
+                )}
+              >
+                <MessageSquare className="h-4 w-4 mr-2 flex-shrink-0" />
+                Conversations
+              </Button>
+            </nav>
+
+            {/* Right section with actions */}
+            <div className="flex items-center gap-2 w-[180px] justify-end">
+              <ThemeSwitch />
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={handleLogout}
+                className={cn(
+                  "h-9 px-3 rounded-lg text-sm font-medium transition-all duration-200",
+                  isDark
+                    ? "text-zinc-400 hover:text-white hover:bg-white/5"
+                    : "text-zinc-600 hover:text-zinc-900 hover:bg-black/5"
+                )}
+              >
+                <LogOut className="h-4 w-4 mr-2" />
+                <span className="hidden sm:inline">Log Out</span>
+              </Button>
+              
+              {/* Mobile menu button */}
+              <Button
+                variant="ghost"
+                size="sm"
+                className="md:hidden h-9 w-9 p-0 rounded-lg"
+                onClick={() => setIsMenuOpen(!isMenuOpen)}
+                aria-label={isMenuOpen ? "Close menu" : "Open menu"}
+              >
+                {isMenuOpen ? <X className="h-5 w-5" /> : <Menu className="h-5 w-5" />}
+              </Button>
+            </div>
+          </div>
+        </motion.div>
+      </div>
+      
+      {/* Content with padding for the floating header */}
+      <main className="flex-1 overflow-hidden z-10">
+        <div className="h-full relative mx-auto max-w-7xl">
+          {activeSection === 'chatbot' && <AdminChat isDark={isDark} />}
+          {activeSection === 'conversations' && <ConversationsPage />}
+        </div>
+      </main>
+
+      {/* Mobile Navigation Overlay */}
+      <AnimatePresence>
+        {isMenuOpen && (
+          <>
+            {/* Backdrop */}
             <motion.div
-              initial={{ y: -100, opacity: 0 }}
-              animate={{ y: 0, opacity: 1 }}
-              transition={{ duration: 0.5, type: "spring", stiffness: 300, damping: 30 }}
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              transition={{ duration: 0.2 }}
+              className="fixed inset-0 bg-black/50 backdrop-blur-sm z-[90] md:hidden"
+              onClick={() => setIsMenuOpen(false)}
+              aria-hidden="true"
+            />
+            
+            {/* Mobile Menu */}
+            <motion.div
+              initial={{ opacity: 0, y: -20 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -20 }}
+              transition={{ duration: 0.2, ease: "easeInOut" }}
               className={cn(
-                "mx-auto max-w-7xl rounded-2xl transition-all duration-300",
+                "fixed top-[72px] left-4 right-4 z-[95] rounded-xl overflow-hidden md:hidden",
                 isDark
-                  ? "bg-zinc-800/80 backdrop-blur-sm border border-white/[0.05] shadow-lg shadow-black/5"
-                  : "bg-white/80 backdrop-blur-sm border border-black/[0.05] shadow-md"
+                  ? "bg-zinc-950/90 backdrop-blur-md border border-zinc-800/40"
+                  : "bg-white/90 backdrop-blur-md border border-zinc-200/70",
               )}
             >
-              <div className="h-14 px-4 flex items-center justify-between relative">
-                {/* Left section with logo and status */}
-                <div className="flex items-center gap-3 w-[180px]">
-                  <div className="flex items-center gap-2.5">
-                    <div className="relative">
-                      <Image 
-                        src="/GV Fav.png" 
-                        alt="GV Logo" 
-                        width={32} 
-                        height={32} 
-                        className={cn(
-                          "rounded-full shadow-sm",
-                          isDark ? "" : "brightness-0"
-                        )}
-                      />
-                      <div className="absolute -bottom-0.5 -right-0.5 h-2.5 w-2.5 rounded-full bg-emerald-500 animate-pulse ring-2 ring-zinc-800 dark:ring-zinc-900"></div>
-                    </div>
-                    <div className="flex flex-col">
-                      <h1 className={cn(
-                        "font-semibold tracking-tight text-base leading-none",
-                        isDark ? "text-zinc-100" : "text-zinc-900"
-                      )}>
-                        NextGio
-                      </h1>
-                      <span className={cn(
-                        "text-[11px] font-medium",
-                        isDark ? "text-zinc-400" : "text-zinc-500"
-                      )}>
-                        Admin
-                      </span>
-                    </div>
-                  </div>
-                  <div className={cn(
-                    "hidden sm:flex h-5 items-center px-1.5 rounded-full text-[10px] font-medium",
-                    isDark 
-                      ? "bg-zinc-800/80 text-zinc-400 border border-zinc-700/50"
-                      : "bg-zinc-100 text-zinc-600 border border-zinc-200"
-                  )}>
-                    System
-                  </div>
+              <div className="py-4 px-2">
+                {/* Add logo at the top of mobile menu */}
+                <div className="flex justify-center mb-4">
+                  <Image 
+                    src="/GV Fav.png" 
+                    alt="GV Logo" 
+                    width={40} 
+                    height={40}
+                    className={cn(
+                      "rounded-full",
+                      isDark ? "" : "brightness-0"
+                    )}
+                  />
                 </div>
-
-                {/* Center navigation */}
-                <nav className="hidden md:flex items-center gap-3 flex-1 justify-center">
-                  <Button 
-                    variant="ghost"
-                    size="sm"
-                    onClick={() => setActiveSection('chatbot')}
-                    className={cn(
-                      "h-9 px-4 rounded-lg text-sm font-medium transition-all duration-200",
-                      activeSection === 'chatbot'
-                        ? isDark
-                          ? "bg-white/10 text-white shadow-sm"
-                          : "bg-black/5 text-gray-900 shadow-sm"
-                        : isDark
-                          ? "text-zinc-400 hover:text-white hover:bg-white/5"
-                          : "text-zinc-600 hover:text-zinc-900 hover:bg-black/5"
-                    )}
-                  >
-                    <Bot className="h-4 w-4 mr-2 flex-shrink-0" />
-                    NextGio
-                  </Button>
-                  <Button 
-                    variant="ghost"
-                    size="sm"
-                    onClick={() => setActiveSection('conversations')}
-                    className={cn(
-                      "h-9 px-4 rounded-lg text-sm font-medium transition-all duration-200",
-                      activeSection === 'conversations'
-                        ? isDark
-                          ? "bg-white/10 text-white shadow-sm"
-                          : "bg-black/5 text-gray-900 shadow-sm"
-                        : isDark
-                          ? "text-zinc-400 hover:text-white hover:bg-white/5"
-                          : "text-zinc-600 hover:text-zinc-900 hover:bg-black/5"
-                    )}
-                  >
-                    <MessageSquare className="h-4 w-4 mr-2 flex-shrink-0" />
-                    Conversations
-                  </Button>
-                </nav>
-
-                {/* Right section with actions */}
-                <div className="flex items-center gap-2 w-[180px] justify-end">
-                  <ThemeSwitch />
+                <div className="grid grid-cols-1 gap-2">
                   <Button
                     variant="ghost"
-                    size="sm"
+                    onClick={() => {
+                      setActiveSection('chatbot');
+                      setIsMenuOpen(false);
+                    }}
+                    className={cn(
+                      "justify-center rounded-xl py-6 transition-all duration-200 flex gap-3 items-center",
+                      activeSection === 'chatbot'
+                        ? isDark 
+                          ? "bg-white/10 text-white shadow-sm"
+                          : "bg-black/5 text-gray-900 shadow-sm"
+                        : isDark
+                          ? "text-white/80 hover:text-white hover:bg-white/5"
+                          : "text-gray-700 hover:text-gray-900 hover:bg-black/5",
+                    )}
+                  >
+                    <Bot className="h-5 w-5" />
+                    <span className="text-sm font-medium">NextGio</span>
+                  </Button>
+                  <Button
+                    variant="ghost"
+                    onClick={() => {
+                      setActiveSection('conversations');
+                      setIsMenuOpen(false);
+                    }}
+                    className={cn(
+                      "justify-center rounded-xl py-6 transition-all duration-200 flex gap-3 items-center",
+                      activeSection === 'conversations'
+                        ? isDark 
+                          ? "bg-white/10 text-white shadow-sm"
+                          : "bg-black/5 text-gray-900 shadow-sm"
+                        : isDark
+                          ? "text-white/80 hover:text-white hover:bg-white/5"
+                          : "text-gray-700 hover:text-gray-900 hover:bg-black/5",
+                    )}
+                  >
+                    <MessageSquare className="h-5 w-5" />
+                    <span className="text-sm font-medium">Conversations</span>
+                  </Button>
+                  <div className="border-t border-zinc-200/20 my-2"></div>
+                  <Button
+                    variant="ghost"
                     onClick={handleLogout}
                     className={cn(
-                      "h-9 px-3 rounded-lg text-sm font-medium transition-all duration-200",
+                      "justify-center rounded-xl py-6 transition-all duration-200 flex gap-3 items-center",
                       isDark
-                        ? "text-zinc-400 hover:text-white hover:bg-white/5"
-                        : "text-zinc-600 hover:text-zinc-900 hover:bg-black/5"
+                        ? "text-white/80 hover:text-white hover:bg-white/5"
+                        : "text-gray-700 hover:text-gray-900 hover:bg-black/5",
                     )}
                   >
-                    <LogOut className="h-4 w-4 mr-2" />
-                    <span className="hidden sm:inline">Log Out</span>
-                  </Button>
-                  
-                  {/* Mobile menu button */}
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    className="md:hidden h-9 w-9 p-0 rounded-lg"
-                    onClick={() => setIsMenuOpen(!isMenuOpen)}
-                    aria-label={isMenuOpen ? "Close menu" : "Open menu"}
-                  >
-                    {isMenuOpen ? <X className="h-5 w-5" /> : <Menu className="h-5 w-5" />}
+                    <LogOut className="h-5 w-5" />
+                    <span className="text-sm font-medium">Log Out</span>
                   </Button>
                 </div>
               </div>
             </motion.div>
-          </div>
-          
-          {/* Content with padding for the floating header */}
-          <main className="flex-1 overflow-hidden z-10">
-            <div className="h-full relative mx-auto max-w-7xl">
-              {activeSection === 'chatbot' && <AdminChat isDark={isDark} />}
-              {activeSection === 'conversations' && <ConversationsPage />}
-            </div>
-          </main>
-
-          {/* Mobile Navigation Overlay */}
-          <AnimatePresence>
-            {isMenuOpen && (
-              <>
-                {/* Backdrop */}
-                <motion.div
-                  initial={{ opacity: 0 }}
-                  animate={{ opacity: 1 }}
-                  exit={{ opacity: 0 }}
-                  transition={{ duration: 0.2 }}
-                  className="fixed inset-0 bg-black/50 backdrop-blur-sm z-[90] md:hidden"
-                  onClick={() => setIsMenuOpen(false)}
-                  aria-hidden="true"
-                />
-                
-                {/* Mobile Menu */}
-                <motion.div
-                  initial={{ opacity: 0, y: -20 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  exit={{ opacity: 0, y: -20 }}
-                  transition={{ duration: 0.2, ease: "easeInOut" }}
-                  className={cn(
-                    "fixed top-[72px] left-4 right-4 z-[95] rounded-xl overflow-hidden md:hidden",
-                    isDark
-                      ? "bg-zinc-950/90 backdrop-blur-md border border-zinc-800/40"
-                      : "bg-white/90 backdrop-blur-md border border-zinc-200/70",
-                  )}
-                >
-                  <div className="py-4 px-2">
-                    {/* Add logo at the top of mobile menu */}
-                    <div className="flex justify-center mb-4">
-                      <Image 
-                        src="/GV Fav.png" 
-                        alt="GV Logo" 
-                        width={40} 
-                        height={40}
-                        className={cn(
-                          "rounded-full",
-                          isDark ? "" : "brightness-0"
-                        )}
-                      />
-                    </div>
-                    <div className="grid grid-cols-1 gap-2">
-                      <Button
-                        variant="ghost"
-                        onClick={() => {
-                          setActiveSection('chatbot');
-                          setIsMenuOpen(false);
-                        }}
-                        className={cn(
-                          "justify-center rounded-xl py-6 transition-all duration-200 flex gap-3 items-center",
-                          activeSection === 'chatbot'
-                            ? isDark 
-                              ? "bg-white/10 text-white shadow-sm"
-                              : "bg-black/5 text-gray-900 shadow-sm"
-                            : isDark
-                              ? "text-white/80 hover:text-white hover:bg-white/5"
-                              : "text-gray-700 hover:text-gray-900 hover:bg-black/5",
-                        )}
-                      >
-                        <Bot className="h-5 w-5" />
-                        <span className="text-sm font-medium">NextGio</span>
-                      </Button>
-                      <Button
-                        variant="ghost"
-                        onClick={() => {
-                          setActiveSection('conversations');
-                          setIsMenuOpen(false);
-                        }}
-                        className={cn(
-                          "justify-center rounded-xl py-6 transition-all duration-200 flex gap-3 items-center",
-                          activeSection === 'conversations'
-                            ? isDark 
-                              ? "bg-white/10 text-white shadow-sm"
-                              : "bg-black/5 text-gray-900 shadow-sm"
-                            : isDark
-                              ? "text-white/80 hover:text-white hover:bg-white/5"
-                              : "text-gray-700 hover:text-gray-900 hover:bg-black/5",
-                        )}
-                      >
-                        <MessageSquare className="h-5 w-5" />
-                        <span className="text-sm font-medium">Conversations</span>
-                      </Button>
-                      <div className="border-t border-zinc-200/20 my-2"></div>
-                      <Button
-                        variant="ghost"
-                        onClick={handleLogout}
-                        className={cn(
-                          "justify-center rounded-xl py-6 transition-all duration-200 flex gap-3 items-center",
-                          isDark
-                            ? "text-white/80 hover:text-white hover:bg-white/5"
-                            : "text-gray-700 hover:text-gray-900 hover:bg-black/5",
-                        )}
-                      >
-                        <LogOut className="h-5 w-5" />
-                        <span className="text-sm font-medium">Log Out</span>
-                      </Button>
-                    </div>
-                  </div>
-                </motion.div>
-              </>
-            )}
-          </AnimatePresence>
-        </div>
-      );
+          </>
+        )}
+      </AnimatePresence>
+    </div>
+  );
 } 

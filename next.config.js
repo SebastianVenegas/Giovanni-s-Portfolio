@@ -3,7 +3,14 @@ const webpack = require('webpack');
 
 const nextConfig = {
   images: {
-    domains: ['hebbkx1anhila5yf.public.blob.vercel-storage.com']
+    remotePatterns: [
+      {
+        protocol: 'https',
+        hostname: 'hebbkx1anhila5yf.public.blob.vercel-storage.com',
+        port: '',
+        pathname: '/**',
+      },
+    ],
   },
   eslint: {
     // Warning: This allows production builds to successfully complete even if
